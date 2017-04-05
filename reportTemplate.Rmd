@@ -1,0 +1,147 @@
+---
+title: "SK-Ana Report"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    fig_height: 5
+    fig_width: 10
+    number_sections: yes
+    theme: cerulean
+  pdf_document:
+    fig_height: 5
+    fig_width: 7
+    number_sections: yes
+  word_document:
+    fig_height: 5
+    fig_width: 7
+fontsize: 11pt
+---
+
+```{r, results='asis', echo=FALSE}
+cat('# Project name :',input$projectTag)
+cex=1
+mar=c(4,4,2,1)
+mgp=c(2,.75,0)
+pty='s'
+tcl=-0.5
+scale = 0.5 # for multiplots
+```
+__Data file(s)__ :`r Inputs$fileOrig`
+
+
+```{r, results='asis', echo=FALSE}
+#getData()
+if(input$keepCbl!=0) {
+  cat('## Baseline correction\n')
+  cat('__Delay range__ :', signif(c(min(Inputs$delay),
+                                    input$delay[input$keepCbl]),
+                                  3))
+}
+```
+
+## Selected data
+
+__Wavelength range__ : `r signif(range(Inputs$wavl),3)`
+
+__Delay range__ : `r signif(range(Inputs$delay),3)`
+
+```{r echo=FALSE}
+par(cex=cex, mar=mar)
+image(Inputs$delay,Inputs$wavl,Inputs$mat,
+      xlab='Delay',ylab='Wavelength',
+      col=cols, zlim=input$keepDoRange)
+```
+
+
+```{r results='asis', echo=FALSE}
+if('SVD' %in% input$inReport){
+  cat ('# Singular Values Decomposition')
+  s<-doSVD()
+  if (!is.null(s)){
+    C = unMask(s$u, axis = Inputs$delay, mask = input$keepDlMask)
+    S = unMask(s$v, axis = Inputs$wavl,  mask = input$keepWlMask)
+  }
+}
+```
+
+```{r echo=FALSE}
+if('SVD' %in% input$inReport) {
+  if (!is.null(s)){
+    par(cex=cex, mar=mar,mgp=mgp,pty=pty,tcl=tcl)
+    plot(s$d[1:ncol(s$u)],ylab="S. V.",log="y")
+    lines(s$d,col="blue")
+    grid()
+  }
+}
+```
+
+```{r echo=FALSE}
+if('SVD' %in% input$inReport) {
+  if (!is.null(s))
+        plotSVDVecBloc(C,S,Inputs$delay,Inputs$wavl,cex=scale)    
+}
+```
+
+```{r results='asis', echo=FALSE}
+if('ALS' %in% input$inReport){
+  cat ('# ALS Decomposition\n\n')
+  alsOut<-doALS()
+  cat('__Number of components__ : ',input$nALS,'\n\n')
+  cat('__Results__ after ',alsOut$iter,' iterations\n\n')
+  cat(alsOut$msg)
+  # Reshape vectors
+  C = unMask(alsOut$C, axis = Inputs$delay, mask = input$keepDlMask)
+  S = unMask(alsOut$S, axis = Inputs$wavl,  mask = input$keepWlMask)
+}
+```
+
+```{r results='asis', echo=FALSE}
+if('ALS' %in% input$inReport){
+  cat ('## Spectra and Kinetics')
+}
+```
+
+```{r echo=FALSE}
+if('ALS' %in% input$inReport) {
+  if (!is.null(alsOut)){
+    plotAlsVec(alsOut,cex=scale)
+  }
+}
+```
+
+```{r results='asis', echo=FALSE}
+if('ALS' %in% input$inReport){
+  cat ('## Residuals')
+}
+```
+
+
+```{r echo=FALSE}
+if('ALS' %in% input$inReport) {
+  if (!is.null(alsOut)){
+    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,cex=scale)
+  }
+}
+```
+
+```{r results='asis', echo=FALSE}
+if('ALS' %in% input$inReport){
+  cat ('## Contributions')
+}
+```
+
+```{r echo=FALSE}
+if('ALS' %in% input$inReport) {
+  if (!is.null(alsOut)){
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,cex=scale)
+  }
+}
+```
+
+******
+
+# Session Info
+------------
+```{r, echo=FALSE}
+sessionInfo()
+```
