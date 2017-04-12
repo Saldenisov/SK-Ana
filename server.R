@@ -7,6 +7,7 @@ library(nnls)
 library(Iso)
 library(viridis)
 library(shiny)
+library(DT)
 # library(NMF)
  
 # Colors ####
@@ -221,10 +222,9 @@ plotResid <- function (delay,wavl,mat,C,S,
                        d = rep(1,ncol(C)),
                        main = 'Data',...) {
   # Buid model matrix
-  matAls = mat * 0
+  matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
   for (i in 1:ncol(S))
     matAls = matAls + C[,i] %o% S[,i] * d[i]
-  
   zlim = range(mat,na.rm = TRUE)
   
   dummy = split.screen(c(2,3))
@@ -419,7 +419,9 @@ indxCuts <- function (xCut, coords, minx=50) {
   }
   return(list(indx=indx,delta=delta))
 }
+
  
+
 # Server ####
 shinyServer(function(input, output, session) {
    
@@ -427,15 +429,22 @@ shinyServer(function(input, output, session) {
   if(!dir.exists("outputDir"))
      dir.create("outputDir",showWarnings = FALSE)
   
+  nMasks = 4 # Max number of masks in each dimension
+  
   projConfig = NULL
   S0_in      = NULL
+  RawData    = NULL
   
   Inputs = reactiveValues(
+    gotData        = FALSE,
+    process        = FALSE,
     fileOrig       = NULL,
     matOrig        = NULL,
     wavlOrig       = NULL,
     delayOrig      = NULL,
     dlScaleFacOrig = NULL,
+    delayMask      = NA,
+    wavlMask       = NA,
     mat            = NULL,
     wavl           = NULL,
     delay          = NULL,
@@ -482,20 +491,33 @@ shinyServer(function(input, output, session) {
       # Restore from project
       doRangeSel = config$keepDoRange
       wlRangeSel = config$keepWlRange
-      wlMaskSel  = config$keepWlMask
+      wlMaskSel1 = config$keepWlMask1
+      wlMaskSel2 = config$keepWlMask2
+      wlMaskSel3 = config$keepWlMask3
+      wlMaskSel4 = config$keepWlMask4
       wlCutSel   = config$keepWlCut
       dlRangeSel = config$keepDlRange
-      dlMaskSel  = config$keepDlMask
+      dlMaskSel1 = config$keepDlMask1
+      dlMaskSel2 = config$keepDlMask2
+      dlMaskSel3 = config$keepDlMask3
+      dlMaskSel4 = config$keepDlMask4
       dlCutSel   = config$keepDlCut
       cblSel     = config$keepCbl
     } else {
       # Initialize
-      doRangeSel = doRange
+      doRangeSel = as.vector(quantile(mat,probs = c(0.01,0.99),
+                                      na.rm = TRUE))
       wlRangeSel = wlRange
-      wlMaskSel  = c(wlMask[1],wlMask[1])
+      wlMaskSel1  = c(wlMask[1],wlMask[1])
+      wlMaskSel2  = c(wlMask[1],wlMask[1])
+      wlMaskSel3  = c(wlMask[1],wlMask[1])
+      wlMaskSel4  = c(wlMask[1],wlMask[1])
       wlCutSel   = signif(mean(wlCut),3)
       dlRangeSel = dlRange
-      dlMaskSel  = c(dlMask[1],dlMask[1])
+      dlMaskSel1  = c(dlMask[1],dlMask[1])
+      dlMaskSel2  = c(dlMask[1],dlMask[1])
+      dlMaskSel3  = c(dlMask[1],dlMask[1])
+      dlMaskSel4  = c(dlMask[1],dlMask[1])
       dlCutSel   = signif(mean(dlCut),3)
       cblSel     = cblRange[1]
     }
@@ -506,13 +528,19 @@ shinyServer(function(input, output, session) {
     # Wavelength sliders
     nsteps = min(length(wavl),200)
     updateSlider("keepWlRange", wlRange, wlRangeSel, nsteps)
-    updateSlider("keepWlMask" , wlMask , wlMaskSel , nsteps)
+    updateSlider("keepWlMask1", wlMask , wlMaskSel1, nsteps)
+    updateSlider("keepWlMask2", wlMask , wlMaskSel2, nsteps)
+    updateSlider("keepWlMask3", wlMask , wlMaskSel3, nsteps)
+    updateSlider("keepWlMask4", wlMask , wlMaskSel4, nsteps)
     updateSlider("keepWlCut"  , wlCut  , wlCutSel  , nsteps)
     
     # Delay sliders
     nsteps = min(length(delay),500)
     updateSlider("keepDlRange", dlRange, dlRangeSel, nsteps)
-    updateSlider("keepDlMask" , dlMask , dlMaskSel , nsteps)
+    updateSlider("keepDlMask1", dlMask , dlMaskSel1, nsteps)
+    updateSlider("keepDlMask2", dlMask , dlMaskSel2, nsteps)
+    updateSlider("keepDlMask3", dlMask , dlMaskSel3, nsteps)
+    updateSlider("keepDlMask4", dlMask , dlMaskSel4, nsteps)
     updateSlider("keepDlCut"  , dlCut  , dlCutSel  , nsteps)
 
     
@@ -526,30 +554,31 @@ shinyServer(function(input, output, session) {
                              selected = c('SVD'))
     
   }
-
-  getMatrix <- reactive({
-
-    fileNames = input$dataFile
-    
-    if(nrow(fileNames)>=2) {
-      # If multiple files, average them
-      switch( input$procMult,
-              avrg    = getMeanMatrix(fileNames),
-              tileWav = getTileMatrix(fileNames,tileDel=FALSE),
-              tileDel = getTileMatrix(fileNames,tileDel=TRUE)
-            ) 
-      
-    } else {
-      getOneMatrix(fileNames$datapath)
-      
+  getRawData <- function (fileNames) {
+    Inputs$gotData <<- FALSE
+    RawData <<- list()  # Init list in upper environment
+    Inputs$fileOrig <<- NULL # Invalid earlier data
+    progress <- shiny::Progress$new()
+    on.exit(progress$close())
+    updateProgress <- function(value = NULL, detail = NULL) {
+      progress$set(value = value, detail = detail)
     }
-    
-  })
-
+    progress$set(message = "Reading data file(s) ", value = 0)
+    for(i in 1:nrow(fileNames)) {
+      fName = fileNames[i,'name']
+      updateProgress(value  = i / nrow(fileNames),
+                     detail = fName)
+      fPath = fileNames[i,'datapath']
+      O = getOneMatrix(fPath)
+      O$name = fName
+      RawData[[i]] <<- O
+    }
+    Inputs$gotData <<- TRUE
+    output$loadErrorNew <- renderUI({
+      h4('Loaded data')
+    })
+  }
   getOneMatrix <- function(dataFile) {
-    # print("getOneMatrix")
-    # system(paste0('iconv -f ISO-8859-1 -t UTF-8 ',fileName,' > temp.txt'))
-    # cat(dataFile,'\n')
     wavl =
       as.numeric(
         as.vector(
@@ -566,8 +595,6 @@ shinyServer(function(input, output, session) {
           )
         )[-1]
       )
-    # print(wavl)
-    # if(is.na(sum(wavl)))
     
     mat   = read.table(
       dataFile, 
@@ -580,7 +607,7 @@ shinyServer(function(input, output, session) {
     )
     mat = as.matrix(mat)
     # print(str(mat))
-#     print(range(mat))
+    #     print(range(mat))
     
     delay = as.numeric(mat[,1])
     u = !duplicated(delay)
@@ -596,7 +623,7 @@ shinyServer(function(input, output, session) {
     iord = order(delay,decreasing=FALSE)
     delay=delay[iord]
     mat = mat[iord,] 
-
+    
     # Downsize
     if(input$compFac >= 2) {
       fw = input$compFac
@@ -617,13 +644,13 @@ shinyServer(function(input, output, session) {
       delay[newNrow]=NA
       adelay = c()
       for(i in 1:nRowBloc) 
-          adelay[i] = mean(delay[((i-1)*fw+1):(i*fw)],
-                           na.rm=TRUE)
+        adelay[i] = mean(delay[((i-1)*fw+1):(i*fw)],
+                         na.rm=TRUE)
       wavl[newNcol]=NA
       awavl = c()
       for(i in 1:nColBloc) 
         awavl[i] = mean(wavl[((i-1)*fw+1):(i*fw)],
-                         na.rm=TRUE)
+                        na.rm=TRUE)
       
       mat   = amat
       delay = adelay
@@ -642,9 +669,8 @@ shinyServer(function(input, output, session) {
       mat = mat, delay = delay, wavl = wavl, delaySave = delay
     ))
   }
-  
-  getMeanMatrix <- function (fileNames) {
-
+  getMeanMatrix <- function(fileNames) {
+    
     # First pass: build full delay and wavl tables 
     # (some matrices mignt have missing rows and/or columns)
     delay=c()
@@ -656,7 +682,7 @@ shinyServer(function(input, output, session) {
     }
     delay=sort(unique(delay))
     wavl =sort(unique(wavl ))
-
+    
     # Load all matrices, recast them in the full coords
     matTab=array(NA,dim=c(nrow(fileNames),length(delay),length(wavl)))
     i=0
@@ -686,8 +712,52 @@ shinyServer(function(input, output, session) {
     
     return(list(mat=matm, wavl=wavl, delay=delay, delaySave=delay))
   }
+  doMeanMatrix  <- function(sel) {
+    
+    # First pass: build full delay and wavl tables 
+    # (some matrices mignt have missing rows and/or columns)
+    delay=c()
+    wavl=c()
+    for (i in 1:length(sel)) {
+      j = sel[i]
+      delay = c(delay,RawData[[j]]$delay)
+      wavl  = c(wavl, RawData[[j]]$wavl )
+    }
+    delay=sort(unique(delay))
+    wavl =sort(unique(wavl ))
   
-  getTileMatrix <- function (fileNames, tileDel=TRUE) {
+    # Load all matrices, recast them in the full coords
+    matTab=array(NA,dim=c(length(sel),length(delay),length(wavl)))
+    for (i in 1:length(sel)) {
+      j = sel[i]
+      matm = RawData[[j]]$mat
+      wav  = RawData[[j]]$wavl
+      del  = RawData[[j]]$delay
+
+      matTab[i,
+             which ((delay %in% del) == TRUE),
+             which ((wavl %in% wav) == TRUE)] = 
+        matm[1:length(del),1:length(wav)]
+    }
+    matTab[!is.finite(matTab)] = NA
+    
+    # Take the mean 
+    matm = sigma = matrix(NA,ncol=length(wavl),nrow=length(delay))
+    for (i in 1:dim(matm)[1]) {
+      for (j in 1:dim(matm)[2]) {
+        v = matTab[,i,j]
+        v = v[!is.na(v)]
+        if(length(v) >=1) {
+          effData    = rm.outlier(v)
+          matm[i,j]  = mean(effData,na.rm = TRUE)
+        }
+      }
+    } 
+    matm[!is.finite(matm)] = 0
+    
+    return(list(mat=matm, wavl=wavl, delay=delay, delaySave=delay))
+  }
+  getTileMatrix <- function(fileNames, tileDel=TRUE) {
     
     nbFiles = length(fileNames$datapath)
     for (i in 1:nbFiles) {
@@ -728,7 +798,150 @@ shinyServer(function(input, output, session) {
     
     return(list(mat=mat, wavl=wavl, delay=delay, delaySave=delaySave))
   }
+  doTileMatrix  <- function(sel, tileDel=TRUE) {
+    nbFiles = length(sel)
+    for (i in 1:nbFiles) {
+      j = sel[i]
+      mat1 = RawData[[j]]$mat
+      wav1 = RawData[[j]]$wavl
+      del1 = RawData[[j]]$delay
+      delS1 = RawData[[j]]$delaySave
+      
+      if(i==1) {    
+        mat   = mat1
+        delay = del1
+        wavl  = wav1
+        delaySave = delS1
+        
+      } else {
+        if(tileDel) {
+          # Tile matrices by delay (row)
+          delay = c(delay,del1)
+          delay = 1:length(delay) # Replace by ordinal scale
+          mat   = rbind(mat,mat1)      
+          delaySave = c(delaySave,delS1)
+          
+        } else {
+          # Tile matrices by wavl (col)
+          wavl = c(wavl,wav1)
+          # wavl = 1:length(wavl) # Replace by ordinal scale
+          mat  = cbind(mat,mat1)      
+          
+        }
+      }
+    }
+    # Order wavl by increasing value
+    sel = order(wavl)
+    wavl=wavl[sel]
+    mat = mat[,sel]
     
+    return(list(mat=mat, wavl=wavl, delay=delay, delaySave=delaySave))
+  }
+  combineMatrix <- function(sel){
+    if(is.null(sel)) 
+      return(NULL)
+    
+    if(length(sel) == 1) {
+      list(
+        mat       = RawData[[sel]]$mat, 
+        delay     = RawData[[sel]]$delay, 
+        wavl      = RawData[[sel]]$wavl, 
+        delaySave = RawData[[sel]]$delay
+      )
+    } else {
+      switch( input$procMult,
+              avrg    = doMeanMatrix(sel),
+              tileWav = doTileMatrix(sel,tileDel=FALSE),
+              tileDel = doTileMatrix(sel,tileDel=TRUE)
+      )
+    }
+  }
+  finishMatrix  <- reactive({
+    if(!Inputs$process)
+      return(NULL)
+    
+    data = combineMatrix(input$rawData_rows_selected)
+
+    if(is.null(data)) {
+      Inputs$fileOrig       <<- NULL
+      
+    } else {
+      isolate({
+        # ckeck for load errors
+        loadError  = FALSE
+        loadErrMsg = ""
+        if(is.null(data)) {
+          loadError  = TRUE
+          loadErrMsg = "Please select data file(s)..."  
+        }
+        if ( length(data$wavl) == 0 || 
+             !is.finite(diff(range(data$wavl))) ||
+             is.na(data$wavl)){
+          loadError  = TRUE
+          loadErrMsg = "wavl"  
+        }
+        if ( length(data$delay) == 0 || 
+             !is.finite(diff(range(data$delay))) ){
+          loadError  = TRUE
+          loadErrMsg = paste0(loadErrMsg,", delay")
+        }
+        if (!is.numeric(data$mat) ||
+            !is.matrix(data$mat)    ){
+          loadError  = TRUE
+          loadErrMsg = paste0(loadErrMsg,", matrix")
+        }
+        
+        if(loadError) {
+          output$loadErrorNew <- renderUI({
+            msg1 = paste0("--> Improperly formatted ", loadErrMsg)
+            msg2 = "--> Check the header, delimiter or decimal marker"
+            list(
+              div(strong('Error in loading data'), style = "color:red"),
+              div(msg1, style = "color:red"),
+              div(msg2, style = "color:red")
+            )
+          })
+          Inputs$fileOrig  <<- NULL
+          
+        } else {
+          if(input$projectTag == '') {
+            if(nrow(input$dataFile) == 1) {
+              projName = substr(input$dataFile$name,1,14)
+            } else {
+              prefix = 'Mean_'
+              if( input$procMult != 'avrg') prefix = 'Tile_'
+              projName = paste0(prefix,
+                                substr(input$dataFile$name[1],1,8))
+            }
+            updateTextInput(session,
+                            inputId = "projectTag",
+                            value   = projName)
+          }
+          
+          # Scale factor for neater delay selectors
+          dlScaleFac = 10^(floor(log10(diff(range(data$delay)))-1))
+          # cat(dlScaleFac,'\n')
+          
+          # Install data
+          Inputs$fileOrig       <<- input$dataFile$name
+          Inputs$matOrig        <<- data$mat
+          Inputs$wavlOrig       <<- data$wavl
+          Inputs$delayOrig      <<- data$delay
+          Inputs$delaySaveOrig  <<- data$delaySave
+          Inputs$dlScaleFacOrig <<- dlScaleFac
+          Inputs$mat            <<- data$mat
+          Inputs$wavl           <<- data$wavl
+          Inputs$delay          <<- data$delay
+          Inputs$delaySave      <<- data$delaySave
+          
+          # Initialize config
+          initSliders()
+          projConfig <<- NULL
+        }
+        
+      })
+    }
+  })
   
 # Project ####
   # Predefined input styles
@@ -785,90 +998,88 @@ shinyServer(function(input, output, session) {
   # New project
   observeEvent(
     input$dataFile,
-    isolate({
-      # print("observeData")
-      
-      data = getMatrix()
+    getRawData(input$dataFile)
+  )
+  output$rawData = DT::renderDataTable({
+    if(!Inputs$gotData) 
+      return(NULL)
+    
+    ndelay  = nwavl = name = size = c()
+    for (i in 1:length(RawData)) {
+      name[i]   = RawData[[i]]$name
+      ndelay[i] = length(RawData[[i]]$delay)
+      nwavl[i]  = length(RawData[[i]]$wavl)
+      size[i]   = format(object.size(RawData[[i]]$mat),units="Mb")
+    }
+    datatable(cbind(id=1:length(RawData),name,ndelay,nwavl,size),
+              options = list(paging    = FALSE,
+                             ordering  = FALSE,
+                             searching = FALSE,
+                             dom       = 't'   ),
+              selection=list(target='row',
+                             selected=1:length(RawData)
+              ), 
+              escape    = FALSE
+    )
+  })
+  output$sel     = renderPrint({
+    validate(
+      need(
+        Inputs$gotData, 
+        "Please select data file(s)..."
+      )
+    )
+    cat(
+      paste0('Selected file(s) :',
+             ifelse(
+               length(input$rawData_rows_selected) != 0 ,
+               paste0(input$rawData_rows_selected,collapse=','),
+               ' none'
+             )
+      )
+    )
+  })
+  output$ui      = renderUI({
+    if(!Inputs$gotData)
+      return(NULL)
+    if(length(input$rawData_rows_selected) <= 1) {
+      Inputs$process <<- TRUE
+      finishMatrix()
+      return(NULL)
+    } 
+    
+    fluidRow(
+      column(4,
+      radioButtons(
+        inputId = 'procMult', 
+        label   = 'Multiple files processing',
+        choices = list("Average"   = 'avrg',
+                       "Tile Wavl" = 'tileWav',
+                       "Tile Delay"= 'tileDel'),
+        selected= 'avrg',
+        inline = TRUE)
+      ),
+      column(2,
+      actionButton("process",strong("Do it!")),
+      tags$style(type='text/css',
+                 "#process { width:100%; margin-top: 5px;}")
+      )
+    )
+    
+  })
 
-      # ckeck for load errors
-      loadError  = FALSE
-      loadErrMsg = ""
-      if ( length(data$wavl) == 0 || 
-           !is.finite(diff(range(data$wavl))) ||
-           is.na(data$wavl)){
-        loadError  = TRUE
-        loadErrMsg = "wavl"  
-      }
-      if ( length(data$delay) == 0 || 
-           !is.finite(diff(range(data$delay))) ){
-        loadError  = TRUE
-        loadErrMsg = paste0(loadErrMsg,", delay")
-      }
-      if (!is.numeric(data$mat) ||
-          !is.matrix(data$mat)    ){
-        loadError  = TRUE
-        loadErrMsg = paste0(loadErrMsg,", matrix")
-      }
-      
-      if(loadError) {
-        output$loadError <- renderUI({
-          msg1 = paste0("--> Improperly formatted ", loadErrMsg)
-          msg2 = "--> Check the header, delimiter or decimal marker"
-          list(
-            div(strong('Error in loading data'), style = "color:red"),
-            div(msg1, style = "color:red"),
-            div(msg2, style = "color:red")
-          )
-        })
-        Inputs$fileOrig  <<- NULL
-        
-      } else {
-        output$loadError <- renderUI({
-          h4('Data loaded')
-        })
-        if(nrow(input$dataFile) == 1) {
-          projName = substr(input$dataFile$name,1,14)
-        } else {
-          prefix = 'Mean_'
-          if( input$procMult != 'avrg') prefix = 'Tile_'
-          projName = paste0(prefix,
-                            substr(input$dataFile$name[1],1,8))
-        }
-          
-        updateTextInput(session,
-                        inputId = "projectTag",
-                        value   = projName)
-        
-        # Scale factor for neater delay selectors
-        dlScaleFac = 10^(floor(log10(diff(range(data$delay)))-1))
-        # cat(dlScaleFac,'\n')
-        
-        # Install data
-        Inputs$fileOrig       <<- input$dataFile$name
-        Inputs$matOrig        <<- data$mat
-        Inputs$wavlOrig       <<- data$wavl
-        Inputs$delayOrig      <<- data$delay
-        Inputs$delaySaveOrig  <<- data$delaySave
-        Inputs$dlScaleFacOrig <<- dlScaleFac
-        Inputs$mat            <<- data$mat
-        Inputs$wavl           <<- data$wavl
-        Inputs$delay          <<- data$delay
-        Inputs$delaySave      <<- data$delaySave
-        
-        # Initialize config
-        initSliders()
-        projConfig <<- NULL
-      }
-      
-      
+  observeEvent(
+    input$process,
+    isolate({
+      Inputs$process <<-TRUE
+      finishMatrix()
     })
   )
-  
+
   # Open saved project
   observeEvent(
     input$projectFile,
     isolate({
-      # print("observeProject")
       load(input$projectFile$datapath)
       
       updateTextInput(session,
@@ -896,16 +1107,41 @@ shinyServer(function(input, output, session) {
       
     })
   )
- 
-  output$projectInfo <- renderPrint({
-
+  
+  output$projectInfoNew <- renderPrint({
+    if(!Inputs$gotData)
+      return(NULL)
+    if(is.null(input$rawData_rows_selected))
+      return(NULL)
     validate(
       need(
         checkInputsSanity(), 
-        "Please select a Project or Data file"
+        "Please choose processing option"
       )
     )
- 
+    
+    ## Check file read
+    cat(paste0(
+      'Processed matrix: ',
+      length(Inputs$delayOrig),'x',
+      length(Inputs$wavlOrig),'\n'
+    ))
+    cat('O.D.  range: ',range(Inputs$mat),'...\n')
+    cat('Delay range: ',range(Inputs$delayOrig),'...\n')
+    cat('Wavl  range: ',range(Inputs$wavlOrig),'...\n')
+
+  })
+
+  output$projectInfoOpen <- renderPrint({
+# BETTER EXTENSION: Rda ????
+    validate(
+      need(
+        !is.null(input$projectFile), 
+        "Please select a project file (*.ska)"
+      )
+    )
+    
+# TO BE DONE PROPERLY....
     # Check file read
     cat(paste0('Project: ',input$projectTag,'\n\n'))
     cat('Data File(s):\n')
@@ -918,12 +1154,13 @@ shinyServer(function(input, output, session) {
     ))
     cat('Delay range: ',range(Inputs$delayOrig),'...\n')
     cat('Wavl  range: ',range(Inputs$wavlOrig),'...\n')
- 
+    
     cat("Sanity:",checkInputsSanity(),'\n')
     
   })
-
+  
   output$saveProject <- downloadHandler(
+# BETTER EXTENSION: Rda ????
     filename = function()    {
       paste0(input$projectTag,'.ska')
     },
@@ -950,7 +1187,6 @@ shinyServer(function(input, output, session) {
                )
   
   selectArea <- reactive({
-    # print('Select')
     if (!checkInputsSanity())
       return(NULL)
   
@@ -980,21 +1216,7 @@ shinyServer(function(input, output, session) {
           ncol = ncol(mat),byrow = FALSE
         )
     }
-    
-    # Mask area
-    xlim = input$keepDlMask * Inputs$dlScaleFacOrig
-    if (xlim[2] != xlim[1]) {
-      subX = delay > xlim[1] & delay < xlim[2]
-      if(sum(subX)!=0)
-        mat[subX,]  = NA
-    }
-    ylim = input$keepWlMask
-    if (ylim[2] != ylim[1]) {
-      subY = wavl  > ylim[1] & wavl  < ylim[2]
-      if(sum(subY)!=0)
-        mat[,subY] = NA
-    }
-    
+  
     # Select work area
     xlim = input$keepDlRange * Inputs$dlScaleFacOrig
     ylim = input$keepWlRange
@@ -1010,7 +1232,33 @@ shinyServer(function(input, output, session) {
     Inputs$delay <<- delay
     Inputs$delaySave <<- delaySave
     Inputs$wavl  <<- wavl
+ 
+    
+    # Aggregate and apply masks
+    delayMask = rep(0,length(delay))
+    wavlMask  = rep(0,length(wavl))
+    for (mask in 1:nMasks) {
+      maskName = paste0("keepDlMask",mask)
+      xlim = input[[maskName]] * Inputs$dlScaleFacOrig
+      if (diff(xlim) != 0) {
+        sel = delay >= xlim[1] & delay <= xlim[2]
+        if(sum(sel)!=0) delayMask[sel]  = NA
+      }
+      maskName = paste0("keepWlMask",mask)
+      ylim = input[[maskName]]
+      if (diff(ylim) != 0) {
+        sel = wavl >= ylim[1] & wavl <= ylim[2]
+        if(sum(sel)!=0) wavlMask[sel]  = NA
+      }
+    }
+    Inputs$delayMask <<- delayMask
+    Inputs$wavlMask  <<- wavlMask
+    
+    mat[is.na(delayMask),] = NA
+    mat[,is.na(wavlMask)]  = NA
+    
     Inputs$mat   <<- mat
+    
   })
   
   output$image1 <- renderPlot({
@@ -1076,9 +1324,9 @@ shinyServer(function(input, output, session) {
     if(all(is.na(cutMean))) cutMean=cutMean*0
     matplot(
       wavl,cutMean,type = 'l',col = 'orange', lwd=2,
-      xlab = 'Wavelength', ylab = 'DO', 
-      ylim = range(mat[!is.na(mat)]),
-      main = paste0('Mean DO at delay: ',signif(mean(delay[indx]),3),
+      xlab = 'Wavelength', ylab = 'O.D.', 
+      ylim = input$keepDoRange,
+      main = paste0('Mean O.D. at delay: ',signif(mean(delay[indx]),3),
                     ifelse(delta==0,
                            '',
                            paste0(' +/- ',signif(delta / 2,2))
@@ -1086,6 +1334,7 @@ shinyServer(function(input, output, session) {
                    )
             )
     abline(h = 0,lty = 2)
+    grid();box()
 
     screen(4)
     par(cex = cex, mar = mar)
@@ -1102,9 +1351,9 @@ shinyServer(function(input, output, session) {
     if(all(is.na(cutMean))) cutMean=cutMean*0
     matplot(
       delay,cutMean,type = 'l', col = 'orange', lwd=2,
-      xlab = 'Delay', ylab = 'DO', 
-      ylim = range(mat[!is.na(mat)]),
-      main = paste0('Mean DO at wavl: ',signif(mean(wavl[indx]),3),
+      xlab = 'Delay', ylab = 'O.D.', 
+      ylim = input$keepDoRange,
+      main = paste0('Mean O.D. at wavl: ',signif(mean(wavl[indx]),3),
                     ifelse(delta==0,
                            '',
                            paste0(' +/- ',signif(delta / 2,2))
@@ -1112,6 +1361,8 @@ shinyServer(function(input, output, session) {
       )
     )
     abline(h = 0,lty = 2)
+    grid();box()
+    
     close.screen(all.screens = TRUE)
     
   })
@@ -1140,6 +1391,7 @@ shinyServer(function(input, output, session) {
       xlab = 'Wavelength', ylab = 'DO',
       xaxs='i', yaxs='i'
     )
+    grid();box()
     # mtext(signif(delay[wCut],3),side=3,at=mat[wCut,length(wavl)])
 
     par(cex = cex, mar = mar)
@@ -1148,6 +1400,7 @@ shinyServer(function(input, output, session) {
       xlab = 'Delay', ylab = 'DO',
       xaxs='i', yaxs='i'
     )
+    grid();box()
     if(input$keepCbl !=0) {
       abline(
         v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
@@ -1168,8 +1421,8 @@ shinyServer(function(input, output, session) {
                  mat   = Inputs$mat
                  wavl  = Inputs$wavl
                  delay = Inputs$delay
-                 dCut = input$keepWlCut
-                 indx = indxCuts(dCut,wavl)$indx
+                 dCut  = input$keepWlCut
+                 indx  = indxCuts(dCut,wavl)$indx
                  if(length(indx)==1) {
                    cutMean = mat[,indx]
                  } else {
@@ -1194,8 +1447,8 @@ shinyServer(function(input, output, session) {
                  mat   = Inputs$mat
                  wavl  = Inputs$wavl
                  delay = Inputs$delay
-                 dCut = input$keepDlCut * Inputs$dlScaleFacOrig
-                 indx = indxCuts(dCut,delay)$indx
+                 dCut  = input$keepDlCut * Inputs$dlScaleFacOrig
+                 indx  = indxCuts(dCut,delay)$indx
                  if(length(indx)==1) {
                    cutMean = mat[indx,]
                  } else {
@@ -1222,17 +1475,9 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     # Suppress masked areas
-    mat   = delMask(
-      Inputs$mat  , 
-      axis = Inputs$delay, 
-      mask = input$keepDlMask * Inputs$dlScaleFacOrig, 
-      dim = 1
-    )
-    mat   = delMask(
-      mat  , 
-      axis = Inputs$wavl , 
-      mask = input$keepWlMask, 
-      dim = 2)
+    mat = Inputs$mat 
+    mat = mat[!is.na(Inputs$delayMask),]
+    mat = mat[,!is.na(Inputs$wavlMask) ]
     
     nsvMax = min(10,
                  length(Inputs$delay),
@@ -1258,11 +1503,22 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     # Reshape vectors
-    C = unMask(s$u, axis = Inputs$delay, 
-               mask = input$keepDlMask * Inputs$dlScaleFacOrig)
-    S = unMask(s$v, axis = Inputs$wavl , 
-               mask = input$keepWlMask)
- 
+    C = matrix(NA,nrow=length(Inputs$delay),ncol=ncol(s$u))
+    S = matrix(NA,nrow=length(Inputs$wavl),ncol=ncol(s$v))
+    i=0
+    for(j in 1:nrow(C)) {
+      if(!is.na(Inputs$delayMask[j])) {
+        i = i+1
+        C[j,] = s$u[i,]
+      } 
+    }
+    i=0
+    for(j in 1:nrow(S)) {
+      if(!is.na(Inputs$wavlMask[j])) {
+        i = i+1
+        S[j,] = s$v[i,]
+      } 
+    }
     plotSVDVecBloc(C,S,Inputs$delay,Inputs$wavl)    
 
   },height = 500)
@@ -1272,16 +1528,22 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     # Reshape vectors
-    C = matrix(
-      unMask(s$u[,1:input$nSV], axis = Inputs$delay, 
-             mask = input$keepDlMask * Inputs$dlScaleFacOrig),
-      ncol= input$nSV
-    )
-    S = matrix(
-      unMask(s$v[,1:input$nSV], axis = Inputs$wavl,  
-             mask = input$keepWlMask),
-      ncol= input$nSV
-    )
+    C = matrix(NA,nrow=length(Inputs$delay),ncol=input$nSV)
+    S = matrix(NA,nrow=length(Inputs$wavl) ,ncol=input$nSV)
+    i=0
+    for(j in 1:nrow(C)) {
+      if(!is.na(Inputs$delayMask[j])) {
+        i = i+1
+        C[j,] = s$u[i,1:input$nSV]
+      } 
+    }
+    i=0
+    for(j in 1:nrow(S)) {
+      if(!is.na(Inputs$wavlMask[j])) {
+        i = i+1
+        S[j,] = s$v[i,1:input$nSV]
+      } 
+    }
     
     plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,
               d = s$d)
@@ -1293,16 +1555,22 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     # Reshape vectors
-    C = matrix(
-      unMask(s$u[,1:input$nSV], axis = Inputs$delay, 
-             mask = input$keepDlMask * Inputs$dlScaleFacOrig),
-      ncol= input$nSV
-    )
-    S = matrix(
-      unMask(s$v[,1:input$nSV], axis = Inputs$wavl,  
-             mask = input$keepWlMask),
-      ncol= input$nSV
-    )
+    C = matrix(NA,nrow=length(Inputs$delay),ncol=input$nSV)
+    S = matrix(NA,nrow=length(Inputs$wavl) ,ncol=input$nSV)
+    i=0
+    for(j in 1:nrow(C)) {
+      if(!is.na(Inputs$delayMask[j])) {
+        i = i+1
+        C[j,] = s$u[i,1:input$nSV]
+      } 
+    }
+    i=0
+    for(j in 1:nrow(S)) {
+      if(!is.na(Inputs$wavlMask[j])) {
+        i = i+1
+        S[j,] = s$v[i,1:input$nSV]
+      } 
+    }
     
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,
                   d = s$d, type ='svd')
@@ -1313,16 +1581,7 @@ shinyServer(function(input, output, session) {
   getS0 <- eventReactive(
     input$S0File, {
       isolate({
-        # tmp   = read.table(
-        #   file = input$S0File$datapath, 
-        #   header = FALSE, 
-        #   dec = input$dec, 
-        #   sep = input$sep,
-        #   colClasses= 'numeric',
-        #   stringsAsFactors = FALSE
-        # )
-        # S0_in = as.matrix(tmp)
-        
+
         # Get all shapes
         S0_in = list(); i=0
         for (fN in input$S0File$datapath) {
@@ -1359,16 +1618,8 @@ shinyServer(function(input, output, session) {
       )
       
       # Suppress masked areas
-      delay = delMask(
-        Inputs$delay, 
-        axis = Inputs$delay, 
-        mask = input$keepDlMask*Inputs$dlScaleFacOrig
-      )
-      wavl  = delMask(
-        Inputs$wavl , 
-        axis = Inputs$wavl , 
-        mask = input$keepWlMask
-      )
+      delay = Inputs$delay[!is.na(Inputs$delayMask)]
+      wavl  = Inputs$wavl[!is.na(Inputs$wavlMask)]
       
       if(input$useFiltered) { # Choose SVD filtered matrix  
         s <- doSVD()
@@ -1377,19 +1628,9 @@ shinyServer(function(input, output, session) {
           mat = mat + s$u[,ic] %o% s$v[,ic] * s$d[ic]
         
       } else {
-        mat = Inputs$mat
-        mat   = delMask(
-          mat, 
-          axis = Inputs$delay, 
-          mask = input$keepDlMask * Inputs$dlScaleFacOrig, 
-          dim = 1
-        )
-        mat   = delMask(
-          mat, 
-          axis = Inputs$wavl , 
-          mask = input$keepWlMask, 
-          dim = 2
-        )
+        mat = Inputs$mat 
+        mat = mat[!is.na(Inputs$delayMask),]
+        mat = mat[,!is.na(Inputs$wavlMask) ]
       }
       
       S0 = NULL
@@ -1483,24 +1724,13 @@ shinyServer(function(input, output, session) {
         }
       }
       
-      # M = mat
-      # M[M<0] = 0
-      # res1 = nmf(M, nAls)
-      # S = t(coef(res1))  
-      # C = basis(res1)    
-      # res=list(
-      #   C = C, S = S, xC = delay, xS = wavl, Psi = mat,
-      #   rss = 0, resid = 0, iter = 0,
-      #   msg = summary(res1)
-      # )
-      
       # Sort contributions by decreasing amplitude
-      cont = c()
-      for (ic in 1:nAls)
-        cont[ic] = sum(abs(res$C[,ic] %o% res$S[,ic]), na.rm = TRUE)
-      perm  = order(cont, decreasing = TRUE)
-      res$C = matrix(res$C[,perm],ncol=nAls)
-      res$S = matrix(res$S[,perm],ncol=nAls)
+      # cont = c()
+      # for (ic in 1:nAls)
+      #   cont[ic] = sum(abs(res$C[,ic] %o% res$S[,ic]), na.rm = TRUE)
+      # perm  = order(cont, decreasing = TRUE)
+      # res$C = matrix(res$C[,perm],ncol=nAls)
+      # res$S = matrix(res$S[,perm],ncol=nAls)
       
       colnames(res$S) = paste0('S_',1:nAls)
       colnames(res$C) = paste0('C_',1:nAls)
@@ -1537,29 +1767,49 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     # Reshape vectors
-    C = matrix(
-      unMask(alsOut$C, axis = Inputs$delay, 
-             mask = input$keepDlMask * Inputs$dlScaleFacOrig),
-      ncol=input$nALS
-    )
-    S = matrix(
-      unMask(alsOut$S, axis = Inputs$wavl,  
-             mask = input$keepWlMask),
-      ncol=input$nALS
-    )
-
-    if(input$useFiltered) { # Choose SVD filtered matrix  
+    C = matrix(NA,nrow=length(Inputs$delay),ncol=ncol(alsOut$C))
+    S = matrix(NA,nrow=length(Inputs$wavl), ncol=ncol(alsOut$S))
+    i=0
+    for(j in 1:nrow(C)) {
+      if(!is.na(Inputs$delayMask[j])) {
+        i = i+1
+        C[j,] = alsOut$C[i,]
+      } 
+    }
+    i=0
+    for(j in 1:nrow(S)) {
+      if(!is.na(Inputs$wavlMask[j])) {
+        i = i+1
+        S[j,] = alsOut$S[i,]
+      } 
+    }
+    
+    if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
       s <- doSVD()
-      mat = matrix(0,nrow=nrow(s$u),ncol=nrow(s$v))
+      # Reshape
+      C1 = matrix(NA,nrow=length(Inputs$delay),ncol=input$nSV)
+      S1 = matrix(NA,nrow=length(Inputs$wavl) ,ncol=input$nSV)
+      i=0
+      for(j in 1:nrow(C1)) {
+        if(!is.na(Inputs$delayMask[j])) {
+          i = i+1
+          C1[j,] = s$u[i,1:input$nSV]
+        } 
+      }
+      i=0
+      for(j in 1:nrow(S1)) {
+        if(!is.na(Inputs$wavlMask[j])) {
+          i = i+1
+          S1[j,] = s$v[i,1:input$nSV]
+        } 
+      }
+      mat = matrix(0,nrow=length(Inputs$delay),
+                   ncol=length(Inputs$wavl))
       for (ic in 1:input$nSV) 
-        mat = mat + s$u[,ic] %o% s$v[,ic] * s$d[ic]
-      mat = unMask(mat, axis = Inputs$delay, 
-                 mask = input$keepDlMask * Inputs$dlScaleFacOrig,
-                 dim=1)
-      mat = unMask(mat, axis = Inputs$wavl,  
-                 mask = input$keepWlMask,
-                 dim=2)
+        mat = mat + C1[,ic] %o% s$v[,ic] * S1[ic]
+
       main = "SVD-filtered data"
+    
     } else {
       mat = Inputs$mat
       main = 'Raw data'
@@ -1612,15 +1862,22 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     # Reshape vectors
-    C = matrix(
-      unMask(alsOut$C, axis = Inputs$delay, 
-             mask = input$keepDlMask * Inputs$dlScaleFacOrig),
-      ncol=input$nALS
-    )
-    S = matrix(
-      unMask(alsOut$S, axis = Inputs$wavl,  
-               mask = input$keepWlMask),
-      ncol=input$nALS)
+    C = matrix(NA,nrow=length(Inputs$delay),ncol=ncol(alsOut$C))
+    S = matrix(NA,nrow=length(Inputs$wavl),ncol=ncol(alsOut$S))
+    i=0
+    for(j in 1:nrow(C)) {
+      if(!is.na(Inputs$delayMask[j])) {
+        i = i+1
+        C[j,] = alsOut$C[i,]
+      } 
+    }
+    i=0
+    for(j in 1:nrow(S)) {
+      if(!is.na(Inputs$wavlMask[j])) {
+        i = i+1
+        S[j,] = alsOut$S[i,]
+      } 
+    }
     
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,C,S)
     

@@ -1,4 +1,5 @@
 library(shiny)
+library(DT)
 
 navbarPage( 
   "SK-Ana",
@@ -20,126 +21,127 @@ navbarPage(
          </style>'), 
   
   # Project ####
-  tabPanel(
+  navbarMenu(
     "Project",
-    sidebarLayout(
-      sidebarPanel(
-        tabsetPanel(
-          tabPanel(
-            title=h5("New"),
-            wellPanel(
-              h4("Define New Project"),
-              hr( style="border-color: #666;"),
-              # h5('Predefined File Formats'),
-              selectInput(
-                inputId='style', 
-                label = 'Predefined File Formats', 
-                choices = list(
-                  "CSV"    = "csvStyle",
-                  "Münich" = 'munichStyle',
-                  "ELYSE"  = 'elyseStyle',
-                  "Streak" = 'streakStyle',
-                  "Hélène" = 'heleneStyle'
-                ), 
-                selected = 'csvStyle', 
-                multiple = FALSE,
-                selectize = FALSE, 
-                width = NULL, 
-                size = NULL),
-              #             fluidRow(
-              #               actionButton('csv',"CSV"),
-              #               actionButton('munichStyle',"Münich"),
-              #               actionButton('elyseStyle', "ELYSE "),
-              #               actionButton('streakStyle',"Streak"),
-              #               actionButton('heleneStyle',"Hélène"),
-              #               align = "center" 
-              #             ),
-              hr( style="border-color: #FFF;"),
-              checkboxInput(
-                inputId = 'header', 
-                label   = 'Header', 
-                value   = FALSE),
-              radioButtons(
-                inputId = 'sep', 
-                label   = 'Separator',
-                choices = c(Comma = ',',
-                            Semicolon = ';',
-                            Tab = '\t',
-                            Space = ' '),
-                selected = '\t',
-                inline = TRUE),
-              radioButtons(
-                inputId = 'dec', 
-                label   = 'Decimal',
-                choices = c(Comma=',',
-                            Dot='.'),
-                selected = '.',
-                inline = TRUE),
-              radioButtons(
-                inputId = 'datStr', 
-                label   = 'Data structure',
-                choices = list("Wavl on a row"   = 'dxw',
-                               "Wavl on a column"= 'wxd'),
-                selected= 'dxw',
-                inline = TRUE),
-              radioButtons(
-                inputId = 'procMult', 
-                label   = 'Multiple files processing',
-                choices = list("Average"   = 'avrg',
-                               "Tile Wavl" = 'tileWav',
-                               "Tile Delay"= 'tileDel'),
-                selected= 'avrg',
-                inline = TRUE),
-              numericInput(
-                inputId = 'compFac', 
-                label   = 'Compression factor', 
-                value   = 1, min=1, max=100, step=1,
-                width   = '150px'),
-              hr( style="border-color: #666;"),
-              fileInput(
-                inputId = 'dataFile',
-                label   = 'Select data file',
-                multiple= TRUE,
-                accept  = c('.dat','.txt','.csv')
-              ),
-              textInput(
-                inputId = 'projectTag', 
-                label   = 'Project Name', 
-                value   = ""
-              )
-            )
-          ),
-          tabPanel(
-            title=h5("Open"),
-            wellPanel(
-              h4("Select Existing Project"),
-              hr( style="border-color: #666;"),
-              fileInput(
-                inputId = 'projectFile',
-                label   = 'Select Project',
-                multiple= FALSE,
-                accept  = c('.ska')
-              )
-            )
-          ),
-          tabPanel(
-            title=h5("Save"),
-            wellPanel(
-              h4("Save Project"),
-              hr( style="border-color: #666;"),
-              downloadButton('saveProject','Save (Ctrl+Click)')
-            )
-          )
-        )
-        
-      ),
-      mainPanel(
-        br(),
-        uiOutput("loadError"),
-        br(),
-        verbatimTextOutput("projectInfo")
-        
-      )
+    tabPanel("New",
+             sidebarLayout(
+               sidebarPanel(
+                 h4("Define New Project"),
+                 hr( style="border-color: #666;"),
+                 textInput(
+                   inputId = 'projectTag', 
+                   label   = 'Project Name', 
+                   value   = ""
+                 ),
+                 hr( style="border-color: #666;"),
+                 selectInput(
+                   inputId='style', 
+                   label = 'Predefined File Formats', 
+                   choices = list(
+                     "CSV"    = "csvStyle",
+                     "Münich" = 'munichStyle',
+                     "ELYSE"  = 'elyseStyle',
+                     "Streak" = 'streakStyle',
+                     "Hélène" = 'heleneStyle'
+                   ), 
+                   selected = 'csvStyle', 
+                   multiple = FALSE,
+                   selectize = FALSE, 
+                   width = NULL, 
+                   size = NULL),
+                 hr( style="border-color: #FFF;"),
+                 checkboxInput(
+                   inputId = 'header', 
+                   label   = 'Header', 
+                   value   = FALSE),
+                 radioButtons(
+                   inputId = 'sep', 
+                   label   = 'Separator',
+                   choices = c(Comma = ',',
+                               Semicolon = ';',
+                               Tab = '\t',
+                               Space = ' '),
+                   selected = '\t',
+                   inline = TRUE),
+                 radioButtons(
+                   inputId = 'dec', 
+                   label   = 'Decimal',
+                   choices = c(Comma=',',
+                               Dot='.'),
+                   selected = '.',
+                   inline = TRUE),
+                 radioButtons(
+                   inputId = 'datStr', 
+                   label   = 'Data structure',
+                   choices = list("Wavl on a row"   = 'dxw',
+                                  "Wavl on a column"= 'wxd'),
+                   selected= 'dxw',
+                   inline = TRUE),
+                 # radioButtons(
+                 #   inputId = 'procMult', 
+                 #   label   = 'Multiple files processing',
+                 #   choices = list("Average"   = 'avrg',
+                 #                  "Tile Wavl" = 'tileWav',
+                 #                  "Tile Delay"= 'tileDel'),
+                 #   selected= 'avrg',
+                 #   inline = TRUE),
+                 numericInput(
+                   inputId = 'compFac', 
+                   label   = 'Compression factor', 
+                   value   = 1, min=1, max=100, step=1,
+                   width   = '150px'),
+                 hr( style="border-color: #666;"),
+                 fileInput(
+                   inputId = 'dataFile',
+                   label   = 'Select data file(s)',
+                   multiple= TRUE,
+                   accept  = c('.dat','.txt','.csv')
+                 )
+               ),
+               mainPanel(
+                 br(),
+                 uiOutput("loadErrorNew"),
+                 br(),
+                 DT::dataTableOutput('rawData'),
+                 br(),
+                 verbatimTextOutput('sel'),
+                 br(),
+                 uiOutput("ui"),
+                 verbatimTextOutput("projectInfoNew")
+               )
+             )
+    ),
+    tabPanel("Open",
+             sidebarLayout(
+               sidebarPanel(
+                 h4("Select Existing Project (*.ska)"),
+                 hr( style="border-color: #666;"),
+                 fileInput(
+                   inputId = 'projectFile',
+                   label   = 'Select Project',
+                   multiple= FALSE,
+                   accept  = c('.ska')
+                 )
+                 
+               ),
+               mainPanel(
+                 br(),
+                 uiOutput("loadErrorOpen"),
+                 br(),
+                 verbatimTextOutput("projectInfoOpen")
+               )
+             )
+    ),
+    tabPanel("Save",
+             sidebarLayout(
+               sidebarPanel(
+                 h4("Save Project"),
+                 hr( style="border-color: #666;"),
+                 downloadButton('saveProject','Save (Ctrl+Click)')
+               ),
+               mainPanel(
+               )
+             )
     )
   ),
   
@@ -148,52 +150,107 @@ navbarPage(
     "Data Selection",
     sidebarLayout(
       sidebarPanel(
-        sliderInput("keepCbl", 
-                    "Nb pixels for Baseline Correction",
-                    min = 0, 
-                    max = 1, 
-                    value = 0,
-                    sep=""
-        ),
-        sliderInput("keepDoRange", 
-                    "DO Range",
-                    min = 0, 
-                    max = 1, 
-                    value = c(0,1),
-                    sep="",
-                    width="400px"
-        ),
-        sliderInput("keepWlRange", 
-                    "Wavelength Range",
-                    min = 0, 
-                    max = 1, 
-                    value = c(0,1),
-                    sep=""
-        ),
-        sliderInput("keepDlRange", 
-                    "Delay Range",
-                    min = 0, 
-                    max = 1, 
-                    value = c(0,1),
-                    sep=""
-        ),
-        sliderInput("keepWlMask", 
-                    "Wavelength Mask",
-                    min = 0, 
-                    max = 1, 
-                    value = c(0,0),
-                    sep=""
-        ),
-        sliderInput("keepDlMask", 
-                    "Delay Mask",
-                    min = 0, 
-                    max = 1,
-                    value = c(0,0),
-                    sep=""
+        tabsetPanel(
+          id="selTabset",
+          type='pills',
+          tabPanel(
+            value="dataSel",
+            title=h4("Selection"),
+            column(12,
+                   sliderInput("keepCbl", 
+                               "Nb pixels for Baseline Correction",
+                               min = 0, 
+                               max = 1, 
+                               value = 0,
+                               sep=""
+                   ),
+                   sliderInput("keepDoRange", 
+                               "DO Range",
+                               min = 0, 
+                               max = 1, 
+                               value = c(0,1),
+                               sep="",
+                               width="400px"
+                   ),
+                   sliderInput("keepWlRange", 
+                               "Wavelength Range",
+                               min = 0, 
+                               max = 1, 
+                               value = c(0,1),
+                               sep=""
+                   ),
+                   sliderInput("keepDlRange", 
+                               "Delay Range",
+                               min = 0, 
+                               max = 1, 
+                               value = c(0,1),
+                               sep=""
+                   )
+            )
+          ),
+          tabPanel(
+            value="dataMasks",
+            title=h4("Masks"),
+            sliderInput("keepWlMask1", 
+                        "Wavelength Masks",
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepWlMask2", 
+                        NULL,
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepWlMask3", 
+                        NULL,
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepWlMask4", 
+                        NULL,
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask1", 
+                        "Delay Mask",
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask2", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask3", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask4", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            )
+          )
         ),
         actionButton("reset",
                      "Reset all")
-        
       ),
       mainPanel(
         wellPanel(
@@ -262,18 +319,16 @@ navbarPage(
     "SVD",
     sidebarLayout(
       sidebarPanel(
-        wellPanel( 
-          h4("SVD config"),
-          fluidRow(
-            column(4,
-                   numericInput("nSV", 
-                                label = "Dimension", 
-                                value =  2, 
-                                min   =  1, 
-                                max   =  10, 
-                                step  =  1,
-                                width = '100px')
-            )
+        h4("SVD parameters"),
+        fluidRow(
+          column(4,
+                 numericInput("nSV", 
+                              label = "Dimension", 
+                              value =  2, 
+                              min   =  1, 
+                              max   =  10, 
+                              step  =  1,
+                              width = '100px')
           )
         )
       ),
@@ -317,94 +372,92 @@ navbarPage(
     "ALS",
     sidebarLayout(
       sidebarPanel(
-        wellPanel( 
-          h4("ALS config"),
-          fluidRow(
-            column(4,
-                   numericInput("nALS", 
-                                label = "Dimension", 
-                                value =  2, 
-                                min   =  1, 
-                                max   = 10, 
-                                step  =  1,
-                                width = '100px')
-            ),
-            column(4,
-                   numericInput("maxiter", 
-                                label = "MaxIter", 
-                                value =   100, 
-                                min   =    20, 
-                                max   =  1000, 
-                                step  =    20,
-                                width = '100px')
-            ),
-            column(4,
-                   actionButton("runALS",strong("Run")),
-                   tags$style(type='text/css', 
-                              "#runALS { width:100%; margin-top: 25px;}")
-            )
+        h4("ALS parameters"),
+        fluidRow(
+          column(4,
+                 numericInput("nALS", 
+                              label = "Dimension", 
+                              value =  2, 
+                              min   =  1, 
+                              max   = 10, 
+                              step  =  1,
+                              width = '100px')
           ),
-          fluidRow(
-            h4("Options"),
-            column(4,
-                   radioButtons("initALS", 
-                                label = "Initialization", 
-                                choices = 
-                                  list("SVD"        = "SVD",
-                                       "Sequential" = "seq",
-                                       "Restart"    = "rst"), 
-                                inline = FALSE)
-            ),
-            column(8,
-                   h4(""),
-                   checkboxInput("useFiltered", 
-                                 label = "Use SVD-filtered matrix",
-                                 value = FALSE),
-                   # checkboxInput("forcemaxiter", 
-                   #               label = "Force MaxIter",
-                   #               value = FALSE),
-                   # tags$style(type='text/css', 
-                   #            "#rforcemaxiter { width:100%; margin-top: 25px;}"),
-                   checkboxInput("optS1st", 
-                                 label= "Opt. S first",
-                                 value = FALSE)
-            )
+          column(4,
+                 numericInput("maxiter", 
+                              label = "MaxIter", 
+                              value =   100, 
+                              min   =    20, 
+                              max   =  1000, 
+                              step  =    20,
+                              width = '100px')
           ),
-          fluidRow(
-            h4("Constraints"),
-            column(4,
-                   checkboxInput("nonnegS", 
-                                 label= "S > 0",
-                                 value = TRUE),
-                   checkboxInput("uniS", 
-                                 label= "S Unimodal",
-                                 value = FALSE)
-            ),
-            column(4,
-                   checkboxInput("nonnegC", 
-                                 label= "C > 0",
-                                 value = TRUE),
-                   numericInput("smooth", 
-                                label = "Smooth", 
-                                value =    0, 
-                                min   =    0, 
-                                max   =    1, 
-                                step  =  0.1,
-                                width = '100px')
-            )
+          column(4,
+                 actionButton("runALS",strong("Run")),
+                 tags$style(type='text/css', 
+                            "#runALS { width:100%; margin-top: 25px;}")
+          )
+        ),
+        fluidRow(
+          h4("Options"),
+          column(4,
+                 radioButtons("initALS", 
+                              label = "Initialization", 
+                              choices = 
+                                list("SVD"        = "SVD",
+                                     "Sequential" = "seq",
+                                     "Restart"    = "rst"), 
+                              inline = FALSE)
           ),
-          fluidRow(
-            column(12,
-                   checkboxInput("shapeS", 
-                                 label= "External shape",
-                                 value = FALSE),
-                   fileInput(
-                     inputId = 'S0File',
-                     label   = 'Select spectrum file',
-                     multiple= TRUE,
-                     accept  = c('.dat','.txt','.csv')
-                   )
-            )
+          column(8,
+                 h4(""),
+                 checkboxInput("useFiltered", 
+                               label = "Use SVD-filtered matrix",
+                               value = FALSE),
+                 # checkboxInput("forcemaxiter", 
+                 #               label = "Force MaxIter",
+                 #               value = FALSE),
+                 # tags$style(type='text/css', 
+                 #            "#rforcemaxiter { width:100%; margin-top: 25px;}"),
+                 checkboxInput("optS1st", 
+                               label= "Opt. S first",
+                               value = FALSE)
+          )
+        ),
+        fluidRow(
+          h4("Constraints"),
+          column(4,
+                 checkboxInput("nonnegS", 
+                               label= "S > 0",
+                               value = TRUE),
+                 checkboxInput("uniS", 
+                               label= "S Unimodal",
+                               value = FALSE)
+          ),
+          column(4,
+                 checkboxInput("nonnegC", 
+                               label= "C > 0",
+                               value = TRUE),
+                 numericInput("smooth", 
+                              label = "Smooth", 
+                              value =    0, 
+                              min   =    0, 
+                              max   =    1, 
+                              step  =  0.1,
+                              width = '100px')
+          )
+        ),
+        fluidRow(
+          column(12,
+                 checkboxInput("shapeS", 
+                               label= "External shape",
+                               value = FALSE),
+                 fileInput(
+                   inputId = 'S0File',
+                   label   = 'Select spectrum file',
+                   multiple= TRUE,
+                   accept  = c('.dat','.txt','.csv')
+                 )
           )
         )
       ),
@@ -488,7 +541,7 @@ navbarPage(
                   column(3,
                          actionButton("runALSAmb",strong("Start")),
                          tags$style(type='text/css', 
-                            "#runALSAmb { width:100%; margin-top: 25px;}")
+                                    "#runALSAmb { width:100%; margin-top: 25px;}")
                   ) #,
                   # column(2,
                   #        h5('Save current'),
@@ -499,11 +552,11 @@ navbarPage(
               )
             )
           )
+          )
         )
       )
-    )
-  ),
-  
+    ),
+    
   # Report ####
   tabPanel(
     title="Downloads",
@@ -545,6 +598,17 @@ navbarPage(
           label    = 'Download  (Ctrl+Click)'
         )
       )
+    )
+  ),
+  
+  # About ####
+  tabPanel(
+    title="About",
+    sidebarPanel(
+      h5("Author      : P. Pernot"),
+      h5("Affiliation : CNRS"),
+      h5("Version     : 1.x"),
+      h5("Date        : 2017/04/05")
     )
   )
   
