@@ -1068,7 +1068,7 @@ shinyServer(function(input, output, session) {
     } 
     
     fluidRow(
-      column(4,
+      column(6,
       radioButtons(
         inputId = 'procMult', 
         label   = 'Multiple files processing',
@@ -1900,7 +1900,8 @@ shinyServer(function(input, output, session) {
         twoVec = input$pairToRotate
         eps = input$alsRotAmbEps
         dens = input$alsRotAmbDens
-        ylim= c(eps,1.1*max(Inputs$mat))
+        ylim= c(eps,1.1*max(Inputs$mat[is.finite(Inputs$mat)]))
+        # ylim= c(eps,1.1*max(Inputs$mat))
       })
       plotAlsAmbRot(alsOut,solutions,twoVec,eps,ylim)
     }
