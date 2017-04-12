@@ -161,63 +161,6 @@ myals = function (C, Psi, S,
     msg = msg
   ))
 }
-unMask  <- function (X, axis = axis, mask = c(1,1), dim = 1) {
-  if (diff(mask) == 0)
-    return(X)
-  
-  # Select masked values
-  sel = axis  > mask[1] & axis  < mask[2]
-  if (sum(sel)==0)
-    return(X)
-  
-  # Expand object by inserting NAs at masked values
-  if (is.vector(X)) {
-    X0 = rep(NA,length(axis))
-    X0[!sel] = X
-    
-  } else {
-    if (is.matrix(X)) {
-      if (dim == 1) {
-        X0 = matrix(NA,ncol = ncol(X),nrow = length(axis))
-        X0[!sel,] = X
-      } else {
-        X0 = matrix(NA,ncol = length(axis),nrow = nrow(X))
-        X0[,!sel] = X
-      }
-      
-    } else {
-      stop('Unknown object type for unMask(): use vector or matrix')
-    }
-  }
-  return(X0)
-}
-delMask <- function (X, axis = axis, mask = c(1,1), dim = 1) {
-  if (diff(mask) == 0)
-    return(X)
-  
-  # Select masked values
-  sel = axis  > mask[1] & axis  < mask[2]
-  if (sum(sel)==0)
-    return(X)
-  
-  # Suppress masked values
-  if (is.vector(X)) {
-    X0 = X[!sel]
-    
-  } else {
-    if (is.matrix(X)) {
-      if (dim == 1) {
-        X0 = X[!sel,]
-      } else {
-        X0 = X[,!sel]
-      }
-      
-    } else {
-      stop('Unknown object type for delMask(): use vector or matrix')
-    }
-  }
-  return(X0)
-}
 plotResid <- function (delay,wavl,mat,C,S,
                        d = rep(1,ncol(C)),
                        main = 'Data',...) {
@@ -420,7 +363,62 @@ indxCuts <- function (xCut, coords, minx=50) {
   return(list(indx=indx,delta=delta))
 }
 
- 
+plotAlsAmbRot = function(alsOut,solutions,twoVec,eps,ylim){
+  
+  ikeep = length(solutions)
+  
+  # # Check solutions
+  # sdr = c()
+  # for (i in 1:ikeep)
+  #   sdr[i] = solutions[[i]]$resd
+  # print(range(sdr))
+  
+  par(mfrow = c(1,3))
+  
+  par(cex=cex,mar=mar)
+  S = alsOut$S
+  for (i in 1:ikeep) {
+    S[,twoVec] = solutions[[i]]$S1
+    matplot(
+      alsOut$xS, S, type = 'p', pch = 19, cex=0.5,
+      ylim=c(eps,1-eps),
+      main = 'Spectra', xlab = 'Wavelength',
+      add = i > 1
+    )
+  }
+  abline(h = 0,lty = 2)
+  grid()
+  
+  par(cex=cex,mar=mar)
+  C = alsOut$C
+  for (i in 1:ikeep) {
+    C[,twoVec] = solutions[[i]]$C1
+    matplot(
+      alsOut$xC, C, type = 'p', pch = 19, cex=0.5,
+      ylim=ylim,
+      main = 'Kinetics', xlab = 'Delay',
+      add = i > 1
+    )
+  }
+  abline(h = 0,lty = 2)
+  grid()
+  
+  par(cex=cex,mar=mar)
+  x = y = vector("numeric",length = ikeep)
+  for (i in 1:ikeep) {
+    x[i] = solutions[[i]]$t12
+    y[i] = solutions[[i]]$t21
+  }
+  xlim = c(-1.1,1.1)*max(abs(c(x,y)))
+  matplot(
+    x,y,type = 'p', pch=0, cex=1, col = 4,
+    xlim = xlim, ylim = xlim,
+    main = 'Transformation Coefs', 
+    xlab = 't12', ylab='t21'
+  )
+  grid()
+}
+
 
 # Server ####
 shinyServer(function(input, output, session) {
@@ -456,6 +454,27 @@ shinyServer(function(input, output, session) {
     nulVec = unlist(lapply(listIn, is.null))
     noNull = !any(nulVec)
     return(noNull)
+  }
+  
+  reshapeCS <- function(U,V,n) {
+    # Expand vectors wrt masks
+    C = matrix(NA,nrow=length(Inputs$delay),ncol=n)
+    S = matrix(NA,nrow=length(Inputs$wavl) ,ncol=n)
+    i=0
+    for(j in 1:nrow(C)) {
+      if(!is.na(Inputs$delayMask[j])) {
+        i = i+1
+        C[j,] = U[i,1:n]
+      } 
+    }
+    i=0
+    for(j in 1:nrow(S)) {
+      if(!is.na(Inputs$wavlMask[j])) {
+        i = i+1
+        S[j,] = V[i,1:n]
+      } 
+    }
+    return(list(C=C,S=S))
   }
 
   initSliders <- function(config=NULL) {
@@ -1501,80 +1520,24 @@ shinyServer(function(input, output, session) {
   output$svdVec <- renderPlot({
     if (is.null(s <- doSVD()))
       return(NULL)
-    
-    # Reshape vectors
-    C = matrix(NA,nrow=length(Inputs$delay),ncol=ncol(s$u))
-    S = matrix(NA,nrow=length(Inputs$wavl),ncol=ncol(s$v))
-    i=0
-    for(j in 1:nrow(C)) {
-      if(!is.na(Inputs$delayMask[j])) {
-        i = i+1
-        C[j,] = s$u[i,]
-      } 
-    }
-    i=0
-    for(j in 1:nrow(S)) {
-      if(!is.na(Inputs$wavlMask[j])) {
-        i = i+1
-        S[j,] = s$v[i,]
-      } 
-    }
-    plotSVDVecBloc(C,S,Inputs$delay,Inputs$wavl)    
-
+    CS = reshapeCS(s$u,s$v,ncol(s$u))
+    plotSVDVecBloc(CS$C,CS$S,Inputs$delay,Inputs$wavl)    
   },height = 500)
   
   output$svdResid <- renderPlot({
     if (is.null(s <- doSVD()))
       return(NULL)
-    
-    # Reshape vectors
-    C = matrix(NA,nrow=length(Inputs$delay),ncol=input$nSV)
-    S = matrix(NA,nrow=length(Inputs$wavl) ,ncol=input$nSV)
-    i=0
-    for(j in 1:nrow(C)) {
-      if(!is.na(Inputs$delayMask[j])) {
-        i = i+1
-        C[j,] = s$u[i,1:input$nSV]
-      } 
-    }
-    i=0
-    for(j in 1:nrow(S)) {
-      if(!is.na(Inputs$wavlMask[j])) {
-        i = i+1
-        S[j,] = s$v[i,1:input$nSV]
-      } 
-    }
-    
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,
-              d = s$d)
-    
+    CS = reshapeCS(s$u,s$v,input$nSV)
+    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
+              CS$C,CS$S,d = s$d)
   },height = 450)
   
   output$svdContribs <- renderPlot({
     if (is.null(s <- doSVD()))
       return(NULL)
-    
-    # Reshape vectors
-    C = matrix(NA,nrow=length(Inputs$delay),ncol=input$nSV)
-    S = matrix(NA,nrow=length(Inputs$wavl) ,ncol=input$nSV)
-    i=0
-    for(j in 1:nrow(C)) {
-      if(!is.na(Inputs$delayMask[j])) {
-        i = i+1
-        C[j,] = s$u[i,1:input$nSV]
-      } 
-    }
-    i=0
-    for(j in 1:nrow(S)) {
-      if(!is.na(Inputs$wavlMask[j])) {
-        i = i+1
-        S[j,] = s$v[i,1:input$nSV]
-      } 
-    }
-    
-    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,
-                  d = s$d, type ='svd')
-    
+    CS = reshapeCS(s$u,s$v,input$nSV)
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
+                  CS$C,CS$S,d = s$d, type ='svd')
   },height = 450)
   
 # ALS ####
@@ -1765,48 +1728,16 @@ shinyServer(function(input, output, session) {
   output$alsResid <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
-    
-    # Reshape vectors
-    C = matrix(NA,nrow=length(Inputs$delay),ncol=ncol(alsOut$C))
-    S = matrix(NA,nrow=length(Inputs$wavl), ncol=ncol(alsOut$S))
-    i=0
-    for(j in 1:nrow(C)) {
-      if(!is.na(Inputs$delayMask[j])) {
-        i = i+1
-        C[j,] = alsOut$C[i,]
-      } 
-    }
-    i=0
-    for(j in 1:nrow(S)) {
-      if(!is.na(Inputs$wavlMask[j])) {
-        i = i+1
-        S[j,] = alsOut$S[i,]
-      } 
-    }
-    
+
+    CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C))    
+
     if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
       s <- doSVD()
-      # Reshape
-      C1 = matrix(NA,nrow=length(Inputs$delay),ncol=input$nSV)
-      S1 = matrix(NA,nrow=length(Inputs$wavl) ,ncol=input$nSV)
-      i=0
-      for(j in 1:nrow(C1)) {
-        if(!is.na(Inputs$delayMask[j])) {
-          i = i+1
-          C1[j,] = s$u[i,1:input$nSV]
-        } 
-      }
-      i=0
-      for(j in 1:nrow(S1)) {
-        if(!is.na(Inputs$wavlMask[j])) {
-          i = i+1
-          S1[j,] = s$v[i,1:input$nSV]
-        } 
-      }
+      CS1 = reshapeCS(s$u,s$v,input$nSV)
       mat = matrix(0,nrow=length(Inputs$delay),
                    ncol=length(Inputs$wavl))
       for (ic in 1:input$nSV) 
-        mat = mat + C1[,ic] %o% s$v[,ic] * S1[ic]
+        mat = mat + CS1$C[,ic] %o% CS1$S[,ic] * s$d[ic]
 
       main = "SVD-filtered data"
     
@@ -1814,7 +1745,8 @@ shinyServer(function(input, output, session) {
       mat = Inputs$mat
       main = 'Raw data'
     }
-    plotResid(Inputs$delay,Inputs$wavl,mat,C,S,main=main)
+    plotResid(Inputs$delay,Inputs$wavl,mat,
+              CS$C,CS$S,main=main)
     
   },height = 450)
   
@@ -1860,38 +1792,22 @@ shinyServer(function(input, output, session) {
   output$alsContribs <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
-    
-    # Reshape vectors
-    C = matrix(NA,nrow=length(Inputs$delay),ncol=ncol(alsOut$C))
-    S = matrix(NA,nrow=length(Inputs$wavl),ncol=ncol(alsOut$S))
-    i=0
-    for(j in 1:nrow(C)) {
-      if(!is.na(Inputs$delayMask[j])) {
-        i = i+1
-        C[j,] = alsOut$C[i,]
-      } 
-    }
-    i=0
-    for(j in 1:nrow(S)) {
-      if(!is.na(Inputs$wavlMask[j])) {
-        i = i+1
-        S[j,] = alsOut$S[i,]
-      } 
-    }
-    
-    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,C,S)
-    
+    CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C))    
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
+                  CS$C,CS$S)
   },height = 450)
   
   doAmbRot <- eventReactive(
     input$runALSAmb, {
+      if (is.null(alsOut <- doALS()))
+        return(NULL)
+      
       isolate({
         twoVec = input$pairToRotate
         eps = input$alsRotAmbEps
         dens = input$alsRotAmbDens
       })
       
-      alsOut <- doALS()
       nAls = ncol(alsOut$S)
       
       progress <- shiny::Progress$new()
@@ -1968,88 +1884,26 @@ shinyServer(function(input, output, session) {
         }
       }
       
-      
-      if(ikeep == 0) {
-        cat(paste0("No solutions found over ",ntry," trials\n"))
-        
-      } else {
-        alsOutAmb <<- solutions
-        cols=1:nAls
-        for (i in twoVec)
-          cols[i]=col2tr(palette()[i],5)
-
-        # # Check solutions
-        # sdr = c()
-        # for (i in 1:ikeep)
-        #   sdr[i] = solutions[[i]]$resd
-        # print(range(sdr))
-        
-        par(mfrow = c(1,3))
-        
-        par(cex=cex,mar=mar)
-        S = alsOut$S
-        for (i in 1:ikeep) {
-          S[,twoVec] = solutions[[i]]$S1
-          # S = unMask(S, axis = Inputs$wavl,  
-          #            mask = input$keepWlMask)
-          matplot(
-            alsOut$xS, S, type = 'p', pch = 19, col = cols, cex=0.5,
-            ylim=c(eps,1-eps),
-            main = 'Spectra', xlab = 'Wavelength',
-            add = i > 1
-          )
-        }
-        abline(h = 0,lty = 2)
-        grid()
-
-        par(cex=cex,mar=mar)
-        ylim= c(eps, max(Inputs$mat,na.rm=TRUE))
-        C = alsOut$C
-        for (i in 1:ikeep) {
-          C[,twoVec] = solutions[[i]]$C1
-          matplot(
-            alsOut$xC, C, type = 'p', pch = 19, col = cols, cex=0.5,
-            ylim=ylim,
-            main = 'Kinetics', xlab = 'Delay',
-            add = i > 1
-          )
-        }
-        abline(h = 0,lty = 2)
-        grid()
-        
-        par(cex=cex,mar=mar)
-        x = y = vector("numeric",length = ikeep)
-        for (i in 1:ikeep) {
-          x[i] = solutions[[i]]$t12
-          y[i] = solutions[[i]]$t21
-        }
-        xlim = c(-1.1,1.1)*max(abs(c(x,y)))
-        matplot(
-          x,y,type = 'p', pch=0, cex=1, col = 4,
-          xlim = xlim, ylim = xlim,
-          main = 'Transformation Coefs', 
-          xlab = 't12', ylab='t21'
-        )
-        grid()
-        
-        # par(cex=cex,mar=mar)
-        # sdr = c()
-        # for (i in 1:ikeep) 
-        #   sdr[i] = solutions[[i]]$resd
-        # hist(
-        #   sdr,col = pink_tr,
-        #   xlab = '',main = 'Residuals'
-        # )
-        # grid()
-        
-      }
+      return(solutions)
     }
   )
   
   output$alsRotAmb <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
-    doAmbRot()
+    
+    if (!is.list(solutions <- doAmbRot())) {
+      cat(paste0("No solutions found over ",ntry," trials\n"))
+      
+    } else {
+      isolate({
+        twoVec = input$pairToRotate
+        eps = input$alsRotAmbEps
+        dens = input$alsRotAmbDens
+        ylim= c(eps,1.1*max(Inputs$mat))
+      })
+      plotAlsAmbRot(alsOut,solutions,twoVec,eps,ylim)
+    }
   },height = 400)
   
 
@@ -2063,9 +1917,6 @@ shinyServer(function(input, output, session) {
   
   output$report = downloadHandler(
     filename = function() {
-#       paste(input$reportName, sep = '.', switch(
-#         input$format, html = 'html', pdf = 'pdf', docx = 'docx'
-#       ))
       paste0(input$reportName, '.html') # cf. below for format choice
     },
     content = function(file) {

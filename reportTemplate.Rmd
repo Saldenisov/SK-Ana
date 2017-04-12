@@ -57,10 +57,8 @@ image(Inputs$delay,Inputs$wavl,Inputs$mat,
 if('SVD' %in% input$inReport){
   cat ('# Singular Values Decomposition')
   s<-doSVD()
-  if (!is.null(s)){
-    C = unMask(s$u, axis = Inputs$delay, mask = input$keepDlMask)
-    S = unMask(s$v, axis = Inputs$wavl,  mask = input$keepWlMask)
-  }
+  if (!is.null(s))
+    CS = reshapeCS(s$u,s$v,ncol(s$u))
 }
 ```
 
@@ -78,7 +76,7 @@ if('SVD' %in% input$inReport) {
 ```{r echo=FALSE}
 if('SVD' %in% input$inReport) {
   if (!is.null(s))
-        plotSVDVecBloc(C,S,Inputs$delay,Inputs$wavl,cex=scale)    
+    plotSVDVecBloc(CS$C,CS$S,Inputs$delay,Inputs$wavl,cex=scale)    
 }
 ```
 
@@ -89,9 +87,7 @@ if('ALS' %in% input$inReport){
   cat('__Number of components__ : ',input$nALS,'\n\n')
   cat('__Results__ after ',alsOut$iter,' iterations\n\n')
   cat(alsOut$msg)
-  # Reshape vectors
-  C = unMask(alsOut$C, axis = Inputs$delay, mask = input$keepDlMask)
-  S = unMask(alsOut$S, axis = Inputs$wavl,  mask = input$keepWlMask)
+  CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C)) 
 }
 ```
 
@@ -119,7 +115,8 @@ if('ALS' %in% input$inReport){
 ```{r echo=FALSE}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,cex=scale)
+    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
+              CS$C,CS$S,cex=scale)
   }
 }
 ```
@@ -133,7 +130,30 @@ if('ALS' %in% input$inReport){
 ```{r echo=FALSE}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
-    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,C,S,cex=scale)
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
+                  CS$C,CS$S,cex=scale)
+  }
+}
+```
+
+```{r results='asis', echo=FALSE}
+if('ALS' %in% input$inReport){
+  cat ('## Rotational Ambiguity')
+}
+```
+
+```{r amb, echo=FALSE}
+if('ALS' %in% input$inReport) {
+  if (!is.null(alsOut)) {
+    if (!is.list(solutions <- doAmbRot())) {
+      cat(paste0("No solutions found over ",ntry," trials\n"))
+    } else {
+      twoVec = input$pairToRotate
+      eps    = input$alsRotAmbEps
+      dens   = input$alsRotAmbDens
+      ylim   = c(eps,1.1*max(Inputs$mat))
+      plotAlsAmbRot(alsOut,solutions,twoVec,eps,ylim)
+    }
   }
 }
 ```
@@ -141,7 +161,7 @@ if('ALS' %in% input$inReport) {
 ******
 
 # Session Info
-------------
+
 ```{r, echo=FALSE}
 sessionInfo()
 ```

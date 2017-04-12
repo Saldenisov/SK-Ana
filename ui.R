@@ -450,11 +450,11 @@ navbarPage(
         fluidRow(
           column(12,
                  checkboxInput("shapeS", 
-                               label= "External shape",
+                               label= "External spectrum shape(s)",
                                value = FALSE),
                  fileInput(
                    inputId = 'S0File',
-                   label   = 'Select spectrum file',
+                   label   = 'Select file(s)',
                    multiple= TRUE,
                    accept  = c('.dat','.txt','.csv')
                  )
@@ -607,7 +607,7 @@ navbarPage(
     sidebarPanel(
       h5("Author      : P. Pernot"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 1.x"),
+      h5("Version     : 2.0-beta"),
       h5("Date        : 2017/04/05")
     )
   )
