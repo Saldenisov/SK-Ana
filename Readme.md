@@ -1,6 +1,6 @@
-**SK-Ana**
+**SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
-Analysis od spectrokinetic matrices
+Shiny interface for the analysis of spectrokinetic matrices:
 
 * Singular Value Decomposition (SVD)
 
