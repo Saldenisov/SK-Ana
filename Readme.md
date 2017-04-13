@@ -6,6 +6,8 @@
 
 * Multi Curve Resolution by Alternated Least Squares (MCR-ALS)
 
+The code can be tested here: https://upsa.shinyapps.io/SK-Ana/
+
 **References**
 
 * C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan, R. Tauler, "Comprehensive data analysis of femtosecond transient absorption spectra: A review", J. Photochem. Photobiol., C, vol. 13, 2012, pp. 1–27. (http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002)
