@@ -1763,7 +1763,10 @@ shinyServer(function(input, output, session) {
     isolate({
       if (is.null(alsOut <- doALS()))
         return(NULL)
-      S = cbind(alsOut$xS,alsOut$S)
+      
+      CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C))
+      
+      S = cbind(Inputs$wavl,CS$S)
       colnames(S) = c('wavl',colnames(alsOut$S))
       write.csv(
         S,
@@ -1775,7 +1778,7 @@ shinyServer(function(input, output, session) {
         row.names = FALSE
       )
       # C = cbind(alsOut$xC,alsOut$C)
-      C = cbind(Inputs$delaySave,alsOut$C)
+      C = cbind(Inputs$delaySave,CS$C)
       colnames(C) = c('delay',colnames(alsOut$C))
       write.csv(
         C,
