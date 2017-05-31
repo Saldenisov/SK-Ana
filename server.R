@@ -427,7 +427,8 @@ shinyServer(function(input, output, session) {
   if(!dir.exists("outputDir"))
      dir.create("outputDir",showWarnings = FALSE)
   
-  nMasks = 4 # Max number of masks in each dimension
+  nMasksDl = 8 # Max number of delay masks
+  nMasksWl = 4 # Max number of wavl masks
   
   projConfig = NULL
   S0_in      = NULL
@@ -520,6 +521,10 @@ shinyServer(function(input, output, session) {
       dlMaskSel2 = config$keepDlMask2
       dlMaskSel3 = config$keepDlMask3
       dlMaskSel4 = config$keepDlMask4
+      dlMaskSel5 = config$keepDlMask5
+      dlMaskSel6 = config$keepDlMask6
+      dlMaskSel7 = config$keepDlMask7
+      dlMaskSel8 = config$keepDlMask8
       dlCutSel   = config$keepDlCut
       cblSel     = config$keepCbl
     } else {
@@ -537,6 +542,10 @@ shinyServer(function(input, output, session) {
       dlMaskSel2  = c(dlMask[1],dlMask[1])
       dlMaskSel3  = c(dlMask[1],dlMask[1])
       dlMaskSel4  = c(dlMask[1],dlMask[1])
+      dlMaskSel5  = c(dlMask[1],dlMask[1])
+      dlMaskSel6  = c(dlMask[1],dlMask[1])
+      dlMaskSel7  = c(dlMask[1],dlMask[1])
+      dlMaskSel8  = c(dlMask[1],dlMask[1])
       dlCutSel   = signif(mean(dlCut),3)
       cblSel     = cblRange[1]
     }
@@ -560,6 +569,10 @@ shinyServer(function(input, output, session) {
     updateSlider("keepDlMask2", dlMask , dlMaskSel2, nsteps)
     updateSlider("keepDlMask3", dlMask , dlMaskSel3, nsteps)
     updateSlider("keepDlMask4", dlMask , dlMaskSel4, nsteps)
+    updateSlider("keepDlMask5", dlMask , dlMaskSel5, nsteps)
+    updateSlider("keepDlMask6", dlMask , dlMaskSel6, nsteps)
+    updateSlider("keepDlMask7", dlMask , dlMaskSel7, nsteps)
+    updateSlider("keepDlMask8", dlMask , dlMaskSel8, nsteps)
     updateSlider("keepDlCut"  , dlCut  , dlCutSel  , nsteps)
 
     
@@ -1256,13 +1269,15 @@ shinyServer(function(input, output, session) {
     # Aggregate and apply masks
     delayMask = rep(0,length(delay))
     wavlMask  = rep(0,length(wavl))
-    for (mask in 1:nMasks) {
+    for (mask in 1:nMasksDl) {
       maskName = paste0("keepDlMask",mask)
       xlim = input[[maskName]] * Inputs$dlScaleFacOrig
       if (diff(xlim) != 0) {
         sel = delay >= xlim[1] & delay <= xlim[2]
         if(sum(sel)!=0) delayMask[sel]  = NA
       }
+    }
+    for (mask in 1:nMasksWl) {
       maskName = paste0("keepWlMask",mask)
       ylim = input[[maskName]]
       if (diff(ylim) != 0) {

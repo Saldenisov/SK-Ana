@@ -246,6 +246,34 @@ navbarPage(
                         max = 1,
                         value = c(0,0),
                         sep=""
+            ),
+            sliderInput("keepDlMask5", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask6", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask7", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
+            ),
+            sliderInput("keepDlMask8", 
+                        NULL,
+                        min = 0, 
+                        max = 1,
+                        value = c(0,0),
+                        sep=""
             )
           )
         ),
