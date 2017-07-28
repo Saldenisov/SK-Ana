@@ -432,7 +432,8 @@ navbarPage(
                  radioButtons("initALS", 
                               label = "Initialization", 
                               choices = 
-                                list("SVD"        = "SVD",
+                                list(
+                                     "SVD"        = "SVD",
                                      "Sequential" = "seq",
                                      "Restart"    = "rst"), 
                               inline = FALSE)
@@ -504,12 +505,27 @@ navbarPage(
               }),
               htmlOutput("alsOpt")
             ),
+            
             tabPanel(
               value="alsResid",
               title=h4("Residuals"),
               br(),
-              plotOutput("alsResid", height=550)
+              tabsetPanel(
+                id="alsResid1",
+                type='pills',
+                tabPanel(
+                  value="alsResid1_1",
+                  title=h5("Residuals"), br(),
+                  plotOutput("alsResid1", height=550)
+                ),
+                tabPanel(
+                  value="alsResid1_2",
+                  title=h5("SVD of Residuals"), br(),
+                  plotOutput("alsResid2", height=550)
+                )
+              )
             ),
+            
             tabPanel(
               value="alsVectorsTab",
               title=h4("Spectra & Kinetics"),
@@ -539,14 +555,21 @@ navbarPage(
               wellPanel( 
                 h4("Explore Rotational/Scaling Ambiguity"),
                 fluidRow(
+                  # column(3,
+                  #        sliderInput("pairToRotate", 
+                  #                    label = "Pick 2 vectors",
+                  #                    min=1, 
+                  #                    max=6,
+                  #                    value = c(1,2),
+                  #                    step  = 1,
+                  #                    sep="")
+                  # ),
                   column(3,
-                         sliderInput("pairToRotate", 
-                                     label = "Pick 2 vectors",
-                                     min=1, 
-                                     max=6,
-                                     value = c(1,2),
-                                     step  = 1,
-                                     sep="")
+                         checkboxGroupInput("vecsToRotate", 
+                                     label = "Pick 2 or 3 vectors",
+                                     choices = list("1" = 1, "2" = 2, "3" = 3,
+                                                    "4" = 4, "5" = 5),
+                                     selected = c(1,2))
                   ),
                   column(3,
                          sliderInput("alsRotAmbEps",

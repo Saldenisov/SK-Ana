@@ -1296,9 +1296,10 @@ shinyServer(function(input, output, session) {
   })
   
   output$image1 <- renderPlot({
+    # print('Image')
     if(is.null(selectArea())) 
       return(NULL)
-    # print('Image')
+
     
     mat   = Inputs$mat
     wavl  = Inputs$wavl
