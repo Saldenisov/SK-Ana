@@ -8,7 +8,8 @@ library(Iso)
 library(viridis)
 library(shiny)
 library(DT)
-# library(NMF)
+library(fields)
+library(NMF)
  
 # Colors ####
 cols = viridis(128)
@@ -16,6 +17,7 @@ col2tr = function(col,alpha)
   rgb(unlist(t(col2rgb(col))),alpha = alpha,maxColorValue = 255)
 cyan_tr = col2tr("cyan",120)
 pink_tr = col2tr("pink",120)
+colWR=fields::two.colors(17,start="blue",middle="white",end="red")
 
 # Global graphical params ####
 cex = 1
@@ -87,7 +89,8 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth) {
   
   if (normS != 0) {
     for (i in 1:ncol(S))
-      S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1)
+      S[,i] = S[,i] / sum(S[,i]) # Area normalization
+      # S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1)
   }
   
   return(S)
@@ -212,6 +215,40 @@ plotResid <- function (delay,wavl,mat,C,S,
   )
   dummy = close.screen(all.screens = TRUE)
 }
+plotResidAna = function(delay,wavl,mat,C,S,
+                        d = rep(1,ncol(C)),
+                        main = 'Data',...) {
+  
+  # Buid model matrix
+  matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
+  for (i in 1:ncol(S))
+    matAls = matAls + C[,i] %o% S[,i] * d[i]
+  resid = matAls - mat
+  rm(matAls)
+  wres = resid/sd(resid)
+  sv   = svd(wres,nu=2,nv=2)  
+  
+  par(mfrow=c(2,2), cex = cex,cex.main=cex, mar = mar, 
+      mgp = mgp, tcl = tcl, pty=pty)
+  image(delay,wavl,wres,col=colWR,main="Weighted Residuals",
+        xlab='Delay',ylab='Wavelength')
+  image.plot(delay,wavl,wres,zlim=c(-3,3),col=colWR,add=TRUE,
+             legend.mar=5, legend.shrink=0.8,
+             xlab='Delay',ylab='Wavelength')
+  
+  matplot(sv$v,wavl,type="l",lwd=2,
+          xlab="Sing. Vec.",ylab='Wavelength',
+          main="SVD of Residuals")
+  abline(v=0)
+  
+  matplot(delay,sv$u,type="l",lwd=2,
+          xlab='Delay',ylab="Sing. Vec.",
+          main="SVD of Residuals")
+  abline(h=0)
+  
+  qqnorm(wres);abline(a=0,b=1,col="blue");grid(col="darkgray")
+  
+}
 plotConbtribs <- function (delay,wavl,mat,C,S,
                            d = rep(1,ncol(C)),
                            type = 'als',...) {
@@ -246,29 +283,30 @@ plotAlsVec <- function (alsOut,...) {
   par(mfrow = c(1,2))
   par(cex = cex,cex.main=cex, mar = mar, 
       mgp = mgp, tcl = tcl, pty=pty)
-  matplot(
-    alsOut$xS,alsOut$S,
-    type = ifelse(length(alsOut$xC)>20,'p','b'),
-    pch = 19, cex = 0.5, lwd=2, lty=3,
-    xlab = 'Wavelength',ylab = 'S',
-    main = 'ALS Spectra', ylim = c(0,1.1),
-    xaxs = 'i',yaxs = 'i'
-  )
-  n=ncol(alsOut$S)
-  legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
-  grid();box()
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
+ 
   matplot(
     alsOut$xC,alsOut$C,
     type = ifelse(length(alsOut$xC)>20,'p','b'),
     pch = 19, cex = 0.5, lwd=2, lty=3,
     xlab = 'Delay', ylab = 'C',
     main = 'ALS Kinetics',
-    xaxs = 'i',yaxs = 'i'
+    xaxs = 'i'
+  )
+  n=ncol(alsOut$C)
+  legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
+  grid();box()
+
+  matplot(
+    alsOut$xS,alsOut$S,
+    type = ifelse(length(alsOut$xC)>20,'p','b'),
+    pch = 19, cex = 0.5, lwd=2, lty=3,
+    xlab = 'Wavelength',ylab = 'S',
+    main = 'Area Normalized ALS Spectra', 
+    xaxs = 'i'
   )
   grid();box()
-}
+
+  }
 plotSVDVec <- function (X,axis,xlab="x",col='blue',...) {
   is = 0
   dummy = split.screen(c(2,4))
@@ -419,6 +457,304 @@ plotAlsAmbRot = function(alsOut,solutions,twoVec,eps,ylim){
   grid()
 }
 
+rotAmb2 = function(C0,S0,data,rotVec=1:2,
+                   dens=0.05,eps=-0.01,
+                   updateProgress=NULL) {
+
+  S = S0[,rotVec]
+  C = C0[,rotVec]
+  
+  ttry = function(i) dens*i
+  
+  ikeep = 0
+  solutions = list() 
+  ntry = 0; iter=0
+  
+  for(s12 in c(0,-1,1)) {
+    i12 = 0
+    OK1 = TRUE
+    while(OK1) {
+      i12 = i12 + s12
+      t12 = ttry(i12)
+      OK1 = FALSE
+      
+      for(s21 in c(0,-1,1)) {
+        i21 = 0
+        OK2  = TRUE
+        while(OK2) {
+          i21 = i21 + s21
+          t21 = ttry(i21)
+          OK2 = FALSE
+          
+          iter = iter+1
+          updateProgress(value = iter / 100)
+          
+          # Transformation matrix
+          R = matrix(c(1  , t12,
+                       t21,   1),
+                     nrow = 2,ncol = 2,
+                     byrow = TRUE)
+          Ri = try(solve(R),silent=TRUE)
+          
+          if(class(Ri) !='try-error') {
+            ntry = ntry +1
+            
+            # Transform spectra and kinetics
+            S1 = t(R %*% t(S))
+            C1 = C %*% Ri
+            
+            # Renormalize spectra
+            for(i in 1:2) {
+              n = max(S1[,i],na.rm=TRUE)
+              S1[,i] = S1[,i] / n
+              C1[,i] = C1[,i] * n
+            }
+            
+            # Test for positivity
+            if(min(S1,na.rm=TRUE) >= eps &
+               min(C1,na.rm=TRUE) >= eps*max(data,na.rm=TRUE)) {
+              ikeep = ikeep+1
+              solutions[[ikeep]] = list(S1=S1, C1=C1, 
+                                        t12=t12, t21=t21)
+              OK1 = OK2 = TRUE
+              
+              if(s21 == 0) OK2 = FALSE
+            }
+          }
+        }
+        if(s12 == 0) OK1 = FALSE
+      }
+    }
+  }
+  
+  if(length(solutions)!=0) {
+    solutions$rotVec = rotVec
+    solutions$eps    = eps
+  }
+  
+  return(solutions)
+}
+rotAmb3 = function(C0,S0,data,rotVec=1:3,
+                   dens=0.05,eps=-0.01,
+                   updateProgress=NULL) {
+  
+  S = S0[,rotVec]
+  C = C0[,rotVec]
+  
+  ttry = function(i) dens*i
+  
+  ikeep = 0
+  solutions = list() 
+  ntry = 0; iter=0
+  
+  for(s12 in c(0,-1,1)) {
+    i12 = 0
+    OK1 = TRUE
+    while(OK1) {
+      i12 = i12 + s12
+      t12 = ttry(i12)
+      OK1 = FALSE
+      
+      for(s21 in c(0,-1,1)) {
+        i21 = 0
+        OK2  = TRUE
+        while(OK2) {
+          i21 = i21 + s21
+          t21 = ttry(i21)
+          OK2 = FALSE
+          
+          for(s23 in c(0,-1,1)) {
+            i23 = 0
+            OK3 = TRUE
+            while(OK3) {
+              i23 = i23 + s23
+              t23 = ttry(i23)
+              OK3 = FALSE
+              
+              for(s32 in c(0,-1,1)) {
+                i32 = 0
+                OK4 = TRUE
+                while(OK4) {
+                  i32 = i32 + s32
+                  t32 = ttry(i32)
+                  OK4 = FALSE
+                  
+                  for(s13 in c(0,-1,1)) {
+                    i13 = 0
+                    OK5 = TRUE
+                    while(OK5) {
+                      i13 = i13 + s13
+                      t13 = ttry(i13)
+                      OK5 = FALSE
+                      
+                      for(s31 in c(0,-1,1)) {
+                        i31 = 0
+                        OK6 = TRUE
+                        while(OK6) {
+                          i31 = i31 + s31
+                          t31 = ttry(i31)
+                          OK6 = FALSE
+                          
+                          iter = iter+1
+                          updateProgress(value = iter / 100)
+                          
+                          # Transformation matrix
+                          R = matrix(c(1  , t12,  t13,
+                                       t21,   1,  t23,
+                                       t31, t32,    1),
+                                     nrow = 3,ncol = 3,
+                                     byrow = TRUE)
+                          Ri = try(solve(R),silent=TRUE)
+                          
+                          if(class(Ri) !='try-error') {
+                            ntry = ntry +1
+                            
+                            # Transform spectra and kinetics
+                            S1 = t(R %*% t(S))
+                            C1 = C %*% Ri
+                            
+                            # Renormalize spectra
+                            for(i in 1:3) {
+                              n = max(S1[,i],na.rm=TRUE)
+                              S1[,i] = S1[,i] / n
+                              C1[,i] = C1[,i] * n
+                            }
+                            
+                            # Test for positivity
+                            if(min(S1,na.rm=TRUE) >= eps &
+                               min(C1,na.rm=TRUE) >= eps*max(data,na.rm=TRUE)) {
+                              ikeep = ikeep+1
+                              solutions[[ikeep]] = list(S1=S1, C1=C1, 
+                                                        t12=t12, t21=t21,
+                                                        t23=t23, t32=t32,
+                                                        t13=t13, t31=t31)
+                              
+                              OK1 = OK2 = OK3 = OK4 = OK5 = OK6 = TRUE
+                              
+                              if(s31 == 0) OK6 = FALSE
+                            }
+                          }
+                        }
+                        if(s13 == 0) OK5 = FALSE
+                      }
+                    }
+                    if(s32 == 0) OK4 = FALSE
+                  }
+                }
+                if(s23 == 0) OK3 = FALSE
+              }
+            }
+            if(s21 == 0) OK2 = FALSE
+          }
+        }
+        if(s12 == 0) OK1 = FALSE
+      }
+    }
+  }
+  
+  if(length(solutions)!=0) {
+    solutions$rotVec = rotVec
+    solutions$eps    = eps
+  }
+  
+  return(solutions)
+}
+plotRotAmb = function(alsOut, solutions){
+
+  C = alsOut$C;   xC = alsOut$xC; nC = ncol(C)
+  S = alsOut$S;   xS = alsOut$xS; nS = ncol(S)
+  for (i in 1:ncol(C)) {
+    nn = sum(S[,i])
+    S[,i] = S[,i] / nn
+    C[,i] = C[,i] * nn
+  }
+  
+  nkeep = length(solutions)-2
+  allVec = 1:nC
+  rotVec = solutions$rotVec
+  sel    = allVec %in% rotVec
+  nvec   = length(rotVec)
+  eps    = solutions$eps
+  
+  col0  = (1:nC)[!sel]
+  colR  = col2tr(1:nC,120)[sel]
+  
+  par(mfrow = c(1,2))
+  par(cex = cex,cex.main=cex, mar = mar, 
+      mgp = mgp, tcl = tcl, pty=pty)
+  
+  # Estimate ranges of C
+  C1 = C[,sel]  
+  Cmax = matrix( eps,nrow=nrow(C1),ncol=ncol(C1))
+  Cmin = matrix(1e30,nrow=nrow(C1),ncol=ncol(C1))
+  for (i in 1:nkeep) {
+    for(j in 1:nvec) {
+      vec = solutions[[i]]$S1[,j]
+      nn = sum(vec) 
+      for(k in 1:nrow(C1)){
+        val = solutions[[i]]$C1[k,j]*nn # Normalize
+        Cmin[k,j] = min(Cmin[k,j],val,na.rm=TRUE)
+        Cmax[k,j] = max(Cmax[k,j],val,na.rm=TRUE)
+      }
+    }
+  }
+  
+  matplot(xC,C,type='n',
+          ylim=range(c(C,Cmin,Cmax)),xaxs='i',
+          main = 'Kinetics', xlab = 'Delay')
+  abline(h = 0,lty = 2)
+  grid(); box()
+  if(sum(!sel) != 0) {
+    C1 = C[,!sel]  
+    matplot(xC,C1,type='p', pch=19, cex=0.5, col= col0, add=TRUE)
+  }
+  for (j in 1:nvec)
+    polygon(c(xC,rev(xC)),c(Cmin[,j],rev(Cmax[,j])),
+            col= colR[j],border = NA)
+  
+  # Estimate ranges of S
+  S1   = S[,sel] 
+  Smax = matrix( eps,nrow=nrow(S1),ncol=ncol(S1))
+  Smin = matrix(1e30,nrow=nrow(S1),ncol=ncol(S1))
+  for (i in 1:nkeep) {
+    for(j in 1:nvec) {
+      vec = solutions[[i]]$S1[,j]
+      nn = sum(vec)
+      for(k in 1:nrow(S1)){
+        val = vec[k]/nn
+        Smin[k,j] = min(Smin[k,j],val,na.rm=TRUE)
+        Smax[k,j] = max(Smax[k,j],val,na.rm=TRUE)
+      }
+    }
+  }
+  
+  matplot(xS,S,type='n',
+          ylim=range(c(S,Smin,Smax)), xaxs='i',
+          main = 'Area Normalized Spectra', xlab = 'Wavelength')
+  abline(h = 0,lty = 2)
+  grid(); box()
+  if(sum(!sel) != 0) {
+    S1 = S[,!sel]  
+    matplot(xS,S1,type='p', pch=19, cex=0.5, col= col0, add=TRUE)
+  }
+  for (j in 1:nvec)
+    polygon(c(xS,rev(xS)),c(Smin[,j],rev(Smax[,j])),
+            col= colR[j],border = NA)
+  
+  # x = y = vector("numeric",length = nkeep)
+  # for (i in 1:nkeep) {
+  #   x[i] = solutions[[i]]$t12
+  #   y[i] = solutions[[i]]$t21
+  # }
+  # xlim = c(-1.1,1.1)*max(abs(c(x,y)))
+  # matplot(
+  #   x,y,type = 'p', pch=0, cex=1, col = 4,
+  #   xlim = xlim, ylim = xlim,
+  #   main = 'Transformation Coefs',
+  #   xlab = 't12', ylab='t21'
+  # )
+  # grid()
+}
 
 # Server ####
 shinyServer(function(input, output, session) {
@@ -1587,13 +1923,10 @@ shinyServer(function(input, output, session) {
         return(NULL)
       
       nAls = input$nALS
-      updateSliderInput(
+      updateCheckboxGroupInput(
         session,
-        inputId = "pairToRotate",
-        min = 1,
-        max = nAls,
-        value = c(1:2),
-        step = 1
+        inputId = "vecsToRotate",
+        selected = c(1,2)
       )
       
       # Suppress masked areas
@@ -1633,11 +1966,18 @@ shinyServer(function(input, output, session) {
 
       if (input$initALS != 'seq') {
         if (input$initALS == 'SVD') {
-          # initialize with SVD
+          # initialize with SVD + NMF
           if (is.null(s <- doSVD()))
             return(NULL)
-          S = matrix(abs(s$v[,1:nAls]),ncol=nAls)
-          C = matrix(abs(s$u[,1:nAls]),ncol=nAls)
+          
+          fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
+          for (i in 1:nAls)
+            fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
+          res  = nmf(abs(fMat), rank=nAls, method='lee')
+          C = basis(res)
+          S = t(coef(res))
+          # S = matrix(abs(s$v[,1:nAls]),ncol=nAls)
+          # C = matrix(abs(s$u[,1:nAls]),ncol=nAls)
         } else {
           # restart from existing solution
           if (!exists('RES'))
@@ -1741,7 +2081,7 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  output$alsResid <- renderPlot({
+  output$alsResid1 <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
 
@@ -1762,6 +2102,31 @@ shinyServer(function(input, output, session) {
       main = 'Raw data'
     }
     plotResid(Inputs$delay,Inputs$wavl,mat,
+              CS$C,CS$S,main=main)
+    
+  },height = 450)
+  
+  output$alsResid2 <- renderPlot({
+    if (is.null(alsOut <- doALS()))
+      return(NULL)
+    
+    CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C))    
+    
+    if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
+      s <- doSVD()
+      CS1 = reshapeCS(s$u,s$v,input$nSV)
+      mat = matrix(0,nrow=length(Inputs$delay),
+                   ncol=length(Inputs$wavl))
+      for (ic in 1:input$nSV) 
+        mat = mat + CS1$C[,ic] %o% CS1$S[,ic] * s$d[ic]
+      
+      main = "SVD-filtered data"
+      
+    } else {
+      mat = Inputs$mat
+      main = 'Raw data'
+    }
+    plotResidAna(Inputs$delay,Inputs$wavl,mat,
               CS$C,CS$S,main=main)
     
   },height = 450)
@@ -1822,12 +2187,10 @@ shinyServer(function(input, output, session) {
         return(NULL)
       
       isolate({
-        twoVec = input$pairToRotate
-        eps = input$alsRotAmbEps
-        dens = input$alsRotAmbDens
+        rotVec = as.numeric(unlist(input$vecsToRotate))
+        eps    = input$alsRotAmbEps
+        dens   = input$alsRotAmbDens
       })
-      
-      nAls = ncol(alsOut$S)
       
       progress <- shiny::Progress$new()
       on.exit(progress$close())
@@ -1838,71 +2201,23 @@ shinyServer(function(input, output, session) {
       # Progress bar
       progress$set(message = "Running Ambiguity Analysis ", value = 0)
       
-      S = alsOut$S[,twoVec]
-      C = alsOut$C[,twoVec]
+      C0 = alsOut$C
+      S0 = alsOut$S
       
-      ttry = function(i) dens*i
-      ikeep = 0
-      solutions = list() 
-      ntry = 0; iter=0
-
-      for(s12 in c(0,-1,1)) {
-        i12 = 0
-        OK1 = TRUE
-        while(OK1) {
-          i12 = i12 + s12
-          t12 = ttry(i12)
-          OK1 = FALSE
-          
-          for(s21 in c(0,-1,1)) {
-            i21 = 0
-            OK2  = TRUE
-            while(OK2) {
-              i21 = i21 + s21
-              t21 = ttry(i21)
-              OK2 = FALSE
-              
-              iter = iter+1
-              updateProgress(value = iter / 100)
-              
-              # Transformation matrix
-              R = matrix(c(1,t12,t21,1),
-                         nrow = 2,ncol = 2,
-                         byrow = TRUE)
-              Ri = try(solve(R),silent=TRUE)
-              
-              if(class(Ri) !='try-error') {
-                ntry = ntry +1
-                
-                # Transform spectra and kinetics
-                S1 = t(R %*% t(S))
-                C1 = C %*% Ri
-                
-                # Renormalize spectra
-                for(i in 1:2) {
-                  n = max(S1[,i],na.rm=TRUE)
-                  S1[,i] = S1[,i] / n
-                  C1[,i] = C1[,i] * n
-                }
-                
-                # Test for positivity
-                if(min(S1,na.rm=TRUE) >= eps &
-                   min(C1,na.rm=TRUE) >= eps*max(Inputs$mat,na.rm=TRUE)) {
-                  ikeep = ikeep+1
-                  solutions[[ikeep]] = list(S1=S1, C1=C1,
-                                            t12=t12, t21=t21)
-                  OK1 = TRUE
-                  OK2 = TRUE
-                  if(s21 == 0) OK2 = FALSE
-                  
-                }
-              }
-            }
-            if(s12 == 0) OK1 = FALSE
-          }
-        }
+      solutions = NULL
+      if(length(rotVec)==2) {
+        solutions = rotAmb2(C0, S0, data=Inputs$mat,
+                            rotVec=rotVec,dens=dens,eps=eps,
+                            updateProgress=updateProgress)
+      } 
+      else if(length(rotVec)==3) {
+        solutions = rotAmb3(C0,S0,data=Inputs$mat,
+                            rotVec=rotVec,dens=dens,eps=eps,
+                            updateProgress=updateProgress)
+      } 
+      else {
+        cat('Length of rotVec should be 2 or 3\n')  
       }
-      
       return(solutions)
     }
   )
@@ -1911,19 +2226,11 @@ shinyServer(function(input, output, session) {
     if (is.null(alsOut <- doALS()))
       return(NULL)
     
-    if (!is.list(solutions <- doAmbRot())) {
-      cat(paste0("No solutions found over ",ntry," trials\n"))
-      
-    } else {
-      isolate({
-        twoVec = input$pairToRotate
-        eps = input$alsRotAmbEps
-        dens = input$alsRotAmbDens
-        ylim= c(eps,1.1*max(Inputs$mat[is.finite(Inputs$mat)]))
-        # ylim= c(eps,1.1*max(Inputs$mat))
-      })
-      plotAlsAmbRot(alsOut,solutions,twoVec,eps,ylim)
-    }
+    if (!is.list(solutions <- doAmbRot())) 
+      cat(paste0("No solutions found \n"))
+    else 
+      plotRotAmb(alsOut,solutions)
+    
   },height = 400)
   
 
