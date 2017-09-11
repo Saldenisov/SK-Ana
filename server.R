@@ -10,7 +10,8 @@ library(shiny)
 library(DT)
 library(fields)
 library(NMF)
- 
+
+
 # Colors ####
 cols = viridis(128)
 col2tr = function(col,alpha)
@@ -963,7 +964,6 @@ shinyServer(function(input, output, session) {
           )
         )[-1]
       )
-    
     mat   = read.table(
       dataFile, 
       header = input$header, 

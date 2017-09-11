@@ -5,20 +5,20 @@ navbarPage(
   "SK-Ana",
   # Config ####
   theme=shinythemes::shinytheme("cerulean"),
-  HTML('<style type="text/css"> 
-          .progress-bar {
-            background-color: #FF0000;
-          }          
-          .shiny-progress .progress {
-            height: 10px;
-          }
-          hr {
-           height: 2px;
-           color: #123455;
-           background-color: #123455;
-           border: none;
-          }
-         </style>'), 
+  # HTML('<style type="text/css"> 
+  #         .progress-bar {
+  #           background-color: #FF0000;
+  #         }          
+  #         .shiny-progress .progress {
+  #           height: 10px;
+  #         }
+  #         hr {
+  #          height: 2px;
+  #          color: #123455;
+  #          background-color: #123455;
+  #          border: none;
+  #         }
+  #        </style>'), 
   
   # Project ####
   navbarMenu(
@@ -42,7 +42,7 @@ navbarPage(
                      "Münich" = 'munichStyle',
                      "ELYSE"  = 'elyseStyle',
                      "Streak" = 'streakStyle',
-                     "Hélène" = 'heleneStyle'
+                     "Fluo"   = 'heleneStyle'
                    ), 
                    selected = 'csvStyle', 
                    multiple = FALSE,
@@ -151,8 +151,8 @@ navbarPage(
     sidebarLayout(
       sidebarPanel(
         tabsetPanel(
-          id="selTabset",
-          type='pills',
+          # id="selTabset",
+          # type='pills',
           tabPanel(
             value="dataSel",
             title=h4("Selection"),
@@ -275,16 +275,17 @@ navbarPage(
                         value = c(0,0),
                         sep=""
             )
-          )
-        ),
+          ),          
+          id="selTabset",
+          type='pills'),
         actionButton("reset",
                      "Reset all")
       ),
       mainPanel(
         wellPanel(
           tabsetPanel(
-            id="svdTabset",
-            type='pills',
+            # id="svdTabset",
+            # type='pills',
             tabPanel(
               value="dataImg",
               title=h4("Data"),
@@ -336,7 +337,9 @@ navbarPage(
               #             br(),
               #             plotOutput("manuCut", height=450)
             )
-          ) 
+          ),
+          id="svdTabset",
+          type='pills'
         )
       )
     )
@@ -363,8 +366,8 @@ navbarPage(
       mainPanel(
         wellPanel(                  
           tabsetPanel(
-            id="svdTabset",
-            type='pills',
+            # id="svdTabset",
+            # type='pills',
             tabPanel(
               value="singVal",
               title=h4("Singular Values"),
@@ -389,7 +392,9 @@ navbarPage(
               br(),
               plotOutput("svdContribs", height=550)
             )
-          )
+          ),
+          id="svdTabset",
+          type='pills'
         )
       )
     )
@@ -493,8 +498,8 @@ navbarPage(
       mainPanel(
         wellPanel(
           tabsetPanel(
-            id="alsTabset",
-            type='pills',
+            # id="alsTabset",
+            # type='pills',
             tabPanel(
               value="alsOptTab",
               title=h4("Alternated Least Squares"),
@@ -511,8 +516,8 @@ navbarPage(
               title=h4("Residuals"),
               br(),
               tabsetPanel(
-                id="alsResid1",
-                type='pills',
+                # id="alsResid1",
+                # type='pills',
                 tabPanel(
                   value="alsResid1_1",
                   title=h5("Residuals"), br(),
@@ -522,7 +527,9 @@ navbarPage(
                   value="alsResid1_2",
                   title=h5("SVD of Residuals"), br(),
                   plotOutput("alsResid2", height=550)
-                )
+                ),
+                id="alsResid1",
+                type='pills'
               )
             ),
             
@@ -601,12 +608,14 @@ navbarPage(
                   # )
                 )
               )
-            )
-          )
+            ),
+            id="alsTabset",
+            type='pills'
           )
         )
       )
-    ),
+    )
+  ),
     
   # Report ####
   tabPanel(
