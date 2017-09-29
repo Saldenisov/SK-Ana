@@ -2,15 +2,18 @@ options(shiny.maxRequestSize=20*1024^2)
 # options(shiny.json.digits=32)
 
 # Libraries ####
-library(outliers)
-library(nnls)
-library(Iso)
-library(viridis)
-library(shiny)
-library(DT)
-library(fields)
-library(NMF)
-
+libs = c('outliers', 'nnls', 'Iso', 'viridis', 
+         'shiny', 'DT', 'fields', 'NMF')
+void = sapply(libs,
+              function(x)
+                if(!require(x,
+                            character.only = T,
+                            warn.conflicts = F,
+                            quietly = T)
+                ) 
+                  install.packages(x)
+)
+rm(void,libs)
 
 # Colors ####
 cols = viridis(128)
