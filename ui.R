@@ -1,5 +1,5 @@
-library(shiny)
-library(DT)
+# library(shiny)
+# library(DT)
 
 navbarPage( 
   "SK-Ana",
