@@ -52,7 +52,8 @@ getC  = function (S, Psi, C, nonnegC) {
   }
   return(C)
 }
-getS  = function (C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth) {
+getS  = function (C, Psi, S, xS, nonnegS, uniS, 
+                  S0, normS, smooth, SumS) {
   C[which(is.nan(C))] = 1
   for (i in 1:ncol(Psi)) {
     if (nonnegS) {
@@ -92,9 +93,13 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth) {
   }
   
   if (normS != 0) {
-    for (i in 1:ncol(S))
-      S[,i] = S[,i] / sum(S[,i]) # Area normalization
-      # S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1)
+    if (SumS) {
+      for (i in 1:ncol(S)) 
+        S[,i] = S[,i] / sum(S[,i]) # Area normalization
+    } else {
+      for (i in 1:ncol(S)) 
+        S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1)
+    }
   }
   
   return(S)
@@ -106,7 +111,7 @@ myals = function (C, Psi, S,
                   xS = 1:nrow(S),
                   nonnegC = TRUE, nonnegS = TRUE, optS1st = TRUE,
                   normS = 1, uniS = FALSE, S0 = NULL, smooth=0,
-                  silent = TRUE,
+                  silent = TRUE, SumS = FALSE,
                   updateProgress = NULL) {
   
   RD <- 10 ^ 20
@@ -128,7 +133,7 @@ myals = function (C, Psi, S,
     iter <- iter + 1
     
     if (iter %% 2 == b)
-      S = getS(C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth)
+      S = getS(C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth, SumS)
     else
       C = getC(S, Psi, C, nonnegC)
     
@@ -1969,19 +1974,28 @@ shinyServer(function(input, output, session) {
 
       if (input$initALS != 'seq') {
         if (input$initALS == 'SVD') {
-          # initialize with SVD + NMF
+          # initialize with abs(SVD)
           if (is.null(s <- doSVD()))
             return(NULL)
           
-          fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
-          for (i in 1:nAls)
-            fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
-          res  = nmf(abs(fMat), rank=nAls, method='lee')
-          C = basis(res)
-          S = t(coef(res))
-          # S = matrix(abs(s$v[,1:nAls]),ncol=nAls)
-          # C = matrix(abs(s$u[,1:nAls]),ncol=nAls)
-        } else {
+          S = matrix(abs(s$v[,1:nAls]),ncol=nAls)
+          C = matrix(abs(s$u[,1:nAls]),ncol=nAls)
+          
+          } else if (input$initALS == 'NMF') {
+            # initialize with SVD + NMF
+            if (is.null(s <- doSVD()))
+              return(NULL)
+            
+            # 1/ filter matrix to avoid negative values (noise)
+            fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
+            for (i in 1:nAls)
+              fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
+            # 2/ NMF
+            res  = nmf(abs(fMat), rank=nAls, method='lee')
+            C = basis(res)
+            S = t(coef(res))
+ 
+          } else {
           # restart from existing solution
           if (!exists('RES'))
             return(NULL)
@@ -2001,6 +2015,7 @@ shinyServer(function(input, output, session) {
           normS = 1,
           S0 =S0,
           optS1st = input$optS1st,
+          SumS = input$SumS,
           smooth = input$smooth,
           updateProgress = updateProgress
         )
@@ -2034,6 +2049,7 @@ shinyServer(function(input, output, session) {
             S0 = S0,
             optS1st = input$optS1st,
             smooth = input$smooth,
+            SumS = input$SumS,
             updateProgress = updateProgress
           )
           S = res$S

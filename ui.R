@@ -438,7 +438,8 @@ navbarPage(
                               label = "Initialization", 
                               choices = 
                                 list(
-                                     "SVD"        = "SVD",
+                                     "|SVD|"        = "SVD",
+                                     "NMF"        = "NMF",
                                      "Sequential" = "seq",
                                      "Restart"    = "rst"), 
                               inline = FALSE)
@@ -466,6 +467,9 @@ navbarPage(
                                value = TRUE),
                  checkboxInput("uniS", 
                                label= "S Unimodal",
+                               value = FALSE),
+                 checkboxInput("SumS", 
+                               label= "SUM(S)=1",
                                value = FALSE)
           ),
           column(4,
