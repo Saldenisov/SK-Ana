@@ -670,9 +670,14 @@ navbarPage(
     title="About",
     sidebarPanel(
       h5("Author      : P. Pernot"),
+      a(href="https://doi.org/10.5281/zenodo.1064370",">>> How to Cite"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 2.0-beta"),
-      h5("Date        : 2017/04/05")
+      h5("Version     : 2.2"),
+      h5("Date        : 2017/11/22"),
+      hr(),
+      a(href="https://github.com/ppernot/SK-Ana","Code@GitHub"),
+      br(),
+      a(href="https://github.com/ppernot/SK-Ana/issues","Bug report")
     )
   )
   
