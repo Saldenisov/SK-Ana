@@ -32,7 +32,13 @@ tcl = -0.5
  
 # Functions ####
 getC  = function (S, Psi, C, nonnegC) {
+  # Adapted from ALS package (KM Muellen)
+  #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
+  #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
+  #   https://CRAN.R-project.org/package=ALS
+
   S[which(is.nan(S))] = 1
+  
   for (i in 1:nrow(Psi)) {
     if (nonnegC)
       cc = try(nnls(S ,Psi[i,]))
@@ -54,6 +60,10 @@ getC  = function (S, Psi, C, nonnegC) {
 }
 getS  = function (C, Psi, S, xS, nonnegS, uniS, 
                   S0, normS, smooth, SumS) {
+  # Adapted from ALS package (KM Muellen)
+  #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
+  #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
+  #   https://CRAN.R-project.org/package=ALS
   
   C[which(is.nan(C))] = 1
   
@@ -122,6 +132,10 @@ myals = function (C, Psi, S,
                   normS = 1, uniS = FALSE, S0 = NULL, smooth=0,
                   silent = TRUE, SumS = FALSE,
                   updateProgress = NULL) {
+  # Adapted from ALS package (KM Muellen)
+  #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
+  #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
+  #   https://CRAN.R-project.org/package=ALS
   
   RD <- 10 ^ 20
   
