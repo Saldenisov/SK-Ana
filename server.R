@@ -54,9 +54,12 @@ getC  = function (S, Psi, C, nonnegC) {
 }
 getS  = function (C, Psi, S, xS, nonnegS, uniS, 
                   S0, normS, smooth, SumS) {
+  
   C[which(is.nan(C))] = 1
+  
   for (i in 1:ncol(Psi)) {
     if (nonnegS) {
+      # Non-negative least quares
       s <- try(nnls(C, Psi[,i]))
     }
     else
@@ -73,11 +76,13 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS,
   }
   
   if (uniS) {
+    # Enforce unimodality
     for (i in 1:ncol(S))
-      S[,i] = ufit(y = S[,i], x = xS)$y
+      S[,i] = Iso::ufit(y = S[,i], x = xS)$y
   }
    
   if(smooth != 0) {
+    # Smooth spectra
     for (i in 1:ncol(S)) {
       y=S[,i]
       x = 1:length(y)
@@ -89,16 +94,20 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS,
   } 
 
   if (!is.null(S0)) {
+    # Enforce equality to external spectrum
     S[,1:ncol(S0)] = S0
   }
   
-  if (normS != 0) {
+  if (normS != 0) { 
+    # Spectra normalization
     if (SumS) {
+      # Area 
       for (i in 1:ncol(S)) 
-        S[,i] = S[,i] / sum(S[,i]) # Area normalization
+        S[,i] = S[,i] / sum(S[,i])                          
     } else {
+      # Amplitude 
       for (i in 1:ncol(S)) 
-        S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1)
+        S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1) 
     }
   }
   
