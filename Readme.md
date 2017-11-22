@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
+
 **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
 `Shiny` interface for the analysis of spectrokinetic matrices:
