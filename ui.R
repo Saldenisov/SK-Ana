@@ -4,21 +4,7 @@
 navbarPage( 
   "SK-Ana",
   # Config ####
-  theme=shinythemes::shinytheme("cerulean"),
-  # HTML('<style type="text/css"> 
-  #         .progress-bar {
-  #           background-color: #FF0000;
-  #         }          
-  #         .shiny-progress .progress {
-  #           height: 10px;
-  #         }
-  #         hr {
-  #          height: 2px;
-  #          color: #123455;
-  #          background-color: #123455;
-  #          border: none;
-  #         }
-  #        </style>'), 
+  theme=shinythemes::shinytheme("spacelab"),
   
   # Project ####
   navbarMenu(
@@ -77,14 +63,6 @@ navbarPage(
                                   "Wavl on a column"= 'wxd'),
                    selected= 'dxw',
                    inline = TRUE),
-                 # radioButtons(
-                 #   inputId = 'procMult', 
-                 #   label   = 'Multiple files processing',
-                 #   choices = list("Average"   = 'avrg',
-                 #                  "Tile Wavl" = 'tileWav',
-                 #                  "Tile Delay"= 'tileDel'),
-                 #   selected= 'avrg',
-                 #   inline = TRUE),
                  numericInput(
                    inputId = 'compFac', 
                    label   = 'Compression factor', 
@@ -99,15 +77,38 @@ navbarPage(
                  )
                ),
                mainPanel(
-                 br(),
-                 uiOutput("loadErrorNew"),
-                 br(),
-                 DT::dataTableOutput('rawData'),
-                 br(),
-                 verbatimTextOutput('sel'),
+                 uiOutput("loadMsg"),
+                 conditionalPanel(
+                   condition = "output.rawData !== null",
+                   DT::dataTableOutput('rawData')
+                 ),
+                 conditionalPanel(
+                   condition = "output.showsel",
+                   verbatimTextOutput('sel')
+                 ),
                  br(),
                  uiOutput("ui"),
-                 verbatimTextOutput("projectInfoNew")
+                 br(),
+                 fluidRow(
+                   column(4,
+                          conditionalPanel(
+                            condition = "output.showPIN",
+                            wellPanel(style = "background-color: #ffffff;", 
+                                      uiOutput("projectInfoNew")
+                            )
+                          )
+                   ),
+                   column(6,
+                          conditionalPanel(
+                            condition = "output.showPIN",
+                            wellPanel(style = "background-color: #ffffff;", 
+                              plotOutput("vignette", height = 250, width=400)
+                              )
+                          )
+                          
+                   )
+                 )
+                 
                )
              )
     ),
@@ -151,8 +152,6 @@ navbarPage(
     sidebarLayout(
       sidebarPanel(
         tabsetPanel(
-          # id="selTabset",
-          # type='pills',
           tabPanel(
             value="dataSel",
             title=h4("Selection"),
@@ -284,8 +283,7 @@ navbarPage(
       mainPanel(
         wellPanel(
           tabsetPanel(
-            # id="svdTabset",
-            # type='pills',
+            type='pills',
             tabPanel(
               value="dataImg",
               title=h4("Data"),
@@ -330,16 +328,9 @@ navbarPage(
               title=h4("Cuts"),
               br(),
               plotOutput("cuts", height=450)
-              #           ),
-              #           tabPanel(
-              #             value="wlCut",
-              #             title=h4("Manual cuts"),
-              #             br(),
-              #             plotOutput("manuCut", height=450)
             )
           ),
-          id="svdTabset",
-          type='pills'
+          id="svdTabset"
         )
       )
     )
@@ -366,8 +357,7 @@ navbarPage(
       mainPanel(
         wellPanel(                  
           tabsetPanel(
-            # id="svdTabset",
-            # type='pills',
+            type="pills",
             tabPanel(
               value="singVal",
               title=h4("Singular Values"),
@@ -393,8 +383,7 @@ navbarPage(
               plotOutput("svdContribs", height=550)
             )
           ),
-          id="svdTabset",
-          type='pills'
+          id="svdTabset"
         )
       )
     )
@@ -405,11 +394,10 @@ navbarPage(
     "ALS",
     sidebarLayout(
       sidebarPanel(
-        h4("ALS parameters"),
         fluidRow(
           column(4,
                  numericInput("nALS", 
-                              label = "Dimension", 
+                              label = "Nb. spectra", 
                               value =  2, 
                               min   =  1, 
                               max   = 10, 
@@ -419,9 +407,9 @@ navbarPage(
           column(4,
                  numericInput("maxiter", 
                               label = "MaxIter", 
-                              value =   100, 
+                              value =  1000, 
                               min   =    20, 
-                              max   =  1000, 
+                              max   =  9999, 
                               step  =    20,
                               width = '100px')
           ),
@@ -431,79 +419,91 @@ navbarPage(
                             "#runALS { width:100%; margin-top: 25px;}")
           )
         ),
-        fluidRow(
-          h4("Options"),
-          column(4,
-                 radioButtons("initALS", 
-                              label = "Initialization", 
-                              choices = 
-                                list(
-                                     "|SVD|"        = "SVD",
-                                     "NMF"        = "NMF",
-                                     "Sequential" = "seq",
-                                     "Restart"    = "rst"), 
-                              inline = FALSE)
+        br(),
+        tabsetPanel(
+          type='pills',
+          tabPanel(
+            value='ALSparams',
+            title=h4("Options"),
+            br(),
+            fluidRow(
+              column(4,
+                     radioButtons("initALS", 
+                                  label = "Initialization", 
+                                  choices = 
+                                    list(
+                                      "|SVD|"        = "SVD",
+                                      "NMF"        = "NMF",
+                                      "Sequential" = "seq",
+                                      "Restart"    = "rst"), 
+                                  inline = FALSE)
+              ),
+              column(8,
+                     h4(""),
+                     checkboxInput("useFiltered", 
+                                   label = "Use SVD-filtered matrix",
+                                   value = FALSE),
+                     checkboxInput("optS1st", 
+                                   label= "Opt. S first",
+                                   value = FALSE)
+              )
+            )
           ),
-          column(8,
-                 h4(""),
-                 checkboxInput("useFiltered", 
-                               label = "Use SVD-filtered matrix",
-                               value = FALSE),
-                 # checkboxInput("forcemaxiter", 
-                 #               label = "Force MaxIter",
-                 #               value = FALSE),
-                 # tags$style(type='text/css', 
-                 #            "#rforcemaxiter { width:100%; margin-top: 25px;}"),
-                 checkboxInput("optS1st", 
-                               label= "Opt. S first",
-                               value = FALSE)
-          )
-        ),
-        fluidRow(
-          h4("Constraints"),
-          column(4,
-                 checkboxInput("nonnegS", 
-                               label= "S > 0",
-                               value = TRUE),
-                 checkboxInput("uniS", 
-                               label= "S Unimodal",
-                               value = FALSE),
-                 checkboxInput("SumS", 
-                               label= "SUM(S)=1",
-                               value = FALSE)
+          tabPanel(
+            value='ALSSconstraints',
+            title=h4("S const."),
+            br(),
+            column(4,
+                   checkboxInput("nonnegS", 
+                                 label= "S > 0",
+                                 value = TRUE),
+                   checkboxInput("uniS", 
+                                 label= "S Unimodal",
+                                 value = FALSE),
+                   checkboxInput("SumS", 
+                                 label= "SUM(S)=1",
+                                 value = FALSE)
+            ),
+            column(4,
+                   numericInput("smooth", 
+                                label = "Smooth", 
+                                value =    0, 
+                                min   =    0, 
+                                max   =    1, 
+                                step  =  0.1,
+                                width = '100px')
+            ),
+            fluidRow(
+              column(12,
+                     checkboxInput("shapeS", 
+                                   label= "External spectrum shape(s)",
+                                   value = FALSE),
+                     fileInput(
+                       inputId = 'S0File',
+                       label   = 'Select file(s)',
+                       multiple= TRUE,
+                       accept  = c('.dat','.txt','.csv')
+                     )
+              )
+            )
           ),
-          column(4,
-                 checkboxInput("nonnegC", 
-                               label= "C > 0",
-                               value = TRUE),
-                 numericInput("smooth", 
-                              label = "Smooth", 
-                              value =    0, 
-                              min   =    0, 
-                              max   =    1, 
-                              step  =  0.1,
-                              width = '100px')
-          )
-        ),
-        fluidRow(
-          column(12,
-                 checkboxInput("shapeS", 
-                               label= "External spectrum shape(s)",
-                               value = FALSE),
-                 fileInput(
-                   inputId = 'S0File',
-                   label   = 'Select file(s)',
-                   multiple= TRUE,
-                   accept  = c('.dat','.txt','.csv')
-                 )
+          tabPanel(
+            value='ALSCconstraints',
+            title=h4("C const."),
+            br(),
+            checkboxInput("nonnegC", 
+                          label= "C > 0",
+                          value = TRUE),
+            wellPanel(
+              h5("Presence Matrix"),
+              uiOutput("maskSpExp_ui")
+            )
           )
         )
       ),
       mainPanel(
         wellPanel(
           tabsetPanel(
-            # id="alsTabset",
-            # type='pills',
             tabPanel(
               value="alsOptTab",
               title=h4("Alternated Least Squares"),
@@ -520,8 +520,6 @@ navbarPage(
               title=h4("Residuals"),
               br(),
               tabsetPanel(
-                # id="alsResid1",
-                # type='pills',
                 tabPanel(
                   value="alsResid1_1",
                   title=h5("Residuals"), br(),
@@ -536,7 +534,6 @@ navbarPage(
                 type='pills'
               )
             ),
-            
             tabPanel(
               value="alsVectorsTab",
               title=h4("Spectra & Kinetics"),
@@ -566,15 +563,6 @@ navbarPage(
               wellPanel( 
                 h4("Explore Rotational/Scaling Ambiguity"),
                 fluidRow(
-                  # column(3,
-                  #        sliderInput("pairToRotate", 
-                  #                    label = "Pick 2 vectors",
-                  #                    min=1, 
-                  #                    max=6,
-                  #                    value = c(1,2),
-                  #                    step  = 1,
-                  #                    sep="")
-                  # ),
                   column(3,
                          checkboxGroupInput("vecsToRotate", 
                                      label = "Pick 2 or 3 vectors",
@@ -604,12 +592,7 @@ navbarPage(
                          actionButton("runALSAmb",strong("Start")),
                          tags$style(type='text/css', 
                                     "#runALSAmb { width:100%; margin-top: 25px;}")
-                  ) #,
-                  # column(2,
-                  #        h5('Save current'),
-                  #        actionButton("alsSpKinAmbSave",label="Save",
-                  #                     icon = icon("save"))
-                  # )
+                  )
                 )
               )
             ),
@@ -672,8 +655,8 @@ navbarPage(
       h5("Author      : P. Pernot"),
       a(href="https://doi.org/10.5281/zenodo.1064370",">>> How to Cite"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 2.2"),
-      h5("Date        : 2017/11/22"),
+      h5("Version     : 2.3"),
+      h5("Date        : 2017/11/30"),
       hr(),
       a(href="https://github.com/ppernot/SK-Ana","Code@GitHub"),
       br(),
