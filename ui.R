@@ -190,12 +190,16 @@ navbarPage(
             value="dataMasksS",
             title=h4("Wavl Masks"),
             br(),
+            numericInput('nMasksWl','Nb of masks', width="100px",
+                         value = 4, min = 4, max=15, step=1),
             uiOutput("masksS")
           ),
           tabPanel(
             value="dataMasksC",
             title=h4("Delay Masks"),
             br(),
+            numericInput('nMasksDl','Nb of masks', width="100px",
+                         value = 4, min = 4, max=15, step=1),
             uiOutput("masksC")
           ),
           id="selTabset",
@@ -203,7 +207,7 @@ navbarPage(
         ),
         hr(),
         actionButton("reset",
-                     "Reset all")
+                     "Reset All Selections")
       ),
       mainPanel(
         wellPanel(

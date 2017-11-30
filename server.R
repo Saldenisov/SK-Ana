@@ -822,9 +822,6 @@ shinyServer(function(input, output, session) {
   if(!dir.exists("outputDir"))
      dir.create("outputDir",showWarnings = FALSE)
   
-  nMasksDl = 9 # Max number of delay masks
-  nMasksWl = 5 # Max number of wavl masks
-  
   projConfig = NULL
   S0_in      = NULL
   RawData    = NULL
@@ -1746,7 +1743,7 @@ shinyServer(function(input, output, session) {
     # Aggregate and apply masks
     delayMask = rep(0,length(delay))
     wavlMask  = rep(0,length(wavl))
-    for (mask in 1:nMasksDl) {
+    for (mask in 1:input$nMasksDl) {
       maskName = paste0("keepDlMask",mask)
       xlim = input[[maskName]] * Inputs$dlScaleFacOrig
       if (diff(xlim) != 0) {
@@ -1754,7 +1751,7 @@ shinyServer(function(input, output, session) {
         if(sum(sel)!=0) delayMask[sel]  = NA
       }
     }
-    for (mask in 1:nMasksWl) {
+    for (mask in 1:input$nMasksWl) {
       maskName = paste0("keepWlMask",mask)
       ylim = input[[maskName]]
       if (diff(ylim) != 0) {
@@ -1774,7 +1771,7 @@ shinyServer(function(input, output, session) {
   
   output$masksS <- renderUI({
     lout = list()
-    for (mask in 1:nMasksWl) {
+    for (mask in 1:input$nMasksWl) {
       maskName = paste0("keepWlMask",mask)
       lout[[mask]] = sliderInput(maskName, 
                                  NULL,
@@ -1786,9 +1783,10 @@ shinyServer(function(input, output, session) {
     return(lout)
   })
   outputOptions(output, "masksS", suspendWhenHidden = FALSE)
+  
   output$masksC <- renderUI({
     lout = list()
-    for (mask in 1:nMasksDl) {
+    for (mask in 1:input$nMasksDl) {
       maskName = paste0("keepDlMask",mask)
       lout[[mask]] = sliderInput(maskName, 
                                  NULL,
