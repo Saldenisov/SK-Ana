@@ -40,7 +40,8 @@ string2Expr = function(string) {
 } 
 string2Num = function(x) 
   as.numeric(eval(parse(text=eval(string2Expr(x)))))
-getC  = function (S, Psi, C, nonnegC, nullC = NA) {
+getC  = function (S, Psi, C, nonnegC=TRUE, 
+                  nullC = NA, closeC=FALSE) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
@@ -68,6 +69,9 @@ getC  = function (S, Psi, C, nonnegC, nullC = NA) {
   
   if(!anyNA(nullC))
     C = C * nullC
+  
+  if(closeC)
+    C = C / rowSums(C, na.rm = TRUE)
   
   return(C)
 }
@@ -121,7 +125,7 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS,
     S[,1:ncol(S0)] = S0
   }
   
-  if (normS != 0) { 
+  if (normS) { 
     # Spectra normalization
     if (SumS) {
       # Area 
@@ -142,9 +146,9 @@ myals = function (C, Psi, S,
                   xC = 1:nrow(C), 
                   xS = 1:nrow(S),
                   nonnegC = TRUE, nonnegS = TRUE, optS1st = TRUE,
-                  normS = 1, uniS = FALSE, S0 = NULL, smooth=0,
+                  normS = TRUE, uniS = FALSE, S0 = NULL, smooth=0,
                   silent = TRUE, SumS = FALSE,
-                  nullC = NA,
+                  nullC = NA, closeC=FALSE,
                   updateProgress = NULL) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
@@ -171,7 +175,7 @@ myals = function (C, Psi, S,
     if (iter %% 2 == b)
       S = getS(C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth, SumS)
     else
-      C = getC(S, Psi, C, nonnegC, nullC)
+      C = getC(S, Psi, C, nonnegC, nullC, closeC)
     
     for (i in 1:nrow(Psi))
       resid[i,] = Psi[i,] - C[i,] %*% t(S)
@@ -818,8 +822,8 @@ shinyServer(function(input, output, session) {
   if(!dir.exists("outputDir"))
      dir.create("outputDir",showWarnings = FALSE)
   
-  nMasksDl = 8 # Max number of delay masks
-  nMasksWl = 4 # Max number of wavl masks
+  nMasksDl = 9 # Max number of delay masks
+  nMasksWl = 5 # Max number of wavl masks
   
   projConfig = NULL
   S0_in      = NULL
@@ -1110,7 +1114,6 @@ shinyServer(function(input, output, session) {
     }
     Inputs$gotData <<- TRUE
   }
-  
   getMeanMatrix <- function(fileNames) {
     
     # First pass: build full delay and wavl tables 
@@ -1310,7 +1313,7 @@ shinyServer(function(input, output, session) {
       )
     }
   }
-# Finish matrix ####
+## Finish matrix ####
   finishMatrix  <- reactive({
     if(!Inputs$process)
       return(NULL)
@@ -1769,6 +1772,35 @@ shinyServer(function(input, output, session) {
     
   })
   
+  output$masksS <- renderUI({
+    lout = list()
+    for (mask in 1:nMasksWl) {
+      maskName = paste0("keepWlMask",mask)
+      lout[[mask]] = sliderInput(maskName, 
+                                 NULL,
+                                 min = 0, 
+                                 max = 1, 
+                                 value = c(0,0),
+                                 sep="")
+    }
+    return(lout)
+  })
+  outputOptions(output, "masksS", suspendWhenHidden = FALSE)
+  output$masksC <- renderUI({
+    lout = list()
+    for (mask in 1:nMasksDl) {
+      maskName = paste0("keepDlMask",mask)
+      lout[[mask]] = sliderInput(maskName, 
+                                 NULL,
+                                 min = 0, 
+                                 max = 1, 
+                                 value = c(0,0),
+                                 sep="")
+    }
+    return(lout)
+  })
+  outputOptions(output, "masksC", suspendWhenHidden = FALSE)
+  
   output$image1 <- renderPlot({
     # print('Image')
     if(is.null(selectArea())) 
@@ -1784,95 +1816,98 @@ shinyServer(function(input, output, session) {
        !is.finite(diff(range(mat,na.rm=TRUE)))   ) {
       plot(1:10,1:10,type='n')
       text(x=5,y=5,labels='Data not ready...',col=2)
-    }
-    
-    split.screen(c(1, 2))
-    split.screen(c(2, 1),screen=2)
-    screen(1)
-    par(cex = cex, mar = mar)
-    image(
-      delay,wavl,mat,
-      xlab = 'Delay',ylab = 'Wavelength',
-      col = cols, zlim = input$keepDoRange
-    )
-    
-    abline(
-      v = input$keepDlCut * Inputs$dlScaleFacOrig,
-      lwd = 2,col = 'orange',lty = 2
-    )
-    abline(
-      h = input$keepWlCut,
-      lwd = 2,col = 'orange',lty = 2
-    )
-    
-    if(input$keepCbl !=0) {
+      
+    } else {
+      split.screen(c(1, 2))
+      split.screen(c(2, 1),screen=2)
+      screen(1)
+      par(cex = cex, mar = mar)
+      image(
+        delay,wavl,mat,
+        xlab = 'Delay',ylab = 'Wavelength',
+        col = cols, zlim = input$keepDoRange
+      )
+      
       abline(
-        v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
+        v = input$keepDlCut * Inputs$dlScaleFacOrig,
+        lwd = 2,col = 'orange',lty = 2
       )
-      rect(Inputs$delayOrig[1],
-           Inputs$wavlOrig[1],
-           Inputs$delayOrig[input$keepCbl],
-           Inputs$wavlOrig[length(Inputs$wavlOrig)],
-           border=NA,
-           col=pink_tr #'gray70'
+      abline(
+        h = input$keepWlCut,
+        lwd = 2,col = 'orange',lty = 2
       )
-    }
- 
-    screen(3)
-    par(cex = cex, mar = mar)
-    # Locally Averaged Spectrum
-    dCut = input$keepDlCut * Inputs$dlScaleFacOrig
-    iCut = indxCuts(dCut,delay)
-    indx = iCut$indx
-    delta= iCut$delta
-    if(length(indx)==1) {
-      cutMean = mat[indx,]
-    } else {
-      cutMean = colMeans(mat[indx,])
-    }
-    if(all(is.na(cutMean))) cutMean=cutMean*0
-    matplot(
-      wavl,cutMean,type = 'l',col = 'orange', lwd=2,
-      xlab = 'Wavelength', ylab = 'O.D.', 
-      ylim = input$keepDoRange,
-      main = paste0('Mean O.D. at delay: ',signif(mean(delay[indx]),3),
-                    ifelse(delta==0,
-                           '',
-                           paste0(' +/- ',signif(delta / 2,2))
-                           )
-                   )
-            )
-    abline(h = 0,lty = 2)
-    grid();box()
-
-    screen(4)
-    par(cex = cex, mar = mar)
-    # Locally Averaged Kinetics
-    dCut = input$keepWlCut
-    iCut = indxCuts(dCut,wavl)
-    indx = iCut$indx
-    delta= iCut$delta
-    if(length(indx)==1) {
-      cutMean = mat[,indx]
-    } else {
-      cutMean = rowMeans(mat[,indx])
-    }
-    if(all(is.na(cutMean))) cutMean=cutMean*0
-    matplot(
-      delay,cutMean,type = 'l', col = 'orange', lwd=2,
-      xlab = 'Delay', ylab = 'O.D.', 
-      ylim = input$keepDoRange,
-      main = paste0('Mean O.D. at wavl: ',signif(mean(wavl[indx]),3),
-                    ifelse(delta==0,
-                           '',
-                           paste0(' +/- ',signif(delta / 2,2))
-                    )
+      
+      if(input$keepCbl !=0) {
+        abline(
+          v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
+        )
+        rect(Inputs$delayOrig[1],
+             Inputs$wavlOrig[1],
+             Inputs$delayOrig[input$keepCbl],
+             Inputs$wavlOrig[length(Inputs$wavlOrig)],
+             border=NA,
+             col=pink_tr #'gray70'
+        )
+      }
+      
+      screen(3)
+      par(cex = cex, mar = mar)
+      # Locally Averaged Spectrum
+      dCut = input$keepDlCut * Inputs$dlScaleFacOrig
+      iCut = indxCuts(dCut,delay)
+      indx = iCut$indx
+      delta= iCut$delta
+      if(length(indx)==1) {
+        cutMean = mat[indx,]
+      } else {
+        cutMean = colMeans(mat[indx,])
+      }
+      if(all(is.na(cutMean))) cutMean=cutMean*0
+      matplot(
+        wavl,cutMean,type = 'l',col = 'orange', lwd=2,
+        xlab = 'Wavelength', ylab = 'O.D.', 
+        ylim = input$keepDoRange,
+        main = paste0('Mean O.D. at delay: ',signif(mean(delay[indx]),3),
+                      ifelse(delta==0,
+                             '',
+                             paste0(' +/- ',signif(delta / 2,2))
+                      )
+        )
       )
-    )
-    abline(h = 0,lty = 2)
-    grid();box()
+      abline(h = 0,lty = 2)
+      grid();box()
+      
+      screen(4)
+      par(cex = cex, mar = mar)
+      # Locally Averaged Kinetics
+      dCut = input$keepWlCut
+      iCut = indxCuts(dCut,wavl)
+      indx = iCut$indx
+      delta= iCut$delta
+      if(length(indx)==1) {
+        cutMean = mat[,indx]
+      } else {
+        cutMean = rowMeans(mat[,indx])
+      }
+      if(all(is.na(cutMean))) cutMean=cutMean*0
+      matplot(
+        delay,cutMean,type = 'l', col = 'orange', lwd=2,
+        xlab = 'Delay', ylab = 'O.D.', 
+        ylim = input$keepDoRange,
+        main = paste0('Mean O.D. at wavl: ',signif(mean(wavl[indx]),3),
+                      ifelse(delta==0,
+                             '',
+                             paste0(' +/- ',signif(delta / 2,2))
+                      )
+        )
+      )
+      abline(h = 0,lty = 2)
+      grid();box()
+      
+      close.screen(all.screens = TRUE)
+    }
     
-    close.screen(all.screens = TRUE)
+
     
   })
   
@@ -2158,13 +2193,14 @@ shinyServer(function(input, output, session) {
           nonnegS = input$nonnegS,
           nonnegC = input$nonnegC,
           thresh = 1e-4,
-          normS = 1,
+          normS = input$normS,
           S0 =S0,
           optS1st = input$optS1st,
           SumS = input$SumS,
           smooth = input$smooth,
           updateProgress = updateProgress,
-          nullC = nullC
+          nullC = nullC,
+          closeC = input$closeC
         )
         RES <<- res
         msg = list(msg,
@@ -2192,13 +2228,14 @@ shinyServer(function(input, output, session) {
             nonnegS = input$nonnegS,
             nonnegC = input$nonnegC,
             thresh = 1e-4,
-            normS = 1,
+            normS = input$normS,
             S0 = S0,
             optS1st = input$optS1st,
             smooth = input$smooth,
             SumS = input$SumS,
             updateProgress = updateProgress,
-            nullC = nullC
+            nullC = nullC,
+            closeC = input$closeC
           )
           S = res$S
           C = res$C

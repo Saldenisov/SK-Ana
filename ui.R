@@ -155,128 +155,53 @@ navbarPage(
           tabPanel(
             value="dataSel",
             title=h4("Selection"),
-            column(12,
-                   sliderInput("keepCbl", 
-                               "Nb pixels for Baseline Correction",
-                               min = 0, 
-                               max = 1, 
-                               value = 0,
-                               sep=""
-                   ),
-                   sliderInput("keepDoRange", 
-                               "DO Range",
-                               min = 0, 
-                               max = 1, 
-                               value = c(0,1),
-                               sep="",
-                               width="400px"
-                   ),
-                   sliderInput("keepWlRange", 
-                               "Wavelength Range",
-                               min = 0, 
-                               max = 1, 
-                               value = c(0,1),
-                               sep=""
-                   ),
-                   sliderInput("keepDlRange", 
-                               "Delay Range",
-                               min = 0, 
-                               max = 1, 
-                               value = c(0,1),
-                               sep=""
-                   )
+            br(),
+            sliderInput("keepCbl", 
+                        "Nb pixels for Baseline Correction",
+                        min = 0, 
+                        max = 1, 
+                        value = 0,
+                        sep=""
+            ),
+            sliderInput("keepDoRange", 
+                        "DO Range",
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,1),
+                        sep="",
+                        width="400px"
+            ),
+            sliderInput("keepWlRange", 
+                        "Wavelength Range",
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,1),
+                        sep=""
+            ),
+            sliderInput("keepDlRange", 
+                        "Delay Range",
+                        min = 0, 
+                        max = 1, 
+                        value = c(0,1),
+                        sep=""
             )
           ),
           tabPanel(
-            value="dataMasks",
-            title=h4("Masks"),
-            sliderInput("keepWlMask1", 
-                        "Wavelength Masks",
-                        min = 0, 
-                        max = 1, 
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepWlMask2", 
-                        NULL,
-                        min = 0, 
-                        max = 1, 
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepWlMask3", 
-                        NULL,
-                        min = 0, 
-                        max = 1, 
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepWlMask4", 
-                        NULL,
-                        min = 0, 
-                        max = 1, 
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask1", 
-                        "Delay Mask",
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask2", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask3", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask4", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask5", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask6", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask7", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            ),
-            sliderInput("keepDlMask8", 
-                        NULL,
-                        min = 0, 
-                        max = 1,
-                        value = c(0,0),
-                        sep=""
-            )
-          ),          
+            value="dataMasksS",
+            title=h4("Wavl Masks"),
+            br(),
+            uiOutput("masksS")
+          ),
+          tabPanel(
+            value="dataMasksC",
+            title=h4("Delay Masks"),
+            br(),
+            uiOutput("masksC")
+          ),
           id="selTabset",
-          type='pills'),
+          type='pills'
+        ),
+        hr(),
         actionButton("reset",
                      "Reset all")
       ),
@@ -460,9 +385,9 @@ navbarPage(
                    checkboxInput("uniS", 
                                  label= "S Unimodal",
                                  value = FALSE),
-                   checkboxInput("SumS", 
-                                 label= "SUM(S)=1",
-                                 value = FALSE)
+                   checkboxInput("normS", 
+                                 label= "Normalize",
+                                 value = TRUE)
             ),
             column(4,
                    numericInput("smooth", 
@@ -471,7 +396,10 @@ navbarPage(
                                 min   =    0, 
                                 max   =    1, 
                                 step  =  0.1,
-                                width = '100px')
+                                width = '100px'),
+                   checkboxInput("SumS", 
+                                 label= "SUM(S)=1",
+                                 value = FALSE)
             ),
             fluidRow(
               column(12,
@@ -494,6 +422,9 @@ navbarPage(
             checkboxInput("nonnegC", 
                           label= "C > 0",
                           value = TRUE),
+            checkboxInput("closeC", 
+                          label= "Closure",
+                          value = FALSE),
             wellPanel(
               h5("Presence Matrix"),
               uiOutput("maskSpExp_ui")
