@@ -145,15 +145,10 @@ if('ALS' %in% input$inReport){
 ```{r amb, echo=FALSE}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)) {
-    if (!is.list(solutions <- doAmbRot())) {
-      cat(paste0("No solutions found over ",ntry," trials\n"))
-    } else {
-      twoVec = input$pairToRotate
-      eps    = input$alsRotAmbEps
-      dens   = input$alsRotAmbDens
-      ylim   = c(eps,1.1*max(Inputs$mat))
-      plotAlsAmbRot(alsOut,solutions,twoVec,eps,ylim)
-    }
+    if (!is.list(solutions <- doAmbRot())) 
+      cat(paste0("No solutions found \n"))
+    else 
+      plotRotAmb(alsOut,solutions)
   }
 }
 ```

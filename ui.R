@@ -190,17 +190,32 @@ navbarPage(
             value="dataMasksS",
             title=h4("Wavl Masks"),
             br(),
-            numericInput('nMasksWl','Nb of masks', width="100px",
-                         value = 4, min = 4, max=15, step=1),
+            fluidRow(
+              column(4,
+                     numericInput('nMasksWl','Nb of masks', width="100px",
+                                  value = 0, min = 0, max=15, step=1)),
+              column(4,
+                     actionButton('autoWlMask',
+                                  strong("Auto"),
+                                  icon = icon("gear") ))
+            ),
             uiOutput("masksS")
           ),
           tabPanel(
             value="dataMasksC",
             title=h4("Delay Masks"),
             br(),
-            numericInput('nMasksDl','Nb of masks', width="100px",
-                         value = 4, min = 4, max=15, step=1),
-            uiOutput("masksC")
+            fluidRow(
+              column(4,
+                     numericInput('nMasksDl','Nb of masks', width="100px",
+                                  value = 0, min = 0, max=15, step=1)),
+              column(4,
+                     actionButton('autoDlMask',
+                                  strong("Auto"),
+                                  icon = icon("gear")))
+            ),
+            # uiOutput("masksC")
+            tags$div(id = "masksC")
           ),
           id="selTabset",
           type='pills'
@@ -391,7 +406,9 @@ navbarPage(
                                  value = FALSE),
                    checkboxInput("normS", 
                                  label= "Normalize",
-                                 value = TRUE)
+                                 value = TRUE),
+                   shinyBS::bsTooltip("normS",
+                                      title = "Enforces the normalization of S ( default: max(S)=1 )")
             ),
             column(4,
                    numericInput("smooth", 
@@ -403,7 +420,9 @@ navbarPage(
                                 width = '100px'),
                    checkboxInput("SumS", 
                                  label= "SUM(S)=1",
-                                 value = FALSE)
+                                 value = FALSE),
+                   shinyBS::bsTooltip("SumS", 
+                                      title = "If Normalize is set, set norm such as sum(S)=1 ")
             ),
             fluidRow(
               column(12,
@@ -429,6 +448,8 @@ navbarPage(
             checkboxInput("closeC", 
                           label= "Closure",
                           value = FALSE),
+            shinyBS::bsTooltip("closeC", 
+                               title = "Ensures that sum(C)=1 at each delay"),
             wellPanel(
               h5("Presence Matrix"),
               uiOutput("maskSpExp_ui")
@@ -478,7 +499,7 @@ navbarPage(
                 fluidRow(
                   column(12,
                          h5('Save ALS spectra and kinetics'),
-                         actionButton("alsSpKinSave","Save",
+                         actionButton("alsSpKinSave","Save (Ctrl+Click)",
                                       icon     = icon('save'))
                   )
                 )

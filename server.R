@@ -2,18 +2,13 @@ options(shiny.maxRequestSize=20*1024^2)
 # options(shiny.json.digits=32)
 
 # Libraries ####
-libs = c('outliers', 'nnls', 'Iso', 'viridis', 
-         'shiny', 'DT', 'fields', 'NMF')
-void = sapply(libs,
-              function(x)
-                if(!require(x,
-                            character.only = T,
-                            warn.conflicts = F,
-                            quietly = T)
-                ) 
-                  install.packages(x)
-)
-rm(void,libs)
+libs = c('outliers', 'nnls', 'Iso', 'viridis', 'changepoint',
+         'shiny', 'shinyBS','DT', 'fields', 'NMF')
+for (lib in libs ) {
+  if(!require(lib,character.only = TRUE,quietly=TRUE))
+    install.packages(lib,dependencies=TRUE)
+  library(lib,character.only = TRUE,quietly=TRUE)
+}
 
 # Colors ####
 cols = viridis(128)
@@ -40,6 +35,7 @@ string2Expr = function(string) {
 } 
 string2Num = function(x) 
   as.numeric(eval(parse(text=eval(string2Expr(x)))))
+
 getC  = function (S, Psi, C, nonnegC=TRUE, 
                   nullC = NA, closeC=FALSE) {
   # Adapted from ALS package (KM Muellen)
@@ -67,7 +63,8 @@ getC  = function (S, Psi, C, nonnegC=TRUE,
     C[i,] <- cc1
   }
   
-  if(!anyNA(nullC))
+  if(!anyNA(nullC) & 
+     ncol(nullC) == ncol(C) )
     C = C * nullC
   
   if(closeC)
@@ -815,6 +812,43 @@ plotRotAmb = function(alsOut, solutions){
   # grid()
 }
 
+autoDlMask <- function (mat,nmat) {
+# Locate empty delay areas
+  
+  # Integrate on wavl
+  trace = rowSums(mat)
+
+  # Special treatment for nmat=1 
+  # (SegNeigh fails with Q=2 !!!)
+  ans = cpt.var(diff(trace), penalty='BIC', 
+                method = 'SegNeigh', 
+                Q = 2 + max(1, 2*(nmat-1))
+                )
+  if(nmat==1) 
+    chp = cpts(ans)[2]
+  else
+    chp = cpts(ans)
+  
+  return(chp)  
+}
+
+autoWlMask <- function (mat,nmat) {
+  # Locate useless wavl areas
+  
+  # Integrate on wavl
+  trace = colSums(mat)
+  
+  # Special treatment for nmat=1 
+  # (SegNeigh fails with Q=2 !!!)
+  ans = cpt.var(diff(trace), penalty='BIC', 
+                method = 'SegNeigh', 
+                Q = 2 + max(1, 2*(nmat-1))
+  )
+  chp = sort(cpts(ans))
+
+  return(chp)  
+}
+
 # Server ####
 shinyServer(function(input, output, session) {
    
@@ -825,6 +859,8 @@ shinyServer(function(input, output, session) {
   projConfig = NULL
   S0_in      = NULL
   RawData    = NULL
+  masksDl    = c()
+  masksWl    = c()
   
   Inputs = reactiveValues(
     gotData        = FALSE,
@@ -874,20 +910,20 @@ shinyServer(function(input, output, session) {
     return(list(C=C,S=S))
   }
 
+  updateSlider <- function (inputId, range, value, nsteps) {
+    # Wrapper for generic function
+    updateSliderInput(
+      session,
+      inputId = inputId,
+      min     = range[1],
+      max     = range[2],
+      value   = value,
+      step    = signif(diff(range)/nsteps, 3)
+    )
+  }
+  
   initSliders <- function(config=NULL) {
     
-    updateSlider <- function (inputId, range, value, nsteps) {
-      # Wrapper for generic function
-      updateSliderInput(
-        session,
-        inputId = inputId,
-        min     = range[1],
-        max     = range[2],
-        value   = value,
-        step    = signif(diff(range)/nsteps, 3)
-      )
-    }
-
     wavl  = Inputs$wavlOrig
     delay = Inputs$delayOrig/Inputs$dlScaleFacOrig
     mat   = Inputs$matOrig
@@ -925,23 +961,21 @@ shinyServer(function(input, output, session) {
       cblSel     = config$keepCbl
     } else {
       # Initialize
-      doRangeSel = as.vector(quantile(mat,probs = c(0.01,0.99),
+      doRangeSel = as.vector(quantile(mat,probs = c(0.001,0.999),
                                       na.rm = TRUE))
       wlRangeSel = wlRange
-      wlMaskSel1  = c(wlMask[1],wlMask[1])
-      wlMaskSel2  = c(wlMask[1],wlMask[1])
-      wlMaskSel3  = c(wlMask[1],wlMask[1])
-      wlMaskSel4  = c(wlMask[1],wlMask[1])
+      wlMaskSel = list()
+      if(input$nMasksWl!=0)
+        for (mask in 1:isolate(input$nMasksWl)) {
+          wlMaskSel[[mask]]  = c(wlMask[1],wlMask[1])
+        }
       wlCutSel   = signif(mean(wlCut),3)
       dlRangeSel = dlRange
-      dlMaskSel1  = c(dlMask[1],dlMask[1])
-      dlMaskSel2  = c(dlMask[1],dlMask[1])
-      dlMaskSel3  = c(dlMask[1],dlMask[1])
-      dlMaskSel4  = c(dlMask[1],dlMask[1])
-      dlMaskSel5  = c(dlMask[1],dlMask[1])
-      dlMaskSel6  = c(dlMask[1],dlMask[1])
-      dlMaskSel7  = c(dlMask[1],dlMask[1])
-      dlMaskSel8  = c(dlMask[1],dlMask[1])
+      dlMaskSel = list()
+      if(input$nMasksDl!=0)
+        for (mask in 1:isolate(input$nMasksDl)) {
+          dlMaskSel[[mask]]  = c(dlMask[1],dlMask[1])
+        }
       dlCutSel   = signif(mean(dlCut),3)
       cblSel     = cblRange[1]
     }
@@ -952,25 +986,27 @@ shinyServer(function(input, output, session) {
     # Wavelength sliders
     nsteps = min(length(wavl),200)
     updateSlider("keepWlRange", wlRange, wlRangeSel, nsteps)
-    updateSlider("keepWlMask1", wlMask , wlMaskSel1, nsteps)
-    updateSlider("keepWlMask2", wlMask , wlMaskSel2, nsteps)
-    updateSlider("keepWlMask3", wlMask , wlMaskSel3, nsteps)
-    updateSlider("keepWlMask4", wlMask , wlMaskSel4, nsteps)
     updateSlider("keepWlCut"  , wlCut  , wlCutSel  , nsteps)
-    
+    # if(input$nMasksWl!=0)
+    #   for (mask in 1:isolate(input$nMasksWl)) {
+    #     maskName = paste0("keepWlMask",mask)
+    #     updateSlider(maskName, wlMask , wlMaskSel[[mask]], nsteps)
+    #   }
     # Delay sliders
     nsteps = min(length(delay),500)
     updateSlider("keepDlRange", dlRange, dlRangeSel, nsteps)
-    updateSlider("keepDlMask1", dlMask , dlMaskSel1, nsteps)
-    updateSlider("keepDlMask2", dlMask , dlMaskSel2, nsteps)
-    updateSlider("keepDlMask3", dlMask , dlMaskSel3, nsteps)
-    updateSlider("keepDlMask4", dlMask , dlMaskSel4, nsteps)
-    updateSlider("keepDlMask5", dlMask , dlMaskSel5, nsteps)
-    updateSlider("keepDlMask6", dlMask , dlMaskSel6, nsteps)
-    updateSlider("keepDlMask7", dlMask , dlMaskSel7, nsteps)
-    updateSlider("keepDlMask8", dlMask , dlMaskSel8, nsteps)
     updateSlider("keepDlCut"  , dlCut  , dlCutSel  , nsteps)
-
+    # if(input$nMasksDl!=0)
+    #   for (mask in 1:isolate(input$nMasksDl)) {
+    #     maskName = paste0("keepDlMask",mask)
+    #     updateSlider(maskName, dlMask , dlMaskSel[[mask]], nsteps)
+    #   }
+    updateNumericInput(session = session,
+                       inputId = "nMasksDl",
+                       value   = 0)
+    updateNumericInput(session = session,
+                       inputId = "nMasksWl",
+                       value   = 0)
     
     # Baseline correction slider
     nsteps = round(diff(cblRange)/10)
@@ -1379,7 +1415,7 @@ shinyServer(function(input, output, session) {
           }
           
           # Scale factor for neater delay selectors
-          dlScaleFac = 10^(floor(log10(diff(range(data$delay)))-1))
+          dlScaleFac = 1 #10^(floor(log10(diff(range(data$delay)))-1))
 
           # Install data
           Inputs$fileOrig       <<- input$dataFile$name
@@ -1743,22 +1779,24 @@ shinyServer(function(input, output, session) {
     # Aggregate and apply masks
     delayMask = rep(0,length(delay))
     wavlMask  = rep(0,length(wavl))
-    for (mask in 1:input$nMasksDl) {
-      maskName = paste0("keepDlMask",mask)
-      xlim = input[[maskName]] * Inputs$dlScaleFacOrig
-      if (diff(xlim) != 0) {
-        sel = delay >= xlim[1] & delay <= xlim[2]
-        if(sum(sel)!=0) delayMask[sel]  = NA
+    if(input$nMasksDl!=0)
+      for (mask in 1:input$nMasksDl) {
+        maskName = paste0("keepDlMask",mask)
+        xlim = input[[maskName]] * Inputs$dlScaleFacOrig
+        if (diff(xlim) != 0) {
+          sel = delay >= xlim[1] & delay <= xlim[2]
+          if(sum(sel)!=0) delayMask[sel]  = NA
+        }
       }
-    }
-    for (mask in 1:input$nMasksWl) {
-      maskName = paste0("keepWlMask",mask)
-      ylim = input[[maskName]]
-      if (diff(ylim) != 0) {
-        sel = wavl >= ylim[1] & wavl <= ylim[2]
-        if(sum(sel)!=0) wavlMask[sel]  = NA
+    if(input$nMasksWl!=0)
+      for (mask in 1:input$nMasksWl) {
+        maskName = paste0("keepWlMask",mask)
+        ylim = input[[maskName]]
+        if (diff(ylim) != 0) {
+          sel = wavl >= ylim[1] & wavl <= ylim[2]
+          if(sum(sel)!=0) wavlMask[sel]  = NA
+        }
       }
-    }
     Inputs$delayMask <<- delayMask
     Inputs$wavlMask  <<- wavlMask
     
@@ -1769,42 +1807,223 @@ shinyServer(function(input, output, session) {
     
   })
   
-  output$masksS <- renderUI({
-    lout = list()
-    for (mask in 1:input$nMasksWl) {
-      maskName = paste0("keepWlMask",mask)
-      lout[[mask]] = sliderInput(maskName, 
-                                 NULL,
-                                 min = 0, 
-                                 max = 1, 
-                                 value = c(0,0),
-                                 sep="")
-    }
-    return(lout)
-  })
-  outputOptions(output, "masksS", suspendWhenHidden = FALSE)
+  ## Manage masksDl ####
+  observeEvent(
+    input$nMasksDl,
+    isolate({
+      nsteps  = min(length(Inputs$delayOrig),500)
+      dlRange = signif(range(Inputs$delayOrig/Inputs$dlScaleFacOrig),3)
+
+      if(input$nMasksDl!=0) {
+        # Add new slider(s) if required
+        for (mask in 1:input$nMasksDl) {
+          maskName = paste0("keepDlMask",mask)
+          if( !(maskName %in% masksDl) ) {
+            insertUI(
+              selector = "#masksC",
+              where    = "beforeEnd",
+              ui = tags$div(
+                id = maskName,
+                sliderInput(
+                  inputId = maskName, 
+                  label   = NULL,
+                  min     = dlRange[1],
+                  max     = dlRange[2],
+                  value   = c(dlRange[1],dlRange[1]),
+                  step    = signif(diff(dlRange)/nsteps, 3),
+                  sep     = "")
+              )
+            )
+            masksDl <<- unique(c(masksDl,maskName))
+          }
+        }
+      }
+      # Remove extra sliders
+      for (mask in (input$nMasksDl+1):15) {
+        maskName = paste0("keepDlMask",mask)
+        if( maskName %in% masksDl ) {
+          removeUI(
+            selector = paste0("#", maskName),
+            immediate = TRUE
+          )
+          masksDl <<- masksDl[-which(masksDl == maskName)]
+        }
+      } 
+    })
+  )
   
-  output$masksC <- renderUI({
-    lout = list()
-    for (mask in 1:input$nMasksDl) {
-      maskName = paste0("keepDlMask",mask)
-      lout[[mask]] = sliderInput(maskName, 
-                                 NULL,
-                                 min = 0, 
-                                 max = 1, 
-                                 value = c(0,0),
-                                 sep="")
-    }
-    return(lout)
-  })
-  outputOptions(output, "masksC", suspendWhenHidden = FALSE)
+  ## AutoDlMAsk ####
+  observeEvent(
+    input$autoDlMask,
+    isolate({
+      
+      # Mask 1 area per input dataset
+      nmat = length(input$rawData_rows_selected)
+      
+      # Get changepoints
+      chgp = autoDlMask(Inputs$matOrig,nmat)
+      if(!is.null(chgp)) {
+        chgp = c(1,chgp)
+
+        # Remove all sliders
+        for (mask in 1:15) {
+          maskName = paste0("keepDlMask",mask)
+          if( maskName %in% masksDl ) {
+            removeUI(
+              selector = paste0("#",maskName),
+              immediate = TRUE
+            )
+            masksDl <<- masksDl[-which(masksDl == maskName)]
+          }
+        }  
+        
+        # Generate sliders
+        nsteps  = min(length(Inputs$delayOrig),500)
+        dlRange = signif(range(Inputs$delayOrig/Inputs$dlScaleFacOrig),3)
+        for (mask in 1:nmat) {
+          maskName = paste0("keepDlMask",mask)
+          sel   = c(chgp[2*(mask-1)+1],chgp[2*(mask-1)+2])
+          value = Inputs$delayOrig[sel]/Inputs$dlScaleFacOrig
+          insertUI(
+            selector = "#masksC",
+            where    = "beforeEnd",
+            ui = tags$div(
+              id = maskName,
+              sliderInput(
+                inputId = maskName, 
+                label   = NULL,
+                min     = dlRange[1],
+                max     = dlRange[2],
+                value   = value,
+                step    = signif(diff(dlRange)/nsteps, 3),
+                sep     = "")
+            )
+          )
+          masksDl <<- unique(c(masksDl,maskName))
+        }
+      }
+      
+      if(nmat != input$nMasksDl)
+        updateNumericInput(session = session,
+                           inputId = "nMasksDl",
+                           value=nmat)
+      
+      
+      
+    })
+  )
+
+  ## Manage MasksWl ####
+  observeEvent(
+    input$nMasksWl,
+    isolate({
+      nsteps  = min(length(Inputs$wavlOrig),200)
+      wlRange = signif(range(Inputs$wavlOrig),3)
+      
+      if(input$nMasksWl!=0) {
+        # Add new slider(s) if required
+        for (mask in 1:input$nMasksWl) {
+          maskName = paste0("keepWlMask",mask)
+          if( !(maskName %in% masksWl) ) {
+            insertUI(
+              selector = "#masksS",
+              where    = "beforeEnd",
+              ui = tags$div(
+                id = maskName,
+                sliderInput(
+                  inputId = maskName, 
+                  label   = NULL,
+                  min     = wlRange[1],
+                  max     = wlRange[2],
+                  value   = c(wlRange[1],wlRange[1]),
+                  step    = signif(diff(wlRange)/nsteps, 3),
+                  sep     = "")
+              )
+            )
+            masksWl <<- unique(c(masksWl,maskName))
+          }
+        }
+      }
+      # Remove extra sliders
+      for (mask in (input$nMasksWl+1):15) {
+        maskName = paste0("keepWlMask",mask)
+        if( maskName %in% masksWl ) {
+          removeUI(
+            selector = paste0("#", maskName),
+            immediate = TRUE
+          )
+          masksWl <<- masksWl[-which(masksWl == maskName)]
+        }
+      } 
+    })
+  )
+  
+  ## AutoWlMAsk ####
+  observeEvent(
+    input$autoWlMask,
+    isolate({
+      
+      # TO BE UPDATED IF Wavl tiling...
+      nmat = 1
+      
+      # Get changepoints
+      chgp = autoWlMask(Inputs$matOrig,nmat)
+      if(!is.null(chgp)) {
+        
+        chgp = c(1,chgp,nrow(Inputs$matOrig)) # valid if no tiling ???
+
+        # Remove all sliders
+        for (mask in 1:15) {
+          maskName = paste0("keepWlMask",mask)
+          if( maskName %in% masksWl ) {
+            removeUI(
+              selector = paste0("#",maskName),
+              immediate = TRUE
+            )
+            masksWl <<- masksWl[-which(masksWl == maskName)]
+          }
+        }  
+        
+        # Generate sliders
+        nmasks = length(chgp)-2
+                    
+        nsteps  = min(length(Inputs$wavlOrig),200)
+        wlRange = range(Inputs$wavlOrig)
+        for (mask in 1:nmasks ) {
+          maskName = paste0("keepWlMask",mask)
+          sel   = c(chgp[2*(mask-1)+1],chgp[2*(mask-1)+2])
+          value = Inputs$wavlOrig[sel]
+          insertUI(
+            selector = "#masksS",
+            where    = "beforeEnd",
+            ui = tags$div(
+              id = maskName,
+              sliderInput(
+                inputId = maskName, 
+                label   = NULL,
+                min     = signif(wlRange[1],3),
+                max     = signif(wlRange[2],3),
+                value   = signif(value,3),
+                step    = signif(diff(wlRange)/nsteps, 3),
+                sep     = "")
+            )
+          )
+          masksWl <<- unique(c(masksWl,maskName))
+        }
+      }
+      
+      if(nmasks != input$nMasksWl)
+        updateNumericInput(session = session,
+                           inputId = "nMasksWl",
+                           value=nmasks)
+      
+    })
+  )
   
   output$image1 <- renderPlot({
-    # print('Image')
     if(is.null(selectArea())) 
       return(NULL)
 
-    
     mat   = Inputs$mat
     wavl  = Inputs$wavl
     delay = Inputs$delay
@@ -2160,21 +2379,21 @@ shinyServer(function(input, output, session) {
           S = matrix(abs(s$v[,1:nAls]),ncol=nAls)
           C = matrix(abs(s$u[,1:nAls]),ncol=nAls)
           
-          } else if (input$initALS == 'NMF') {
-            # initialize with SVD + NMF
-            if (is.null(s <- doSVD()))
-              return(NULL)
-            
-            # 1/ filter matrix to avoid negative values (noise)
-            fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
-            for (i in 1:nAls)
-              fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
-            # 2/ NMF
-            res  = nmf(abs(fMat), rank=nAls, method='lee')
-            C = basis(res)
-            S = t(coef(res))
- 
-          } else {
+        } else if (input$initALS == 'NMF') {
+          # initialize with SVD + NMF
+          if (is.null(s <- doSVD()))
+            return(NULL)
+          
+          # 1/ filter matrix to avoid negative values (noise)
+          fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
+          for (i in 1:nAls)
+            fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
+          # 2/ NMF
+          res  = nmf(abs(fMat), rank=nAls, method='lee')
+          C = basis(res)
+          S = t(coef(res))
+          
+        } else {
           # restart from existing solution
           if (!exists('RES'))
             return(NULL)
@@ -2237,6 +2456,7 @@ shinyServer(function(input, output, session) {
           )
           S = res$S
           C = res$C
+          RES <<- res
           msg = list(msg,
               h4('Step ',n-1,': ',n,' species'),
               h5('Results after ',res$iter,' iterations'),
