@@ -1140,9 +1140,16 @@ shinyServer(function(input, output, session) {
       O = getOneMatrix(fileNames[i,'datapath'])
       if (!is.null(O)) 
         O$name = fName
-      else
+      else {
         Inputs$validData <<- FALSE
-      
+        showModal(modalDialog(
+          title = ">>>> Data problem <<<< ",
+          paste0("The chosen data type does not ",
+                 "correspond to the opened data file(s)!"),
+          easyClose = TRUE,
+          size = 's'
+        ))
+      }
       RawData[[i]] <<- O
     }
     Inputs$gotData <<- TRUE
@@ -1354,6 +1361,7 @@ shinyServer(function(input, output, session) {
     data = combineMatrix(input$rawData_rows_selected)
     
     # print(data)
+
     validate(
       need(!is.null(data),"--> Bad data type")
     )
@@ -1498,17 +1506,17 @@ shinyServer(function(input, output, session) {
     getRawData(input$dataFile)
   )
   output$loadMsg <- renderUI({
-    if(!Inputs$gotData)
-      list(h4('No data loaded'),
-           h5('Please select data file(s)...')
+    ll = list(
+      h4('No data loaded'),
+      h5('Please select data file(s)...')
+    )
+         
+    if(Inputs$gotData & Inputs$validData) 
+      ll = list(
+        h4('Data loaded !')
       )
-    else {
-      ll = list()
-      ll[[1]] = (h4('Data loaded'))
-      if(!Inputs$validData) 
-        ll[[2]] = h5('Improper data type !')
-      return(ll)
-    }
+    
+    return(ll)
   })
   output$rawData = DT::renderDataTable({
     if( !(Inputs$gotData && Inputs$validData) )
@@ -1965,6 +1973,7 @@ shinyServer(function(input, output, session) {
       
       # TO BE UPDATED IF Wavl tiling...
       nmat = 1
+      nmasks = 0
       
       # Get changepoints
       chgp = autoWlMask(Inputs$matOrig,nmat)
