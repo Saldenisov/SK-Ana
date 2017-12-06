@@ -463,11 +463,8 @@ navbarPage(
                           value = FALSE),
             shinyBS::bsTooltip("closeC", 
                                title = "Ensures that sum(C)=1 at each delay"),
-            wellPanel(
-              h5("Presence Matrix"),
-              uiOutput("maskSpExp_ui")
-            )
-          )
+            uiOutput("maskSpExp_ui")
+         )
         )
       ),
       mainPanel(

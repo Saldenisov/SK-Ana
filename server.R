@@ -63,9 +63,9 @@ getC  = function (S, Psi, C, nonnegC=TRUE,
     C[i,] <- cc1
   }
   
-  if(!anyNA(nullC) & 
-     ncol(nullC) == ncol(C) )
-    C = C * nullC
+  if(!anyNA(nullC))
+    if(ncol(nullC) == ncol(C))
+      C = C * nullC
   
   if(closeC)
     C = C / rowSums(C, na.rm = TRUE)
@@ -1154,64 +1154,11 @@ shinyServer(function(input, output, session) {
     }
     Inputs$gotData <<- TRUE
   }
-  getMeanMatrix <- function(fileNames) {
-    
-    # First pass: build full delay and wavl tables 
-    # (some matrices mignt have missing rows and/or columns)
-    delay=c()
-    wavl=c()
-    for (fN in fileNames$datapath) {
-      O     = getOneMatrix(fN)    
-      delay = c(delay,O$delay)
-      wavl  = c(wavl,O$wavl)
-    }
-    delay=sort(unique(delay))
-    wavl =sort(unique(wavl ))
-    
-    # Load all matrices, recast them in the full coords
-    matTab=array(NA,dim=c(nrow(fileNames),length(delay),length(wavl)))
-    i=0
-    for (fN in fileNames$datapath) {
-      i=i+1
-      O=getOneMatrix(fN)
-      matm=O$mat
-      del=O$delay
-      wav=O$wavl
-      
-      matTab[i,
-             which ((delay %in% del) == TRUE),
-             which ((wavl %in% wav) == TRUE)] = 
-        matm[1:length(del),1:length(wav)]
-    }
-    
-    # Take the average and sd rejecting outliers
-    matm = sigma = matrix(NA,ncol=length(wavl),nrow=length(delay))
-    for (i in 1:dim(matm)[1]) {
-      for (j in 1:dim(matm)[2]) {
-        effData    = rm.outlier(matTab[,i,j])
-        matm[i,j]  = mean(effData,na.rm = TRUE)
-        # sigma[i,j] = sd(effData)/sqrt(length(effData))
-      }
-    } 
-    matm[!is.finite(matm)] = 0
-    
-    return(list(mat=matm, wavl=wavl, delay=delay, 
-                delaySave=delay, delayId= rep(1,length(delay))))
-    
-  }
   doMeanMatrix  <- function(sel) {
     
-    # First pass: build full delay and wavl tables 
-    # (some matrices mignt have missing rows and/or columns)
-    delay=c()
-    wavl=c()
-    for (i in 1:length(sel)) {
-      j = sel[i]
-      delay = c(delay,RawData[[j]]$delay)
-      wavl  = c(wavl, RawData[[j]]$wavl )
-    }
-    delay=sort(unique(delay))
-    wavl =sort(unique(wavl ))
+    # Assume all matrices are on same grid
+    delay = RawData[[1]]$delay
+    wavl  = RawData[[1]]$wavl
   
     # Load all matrices, recast them in the full coords
     matTab=array(NA,dim=c(length(sel),length(delay),length(wavl)))
@@ -1220,11 +1167,7 @@ shinyServer(function(input, output, session) {
       matm = RawData[[j]]$mat
       wav  = RawData[[j]]$wavl
       del  = RawData[[j]]$delay
-
-      matTab[i,
-             which ((delay %in% del) == TRUE),
-             which ((wavl %in% wav) == TRUE)] = 
-        matm[1:length(del),1:length(wav)]
+      matTab[i,,] =  matm
     }
     matTab[!is.finite(matTab)] = NA
     
@@ -1245,50 +1188,6 @@ shinyServer(function(input, output, session) {
     
     return(list(mat=matm, wavl=wavl, delay=delay, 
                 delaySave=delay, delayId= rep(1,length(delay))))
-  }
-  getTileMatrix <- function(fileNames, tileDel=TRUE) {
-    
-    nbFiles = length(fileNames$datapath)
-    for (i in 1:nbFiles) {
-      fN = fileNames$datapath[i]
-      O   = getOneMatrix(fN)
-      mat1 = O$mat
-      wav1 = O$wavl
-      del1 = O$delay
-      delS1 = O$delaySave
-      
-      if(i==1) {    
-        mat   = mat1
-        delay = del1
-        wavl  = wav1
-        delaySave = delS1
-        delayId = rep(i,length(del1))
-        
-      } else {
-        if(tileDel) {
-          # Tile matrices by delay (row)
-          delay = c(delay,del1)
-          delayId = c(delayId,rep(i,length(del1)))
-          delay = 1:length(delay) # Replace by ordinal scale
-          mat   = rbind(mat,mat1)      
-          delaySave = c(delaySave,delS1)
-          
-        } else {
-          # Tile matrices by wavl (col)
-          wavl = c(wavl,wav1)
-          # wavl = 1:length(wavl) # Replace by ordinal scale
-          mat  = cbind(mat,mat1)      
-          
-        }
-      }
-    }
-    # Order wavl by increasing value
-    sel = order(wavl)
-    wavl=wavl[sel]
-    mat = mat[,sel]
-    
-    return(list(mat=mat, wavl=wavl, delay=delay, 
-                delaySave=delaySave, delayId = delayId))
   }
   doTileMatrix  <- function(sel, tileDel=TRUE) {
     nbFiles = length(sel)
@@ -1573,9 +1472,11 @@ shinyServer(function(input, output, session) {
     } else {
       # Several matrices: propose processing options
       ndelay  = nwavl = c()
+      ii=0
       for (i in input$rawData_rows_selected) {
-        ndelay[i] = length(RawData[[i]]$delay)
-        nwavl[i]  = length(RawData[[i]]$wavl)
+        ii = ii+1
+        ndelay[ii] = length(RawData[[i]]$delay)
+        nwavl[ii]  = length(RawData[[i]]$wavl)
       }
       ok_delay = length(unique(ndelay)) == 1
       ok_wavl  = length(unique(nwavl)) == 1
@@ -1596,25 +1497,18 @@ shinyServer(function(input, output, session) {
           easyClose = TRUE,
           size = 's'
         ))
-      # } else if(length(choices) == 1 ) {
-      #   h4('1 choice')
-      #   Inputs$process <<- TRUE
-      #   finishMatrix()
-        
       } else {
         verticalLayout(
           column(6,
                  radioButtons(
-                   inputId = 'procMult', 
-                   label   = list(h4('Please choose processing option'),
-                                  h5('Choice based on matrices dimensions')
-                                  ),
-                   # choices = list("Average"   = 'avrg',
-                   #                "Tile Wavl" = 'tileWav',
-                   #                "Tile Delay"= 'tileDel'),
-                   choices = choices,
-                   selected= choices[length(choices)],
-                   inline = TRUE)
+                   inputId  = 'procMult', 
+                   label    = h4('Please choose processing option'),
+                   choices  = choices,
+                   selected = choices[length(choices)],
+                   inline   = TRUE),
+                 shinyBS::bsTooltip(
+                   'procMult',
+                   title = 'Choice based on dims of matrices')
           ),
           column(2,
                  actionButton("process",strong("Do it!")),
@@ -1642,39 +1536,39 @@ shinyServer(function(input, output, session) {
     })
   )
 
-  # Open saved project
-  observeEvent(
-    input$projectFile,
-    isolate({
-      load(input$projectFile$datapath)
-      
-      updateTextInput(session,
-                      inputId = "projectTag",
-                      value = strsplit(
-                        input$projectFile$name,
-                        ".",fixed=TRUE)[[1]][1]
-                      )
-
-      # Install data
-      Inputs$fileOrig       <<- data$fileOrig
-      Inputs$matOrig        <<- data$matOrig
-      Inputs$wavlOrig       <<- data$wavlOrig
-      Inputs$delayOrig      <<- data$delayOrig
-      Inputs$delayIdOrig    <<- data$delayIdOrig
-      Inputs$delaySaveOrig  <<- data$delaySaveOrig
-      Inputs$dlScaleFacOrig <<- data$dlScaleFacOrig
-      Inputs$mat            <<- data$matOrig
-      Inputs$wavl           <<- data$wavlOrig
-      Inputs$delay          <<- data$delayOrig
-      Inputs$delaySave      <<- data$delaySaveOrig
-      Inputs$delayId        <<- data$delayIdOrig
-      
-      # Restore project config
-      initSliders(config)
-      projConfig <<- config
-      
-    })
-  )
+  # # Open saved project
+  # observeEvent(
+  #   input$projectFile,
+  #   isolate({
+  #     load(input$projectFile$datapath)
+  #     
+  #     updateTextInput(session,
+  #                     inputId = "projectTag",
+  #                     value = strsplit(
+  #                       input$projectFile$name,
+  #                       ".",fixed=TRUE)[[1]][1]
+  #                     )
+  # 
+  #     # Install data
+  #     Inputs$fileOrig       <<- data$fileOrig
+  #     Inputs$matOrig        <<- data$matOrig
+  #     Inputs$wavlOrig       <<- data$wavlOrig
+  #     Inputs$delayOrig      <<- data$delayOrig
+  #     Inputs$delayIdOrig    <<- data$delayIdOrig
+  #     Inputs$delaySaveOrig  <<- data$delaySaveOrig
+  #     Inputs$dlScaleFacOrig <<- data$dlScaleFacOrig
+  #     Inputs$mat            <<- data$matOrig
+  #     Inputs$wavl           <<- data$wavlOrig
+  #     Inputs$delay          <<- data$delayOrig
+  #     Inputs$delaySave      <<- data$delaySaveOrig
+  #     Inputs$delayId        <<- data$delayIdOrig
+  #     
+  #     # Restore project config
+  #     initSliders(config)
+  #     projConfig <<- config
+  #     
+  #   })
+  # )
   
   output$projectInfoNew <- renderUI({
     if(!Inputs$process)
@@ -1720,53 +1614,53 @@ shinyServer(function(input, output, session) {
   })
   
 
-  output$projectInfoOpen <- renderPrint({
-# BETTER EXTENSION: Rda ????
-    validate(
-      need(
-        !is.null(input$projectFile), 
-        "Please select a project file (*.ska)"
-      )
-    )
-    
-# TO BE DONE PROPERLY....
-    # Check file read
-    cat(paste0('Project: ',input$projectTag,'\n\n'))
-    cat('Data File(s):\n')
-    cat(paste0(Inputs$fileOrig,'\n'))
-    cat("\n")
-    cat(paste0(
-      'Matrix: ',
-      length(Inputs$delayOrig),'x',
-      length(Inputs$wavlOrig),'\n'
-    ))
-    cat('Delay range: ',range(Inputs$delayOrig),'...\n')
-    cat('Wavl  range: ',range(Inputs$wavlOrig),'...\n')
-    
-    cat("Sanity:",checkInputsSanity(),'\n')
-    
-  })
-  
-  output$saveProject <- downloadHandler(
-# BETTER EXTENSION: Rda ????
-    filename = function()    {
-      paste0(input$projectTag,'.ska')
-    },
-    content  = function(con) {
-      # Collect congigutation parameters
-      ll = reactiveValuesToList(input)
-      sel = grepl('^keep',names(ll))
-      config = ll[sel]
-      # Collect data
-      ll = reactiveValuesToList(Inputs)
-      sel = grepl('Orig',names(ll))
-      data = ll[sel]
-      
-      save(config, data, 
-           file     = con, 
-           compress = 'gzip')
-    }
-  )
+#   output$projectInfoOpen <- renderPrint({
+# # BETTER EXTENSION: Rda ????
+#     validate(
+#       need(
+#         !is.null(input$projectFile), 
+#         "Please select a project file (*.ska)"
+#       )
+#     )
+#     
+# # TO BE DONE PROPERLY....
+#     # Check file read
+#     cat(paste0('Project: ',input$projectTag,'\n\n'))
+#     cat('Data File(s):\n')
+#     cat(paste0(Inputs$fileOrig,'\n'))
+#     cat("\n")
+#     cat(paste0(
+#       'Matrix: ',
+#       length(Inputs$delayOrig),'x',
+#       length(Inputs$wavlOrig),'\n'
+#     ))
+#     cat('Delay range: ',range(Inputs$delayOrig),'...\n')
+#     cat('Wavl  range: ',range(Inputs$wavlOrig),'...\n')
+#     
+#     cat("Sanity:",checkInputsSanity(),'\n')
+#     
+#   })
+#   
+#   output$saveProject <- downloadHandler(
+# # BETTER EXTENSION: Rda ????
+#     filename = function()    {
+#       paste0(input$projectTag,'.ska')
+#     },
+#     content  = function(con) {
+#       # Collect congigutation parameters
+#       ll = reactiveValuesToList(input)
+#       sel = grepl('^keep',names(ll))
+#       config = ll[sel]
+#       # Collect data
+#       ll = reactiveValuesToList(Inputs)
+#       sel = grepl('Orig',names(ll))
+#       data = ll[sel]
+#       
+#       save(config, data, 
+#            file     = con, 
+#            compress = 'gzip')
+#     }
+#   )
   
 # Select Area ####
 
@@ -1901,10 +1795,10 @@ shinyServer(function(input, output, session) {
     isolate({
       
       # Mask 1 area per input dataset
-      if(input$procMult == 'tileDel')
-        nmat = length(input$rawData_rows_selected)
-      else
-        nmat = 1
+      nmat = 1
+      if(!is.null(input$procMult))
+        if(input$procMult == 'tileDel')
+          nmat = length(input$rawData_rows_selected)
       
       # Get changepoints
       chgp = autoDlMask(Inputs$matOrig,nmat)
@@ -2352,6 +2246,139 @@ shinyServer(function(input, output, session) {
       })
     }
   )
+  
+  ## Presence matrix #####
+  showMSE = function(a,b,c) {
+    if(is.null(a))
+      return(FALSE)
+    if(a != 'tileDel')
+      return(FALSE)
+    if(length(b) <= 1)
+      return(FALSE)
+    if(c <= 1)
+      return(FALSE)
+    return(TRUE)
+  }
+  output$showMSE = reactive({
+    showMSE(input$procMult,
+            input$rawData_rows_selected,
+            input$nALS)
+  })
+  output$maskSpExp_ui = renderUI({
+    if(!showMSE(input$procMult,
+                input$rawData_rows_selected,
+                input$nALS)
+      )
+      return(NULL)
+    
+    nM = length(input$rawData_rows_selected) # Nb data matrices
+    nS = input$nALS # Nb spectra
+    
+    if(anyNA(Inputs$maskSpExp))
+      Inputs$maskSpExp = matrix(1,nrow=nM,ncol=nS)
+    else 
+      if (nrow(Inputs$maskSpExp) != nM ||
+          ncol(Inputs$maskSpExp) != nS   )
+        Inputs$maskSpExp = matrix(1,nrow=nM,ncol=nS)     
+    
+    matInput=list(
+      h5("Presence Matrix"),
+      HTML('<table cellpadding=2 border=0>')
+      )
+    head = paste0(paste0('<th>Sp_',1:nS,'</th>'),collapse = '')
+    matInput=list(
+      matInput,
+      HTML(paste0('<tr><td>&nbsp;</td>',head,'</tr>'))
+    )
+    for (i1 in 1:nM) {
+      var1 = paste0('Exp_',i1)
+      matInput=c(matInput,list(HTML(paste0('<tr><th>',
+                                           var1,'&nbsp;</th>'))))
+      for (i2 in 1:nS) {
+        var2  = paste0('C_',i2)
+        name  = paste0('mCE_',var1,'_',var2)
+        value = Inputs$maskSpExp[i1,i2]
+        locInput = list(HTML('<td>'),
+                        tags$input(id = name,
+                                   type = 'number',
+                                   value = value,
+                                   min=0, max=1,
+                                   class='shiny-bound-input',
+                                   style='width: 50px;'),
+                        HTML('</td>'))
+        matInput=c(matInput,locInput)
+      }
+      matInput=c(matInput,list(HTML('</tr>')))
+    }
+    matInput=list(matInput,HTML('</table>'))
+
+    wellPanel(
+      verticalLayout(
+        matInput,
+        br(),
+        fixedRow(
+          column(12,offset=0,
+                 actionButton("clear_mCE" ,
+                              "Reset",
+                              icon=icon("eraser")),
+                 actionButton("update_mCE",
+                              "Done",
+                              icon=icon("check"))
+          )
+        )
+      )
+    )
+    
+  })
+  outputOptions(output, "maskSpExp_ui",
+               suspendWhenHidden = FALSE)
+  # Update maskSpExp
+  observe({
+    if (is.null(input$update_mCE) || 
+        input$update_mCE == 0 ) return()
+    
+    isolate({
+      
+      if(is.null(Inputs$maskSpExp)) 
+        return()
+      
+      nM = length(input$rawData_rows_selected)
+      nS = input$nALS 
+      for (i1 in 1:nM) {
+        var1 = paste0('Exp_',i1)
+        for (i2 in 1:nS) {
+          var2  = paste0('C_',i2)
+          name  = paste0('mCE_',var1,'_',var2)
+          Inputs$maskSpExp[i1,i2] = input[[name]]
+        }
+      }
+    })
+  })
+  
+  # Reset maskSpExp
+  observe({
+    if (is.null(input$clear_mCE) || 
+        input$clear_mCE == 0 ) return()
+    
+    isolate({
+      
+      if(is.null(Inputs$maskSpExp)) 
+        return()
+      
+      nM = length(input$rawData_rows_selected) 
+      nS = input$nALS
+      Inputs$maskSpExp = matrix(1,nrow=nM,ncol=nS)
+      for (i1 in 1:nM) {
+        var1 = paste0('Exp_',i1)
+        for (i2 in 1:nS) {
+          var2  = paste0('C_',i2)
+          name  = paste0('mCE_',var1,'_',var2)
+          updateNumericInput(session, inputId=name, value=1)
+        }
+      }
+    })
+  })
+  
 
   doALS <- eventReactive(
     input$runALS, {
@@ -2705,108 +2732,6 @@ shinyServer(function(input, output, session) {
     
   },height = 400)
   
-  # Define null concentrations constraints
-  output$maskSpExp_ui = renderUI({
-    nM = length(input$rawData_rows_selected) # Nb data matrices
-    nS = input$nALS # Nb spectra
-    if(nM*nS == 0)
-      return(NULL)
-    
-    if(anyNA(Inputs$maskSpExp))
-      Inputs$maskSpExp = matrix(1,nrow=nM,ncol=nS)
-    else 
-      if (nrow(Inputs$maskSpExp) != nM ||
-          ncol(Inputs$maskSpExp) != nS   )
-        Inputs$maskSpExp = matrix(1,nrow=nM,ncol=nS)     
-
-    matInput=list(HTML('<table cellpadding=2 border=0>'))
-    head = paste0(paste0('<th>Sp_',1:nS,'</th>'),collapse = '')
-    matInput=list(matInput,HTML(paste0('<tr><td>&nbsp;</td>',head,'</tr>')))
-    for (i1 in 1:nM) {
-      var1 = paste0('Exp_',i1)
-      matInput=c(matInput,list(HTML(paste0('<tr><th>',var1,'&nbsp;</th>'))))
-      for (i2 in 1:nS) {
-        var2  = paste0('C_',i2)
-        name  = paste0('mCE_',var1,'_',var2)
-        value = Inputs$maskSpExp[i1,i2]
-        locInput = list(HTML('<td>'),
-                        tags$input(id = name,
-                                   type = 'number',
-                                   value = value,
-                                   min=0, max=1,
-                                   class='shiny-bound-input',
-                                   style='width: 50px;'),
-                        HTML('</td>'))
-        matInput=c(matInput,locInput)
-      }
-      matInput=c(matInput,list(HTML('</tr>')))
-    }
-    matInput=list(matInput,HTML('</table>'))
-
-    verticalLayout(
-      matInput,
-      br(),
-      fixedRow(
-        column(12,offset=0,
-               actionButton("clear_mCE" ,
-                            "Reset",
-                            icon=icon("eraser")),
-               actionButton("update_mCE",
-                            "Done",
-                            icon=icon("check"))
-        )
-      )
-    )
-
-  })
-  outputOptions(output, "maskSpExp_ui",
-               suspendWhenHidden = FALSE)
-  # Update maskSpExp
-  observe({
-    if (is.null(input$update_mCE) || 
-        input$update_mCE == 0 ) return()
-    
-    isolate({
-      
-      if(is.null(Inputs$maskSpExp)) 
-        return()
-
-      nM = length(input$rawData_rows_selected)
-      nS = input$nALS 
-      for (i1 in 1:nM) {
-        var1 = paste0('Exp_',i1)
-        for (i2 in 1:nS) {
-          var2  = paste0('C_',i2)
-          name  = paste0('mCE_',var1,'_',var2)
-          Inputs$maskSpExp[i1,i2] = input[[name]]
-        }
-      }
-    })
-  })
-
-  # Reset maskSpExp
-  observe({
-    if (is.null(input$clear_mCE) || 
-        input$clear_mCE == 0 ) return()
-      
-    isolate({
-    
-      if(is.null(Inputs$maskSpExp)) 
-        return()
-      
-      nM = length(input$rawData_rows_selected) 
-      nS = input$nALS
-      Inputs$maskSpExp = matrix(1,nrow=nM,ncol=nS)
-      for (i1 in 1:nM) {
-        var1 = paste0('Exp_',i1)
-        for (i2 in 1:nS) {
-          var2  = paste0('C_',i2)
-          name  = paste0('mCE_',var1,'_',var2)
-          updateNumericInput(session, inputId=name, value=1)
-        }
-      }
-    })
-  })
   
 # Report ####
   observe(updateTextInput(
