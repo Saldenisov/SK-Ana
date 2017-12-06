@@ -4,7 +4,7 @@
 navbarPage( 
   "SK-Ana",
   # Config ####
-  theme=shinythemes::shinytheme("spacelab"),
+  theme=shinythemes::shinytheme(c("cosmo","cerulean","spacelab","yeti")[2]),
   
   # Project ####
   # navbarMenu(
