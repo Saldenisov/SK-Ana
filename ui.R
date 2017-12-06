@@ -7,142 +7,154 @@ navbarPage(
   theme=shinythemes::shinytheme("spacelab"),
   
   # Project ####
-  navbarMenu(
+  # navbarMenu(
+  tabPanel(
     "Project",
-    tabPanel("New",
-             sidebarLayout(
-               sidebarPanel(
-                 h4("Define New Project"),
-                 hr( style="border-color: #666;"),
-                 textInput(
-                   inputId = 'projectTag', 
-                   label   = 'Project Name', 
-                   value   = ""
-                 ),
-                 hr( style="border-color: #666;"),
-                 selectInput(
-                   inputId='style', 
-                   label = 'Predefined File Formats', 
-                   choices = list(
-                     "CSV"    = "csvStyle",
-                     "Münich" = 'munichStyle',
-                     "ELYSE"  = 'elyseStyle',
-                     "Streak" = 'streakStyle',
-                     "Fluo"   = 'heleneStyle'
-                   ), 
-                   selected = 'csvStyle', 
-                   multiple = FALSE,
-                   selectize = FALSE, 
-                   width = NULL, 
-                   size = NULL),
-                 hr( style="border-color: #FFF;"),
-                 checkboxInput(
-                   inputId = 'header', 
-                   label   = 'Header', 
-                   value   = FALSE),
-                 radioButtons(
-                   inputId = 'sep', 
-                   label   = 'Separator',
-                   choices = c(Comma = ',',
-                               Semicolon = ';',
-                               Tab = '\t',
-                               Space = ' '),
-                   selected = '\t',
-                   inline = TRUE),
-                 radioButtons(
-                   inputId = 'dec', 
-                   label   = 'Decimal',
-                   choices = c(Comma=',',
-                               Dot='.'),
-                   selected = '.',
-                   inline = TRUE),
-                 radioButtons(
-                   inputId = 'datStr', 
-                   label   = 'Data structure',
-                   choices = list("Wavl on a row"   = 'dxw',
-                                  "Wavl on a column"= 'wxd'),
-                   selected= 'dxw',
-                   inline = TRUE),
-                 numericInput(
-                   inputId = 'compFac', 
-                   label   = 'Compression factor', 
-                   value   = 1, min=1, max=100, step=1,
-                   width   = '150px'),
-                 hr( style="border-color: #666;"),
-                 fileInput(
-                   inputId = 'dataFile',
-                   label   = 'Select data file(s)',
-                   multiple= TRUE,
-                   accept  = c('.dat','.txt','.csv')
-                 )
-               ),
-               mainPanel(
-                 uiOutput("loadMsg"),
+    sidebarLayout(
+      sidebarPanel(
+        tabsetPanel(
+          # type = "pills",
+          tabPanel(
+            title =h4("New Project"),
+            # h4("Define New Project"),
+            # hr( style="border-color: #666;"),
+            br(),
+            textInput(
+              inputId = 'projectTag', 
+              label   = 'Project Name', 
+              value   = ""
+            ),
+            hr( style="border-color: #666;"),
+            selectInput(
+              inputId='style', 
+              label = 'Predefined File Formats', 
+              choices = list(
+                "CSV"    = "csvStyle",
+                "Münich" = 'munichStyle',
+                "ELYSE"  = 'elyseStyle',
+                "Streak" = 'streakStyle',
+                "Fluo"   = 'heleneStyle'
+              ), 
+              selected = 'csvStyle', 
+              multiple = FALSE,
+              selectize = FALSE, 
+              width = NULL, 
+              size = NULL),
+            hr( style="border-color: #FFF;"),
+            checkboxInput(
+              inputId = 'header', 
+              label   = 'Header', 
+              value   = FALSE),
+            radioButtons(
+              inputId = 'sep', 
+              label   = 'Separator',
+              choices = c(Comma = ',',
+                          Semicolon = ';',
+                          Tab = '\t',
+                          Space = ' '),
+              selected = '\t',
+              inline = TRUE),
+            radioButtons(
+              inputId = 'dec', 
+              label   = 'Decimal',
+              choices = c(Comma=',',
+                          Dot='.'),
+              selected = '.',
+              inline = TRUE),
+            radioButtons(
+              inputId = 'datStr', 
+              label   = 'Data structure',
+              choices = list("Wavl on a row"   = 'dxw',
+                             "Wavl on a column"= 'wxd'),
+              selected= 'dxw',
+              inline = TRUE),
+            numericInput(
+              inputId = 'compFac', 
+              label   = 'Compression factor', 
+              value   = 1, min=1, max=100, step=1,
+              width   = '150px'),
+            hr( style="border-color: #666;"),
+            fileInput(
+              inputId = 'dataFile',
+              label   = 'Select data file(s)',
+              multiple= TRUE,
+              accept  = c('.dat','.txt','.csv')
+            )
+          ),
+          tabPanel(
+            title =h4("Open"),
+            h4("In construction...")
+          ),
+          
+          #              h4("Select Existing Project (*.ska)"),
+          #              hr( style="border-color: #666;"),
+          #              fileInput(
+          #                inputId = 'projectFile',
+          #                label   = 'Select Project',
+          #                multiple= FALSE,
+          #                accept  = c('.ska')
+          #                    )
+          #                    
+          #                  ),
+          #                  mainPanel(
+          #                    br(),
+          #                    uiOutput("loadErrorOpen"),
+          #                    br(),
+          #                    verbatimTextOutput("projectInfoOpen")
+          #                  )
+          #                )
+          #       ),
+          tabPanel(
+            title =h4("Save"),
+            h4("In construction...")
+          )
+          #       tabPanel("Save",
+          #                sidebarLayout(
+          #                  sidebarPanel(
+          #                    h4("Save Project"),
+          #                    hr( style="border-color: #666;"),
+          #                    downloadButton('saveProject','Save (Ctrl+Click)')
+          #                  ),
+          #                  mainPanel(
+          #                  )
+          #                )
+          #       )
+        )
+        ),
+        mainPanel(
+          uiOutput("loadMsg"),
+        conditionalPanel(
+          condition = "output.rawData !== null",
+          DT::dataTableOutput('rawData')
+        ),
+        conditionalPanel(
+          condition = "output.showsel",
+          verbatimTextOutput('sel')
+        ),
+        br(),
+        uiOutput("ui"),
+        br(),
+        fluidRow(
+          column(4,
                  conditionalPanel(
-                   condition = "output.rawData !== null",
-                   DT::dataTableOutput('rawData')
-                 ),
-                 conditionalPanel(
-                   condition = "output.showsel",
-                   verbatimTextOutput('sel')
-                 ),
-                 br(),
-                 uiOutput("ui"),
-                 br(),
-                 fluidRow(
-                   column(4,
-                          conditionalPanel(
-                            condition = "output.showPIN",
-                            wellPanel(style = "background-color: #ffffff;", 
-                                      uiOutput("projectInfoNew")
-                            )
-                          )
-                   ),
-                   column(6,
-                          conditionalPanel(
-                            condition = "output.showPIN",
-                            wellPanel(style = "background-color: #ffffff;", 
-                              plotOutput("vignette", height = 250, width=400)
-                              )
-                          )
-                          
+                   condition = "output.showPIN",
+                   wellPanel(style = "background-color: #ffffff;", 
+                             uiOutput("projectInfoNew")
+                     )
                    )
-                 )
-                 
-               )
-             )
-    ),
-    tabPanel("Open",
-             sidebarLayout(
-               sidebarPanel(
-                 h4("Select Existing Project (*.ska)"),
-                 hr( style="border-color: #666;"),
-                 fileInput(
-                   inputId = 'projectFile',
-                   label   = 'Select Project',
-                   multiple= FALSE,
-                   accept  = c('.ska')
-                 )
-                 
-               ),
-               mainPanel(
-                 br(),
-                 uiOutput("loadErrorOpen"),
-                 br(),
-                 verbatimTextOutput("projectInfoOpen")
-               )
-             )
-    ),
-    tabPanel("Save",
-             sidebarLayout(
-               sidebarPanel(
-                 h4("Save Project"),
-                 hr( style="border-color: #666;"),
-                 downloadButton('saveProject','Save (Ctrl+Click)')
-               ),
-               mainPanel(
-               )
-             )
+            ),
+            column(6,
+                   conditionalPanel(
+                     condition = "output.showPIN",
+                     wellPanel(style = "background-color: #ffffff;", 
+                               plotOutput("vignette", height = 250, width=400)
+                     )
+                   )
+                   
+            )
+          )
+          
+      )
     )
   ),
   
@@ -218,8 +230,8 @@ navbarPage(
             # uiOutput("masksC")
             tags$div(id = "masksC")
           ),
-          id="selTabset",
-          type='pills'
+          id="selTabset"#,
+          # type='pills'
         ),
         hr(),
         actionButton("reset",
@@ -228,7 +240,7 @@ navbarPage(
       mainPanel(
         wellPanel(
           tabsetPanel(
-            type='pills',
+            # type='pills',
             tabPanel(
               value="dataImg",
               title=h4("Data"),
@@ -302,7 +314,7 @@ navbarPage(
       mainPanel(
         wellPanel(                  
           tabsetPanel(
-            type="pills",
+            # type="pills",
             tabPanel(
               value="singVal",
               title=h4("Singular Values"),
@@ -366,7 +378,7 @@ navbarPage(
         ),
         br(),
         tabsetPanel(
-          type='pills',
+          # type='pills',
           tabPanel(
             value='ALSparams',
             title=h4("Options"),
@@ -487,8 +499,8 @@ navbarPage(
                   title=h5("SVD of Residuals"), br(),
                   plotOutput("alsResid2", height=550)
                 ),
-                id="alsResid1",
-                type='pills'
+                id="alsResid1" #,
+                # type='pills'
               )
             ),
             tabPanel(
@@ -553,8 +565,8 @@ navbarPage(
                 )
               )
             ),
-            id="alsTabset",
-            type='pills'
+            id="alsTabset"#,
+            # type='pills'
           )
         )
       )

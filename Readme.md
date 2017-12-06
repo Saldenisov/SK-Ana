@@ -11,7 +11,7 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
-**Please load the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest)**
+**Please download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest)**
 
 
 **References**
