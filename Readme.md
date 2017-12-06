@@ -1,5 +1,6 @@
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
 
+
 **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
 `Shiny` interface for the analysis of spectrokinetic matrices:
@@ -8,7 +9,10 @@
 
 * Multi Curve Resolution by Alternated Least Squares (MCR-ALS)
 
-The code can be tested here: https://upsa.shinyapps.io/SK-Ana/
+<!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
+
+**Please load the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest)**
+
 
 **References**
 
