@@ -813,7 +813,7 @@ plotRotAmb = function(alsOut, solutions){
 }
 
 autoDlMask <- function (mat,nmat) {
-# Locate empty delay areas
+# Locate empty delay areas (experimental)
   
   # Integrate on wavl
   trace = rowSums(mat)
@@ -833,7 +833,7 @@ autoDlMask <- function (mat,nmat) {
 }
 
 autoWlMask <- function (mat,nmat) {
-  # Locate useless wavl areas
+  # Locate useless wavl areas (experimental)
   
   # Integrate on wavl
   trace = colSums(mat)
@@ -964,18 +964,18 @@ shinyServer(function(input, output, session) {
       doRangeSel = as.vector(quantile(mat,probs = c(0.001,0.999),
                                       na.rm = TRUE))
       wlRangeSel = wlRange
-      wlMaskSel = list()
-      if(input$nMasksWl!=0)
-        for (mask in 1:isolate(input$nMasksWl)) {
-          wlMaskSel[[mask]]  = c(wlMask[1],wlMask[1])
-        }
+      # wlMaskSel = list()
+      # if(input$nMasksWl!=0)
+      #   for (mask in 1:isolate(input$nMasksWl)) {
+      #     wlMaskSel[[mask]]  = c(wlMask[1],wlMask[1])
+      #   }
       wlCutSel   = signif(mean(wlCut),3)
       dlRangeSel = dlRange
-      dlMaskSel = list()
-      if(input$nMasksDl!=0)
-        for (mask in 1:isolate(input$nMasksDl)) {
-          dlMaskSel[[mask]]  = c(dlMask[1],dlMask[1])
-        }
+      # dlMaskSel = list()
+      # if(input$nMasksDl!=0)
+      #   for (mask in 1:isolate(input$nMasksDl)) {
+      #     dlMaskSel[[mask]]  = c(dlMask[1],dlMask[1])
+      #   }
       dlCutSel   = signif(mean(dlCut),3)
       cblSel     = cblRange[1]
     }
@@ -1241,6 +1241,7 @@ shinyServer(function(input, output, session) {
       }
     } 
     matm[!is.finite(matm)] = 0
+    delay = 1:length(delay) # Replace by ordinal scale
     
     return(list(mat=matm, wavl=wavl, delay=delay, 
                 delaySave=delay, delayId= rep(1,length(delay))))
@@ -1310,18 +1311,16 @@ shinyServer(function(input, output, session) {
           # Tile matrices by delay (row)
           delay = c(delay,del1)
           delayId = c(delayId,rep(i,length(del1)))
-          delay = 1:length(delay) # Replace by ordinal scale
           mat   = rbind(mat,mat1)      
           delaySave = c(delaySave,delS1)
-          
         } else {
           # Tile matrices by wavl (col)
           wavl = c(wavl,wav1)
           # wavl = 1:length(wavl) # Replace by ordinal scale
           mat  = cbind(mat,mat1)      
-          
         }
       }
+      delay = 1:length(delay) # Replace by ordinal scale
     }
     # Order wavl by increasing value
     sel = order(wavl)
@@ -1573,24 +1572,58 @@ shinyServer(function(input, output, session) {
 
     } else {
       # Several matrices: propose processing options
+      ndelay  = nwavl = c()
+      for (i in input$rawData_rows_selected) {
+        ndelay[i] = length(RawData[[i]]$delay)
+        nwavl[i]  = length(RawData[[i]]$wavl)
+      }
+      ok_delay = length(unique(ndelay)) == 1
+      ok_wavl  = length(unique(nwavl)) == 1
+      choices = list()
+      if(ok_delay & ok_wavl)
+        choices[["Average"]]    = 'avrg'
+      if (ok_delay)
+        choices[["Tile Wavl"]]  = 'tileWav'
+      if (ok_wavl)
+        choices[["Tile Delay"]] = 'tileDel'
+
       Inputs$process <<- FALSE
-      verticalLayout(
-        column(6,
-               radioButtons(
-                 inputId = 'procMult', 
-                 label   = h4('Please choose processing option'),
-                 choices = list("Average"   = 'avrg',
-                                "Tile Wavl" = 'tileWav',
-                                "Tile Delay"= 'tileDel'),
-                 selected= 'tileDel',
-                 inline = TRUE)
-        ),
-        column(2,
-               actionButton("process",strong("Do it!")),
-               tags$style(type='text/css',
-                "#process { width:100%; margin-top: 5px;}")
+      if(length(choices) == 0 ) {
+        showModal(modalDialog(
+          title = ">>>> Data problem <<<< ",
+          paste0("The chosen data have inconsient dimensions. ",
+                 "They cannot be treated simultaneously !"),
+          easyClose = TRUE,
+          size = 's'
+        ))
+      # } else if(length(choices) == 1 ) {
+      #   h4('1 choice')
+      #   Inputs$process <<- TRUE
+      #   finishMatrix()
+        
+      } else {
+        verticalLayout(
+          column(6,
+                 radioButtons(
+                   inputId = 'procMult', 
+                   label   = list(h4('Please choose processing option'),
+                                  h5('Choice based on matrices dimensions')
+                                  ),
+                   # choices = list("Average"   = 'avrg',
+                   #                "Tile Wavl" = 'tileWav',
+                   #                "Tile Delay"= 'tileDel'),
+                   choices = choices,
+                   selected= choices[length(choices)],
+                   inline = TRUE)
+          ),
+          column(2,
+                 actionButton("process",strong("Do it!")),
+                 tags$style(type='text/css',
+                            "#process { width:100%; margin-top: 5px;}")
+          )
         )
-      )
+      }
+      
     } 
     
   })
@@ -1680,7 +1713,9 @@ shinyServer(function(input, output, session) {
     image(
       delay,wavl,mat,
       xlab = 'Delay',ylab = 'Wavelength',
-      col = cols
+      col = cols, 
+      zlim = quantile(mat,probs = c(0.001,0.999),
+                      na.rm = TRUE)
     )
   })
   
@@ -1866,7 +1901,10 @@ shinyServer(function(input, output, session) {
     isolate({
       
       # Mask 1 area per input dataset
-      nmat = length(input$rawData_rows_selected)
+      if(input$procMult == 'tileDel')
+        nmat = length(input$rawData_rows_selected)
+      else
+        nmat = 1
       
       # Get changepoints
       chgp = autoDlMask(Inputs$matOrig,nmat)
@@ -2024,7 +2062,7 @@ shinyServer(function(input, output, session) {
       if(nmasks != input$nMasksWl)
         updateNumericInput(session = session,
                            inputId = "nMasksWl",
-                           value=nmasks)
+                           value   = nmasks)
       
     })
   )

@@ -199,7 +199,8 @@ navbarPage(
                                   strong("Auto"),
                                   icon = icon("gear") ))
             ),
-            uiOutput("masksS")
+            # uiOutput("masksS")
+            tags$div(id = "masksS")
           ),
           tabPanel(
             value="dataMasksC",
