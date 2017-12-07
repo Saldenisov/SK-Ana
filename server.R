@@ -73,7 +73,8 @@ getC  = function (S, Psi, C, nonnegC=TRUE,
   return(C)
 }
 getS  = function (C, data, S, xS, nonnegS, uniS, 
-                  S0, normS, smooth, SumS) {
+                  S0, normS, smooth, SumS, hardS0,
+                  wHardS0) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
@@ -83,25 +84,32 @@ getS  = function (C, data, S, xS, nonnegS, uniS,
   C[which(is.nan(C))] = 1
 
   if (!is.null(S0)) {
-    # Enforce equality to external spectrum by direct elimination
     nS0 = ncol(S0)
-    C0 = matrix(C[,1:nS0],ncol=nS0)
-    C  = matrix(C[,(nS0+1):ncol(C)],ncol=ncol(C)-nS0)
-    S  = matrix(S[,(nS0+1):ncol(S)],ncol=ncol(S)-nS0)
-
-    contrib = matrix(0,nrow=nrow(data),ncol=ncol(data))
-    for (i in 1:nS0)
-      contrib = contrib + C0[,i] %o% S0[,i]
-
-    data = data - contrib
-    data[!is.finite(data)] = 0
+    if(hardS0) {
+      # Enforce equality to external spectrum by direct elimination
+      C0 = matrix(C[,1:nS0],ncol=nS0)
+      C  = matrix(C[,(nS0+1):ncol(C)],ncol=ncol(C)-nS0)
+      S  = matrix(S[,(nS0+1):ncol(S)],ncol=ncol(S)-nS0)
+      
+      contrib = matrix(0,nrow=nrow(data),ncol=ncol(data))
+      for (i in 1:nS0)
+        contrib = contrib + C0[,i] %o% S0[,i]
+      
+      data = data - contrib
+      data[!is.finite(data)] = 0
+    } else {
+      # Augment equations system by weighted constraint
+      C    = rbind(C,matrix(0,nrow=nS0,ncol=ncol(C)))
+      for (i in 1:nS0)
+        C[nrow(C)-nS0+i,i] = wHardS0
+      data = rbind(data,wHardS0*t(S0))
+    }
   }
   
   for (i in 1:ncol(data)) {
-    if (nonnegS) {
-      # Non-negative least quares
+    
+    if (nonnegS)
       s <- try(nnls(C, data[,i]))
-    }
     else
       s <- try(qr.coef(qr(C), data[,i]))
     
@@ -133,11 +141,6 @@ getS  = function (C, data, S, xS, nonnegS, uniS,
     }
   } 
 
-  # if (!is.null(S0)) {
-  #   # Enforce equality to external spectrum by direct substitution
-  #   S[,1:ncol(S0)] = S0
-  # }
-  
   if (normS) { 
     # Spectra normalization
     if (SumS) {
@@ -151,7 +154,7 @@ getS  = function (C, data, S, xS, nonnegS, uniS,
     }
   }
   
-  if (!is.null(S0)) {
+  if (!is.null(S0) & hardS0) {
     # Combine optimized spectra with constrained ones
     S = cbind(S0,S)
     C = cbind(C0,C) 
@@ -166,7 +169,8 @@ myals = function (C, Psi, S,
                   xS = 1:nrow(S),
                   nonnegC = TRUE, nonnegS = TRUE, optS1st = TRUE,
                   normS = TRUE, uniS = FALSE, S0 = NULL, smooth=0,
-                  silent = TRUE, SumS = FALSE,
+                  silent = TRUE, SumS = FALSE, hardS0 = TRUE,
+                  wHardS0 = 1.0,
                   nullC = NA, closeC=FALSE,
                   updateProgress = NULL) {
   # Adapted from ALS package (KM Muellen)
@@ -209,7 +213,8 @@ myals = function (C, Psi, S,
     iter <- iter + 1
     
     if (iter %% 2 == b)
-      S = getS(C, Psi, S, xS, nonnegS, uniS, S0, normS, smooth, SumS)
+      S = getS(C, Psi, S, xS, nonnegS, uniS, 
+               S0, normS, smooth, SumS, hardS0, wHardS0)
     else
       C = getC(S, Psi, C, nonnegC, nullC, closeC)
     
@@ -2525,6 +2530,8 @@ shinyServer(function(input, output, session) {
           thresh = 1e-4,
           normS = input$normS,
           S0 =S0,
+          hardS0 = !input$softS0,
+          wHardS0 = 10^input$wSoftS0,
           optS1st = input$optS1st,
           SumS = input$SumS,
           smooth = input$smooth,
@@ -2560,6 +2567,8 @@ shinyServer(function(input, output, session) {
             thresh = 1e-4,
             normS = input$normS,
             S0 = S0,
+            hardS0 = !input$softS0,
+            wHardS0 = 10^input$wSoftS0,
             optS1st = input$optS1st,
             smooth = input$smooth,
             SumS = input$SumS,

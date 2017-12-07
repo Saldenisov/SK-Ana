@@ -442,11 +442,25 @@ navbarPage(
                      checkboxInput("shapeS", 
                                    label= "External spectrum shape(s)",
                                    value = FALSE),
+                     
                      fileInput(
                        inputId = 'S0File',
                        label   = 'Select file(s)',
                        multiple= TRUE,
                        accept  = c('.dat','.txt','.csv')
+                     ),
+                     checkboxInput("softS0", 
+                                   label= "Soft constraint",
+                                   value = FALSE),
+                     conditionalPanel(
+                       condition = "input.softS0",
+                       sliderInput("wSoftS0", 
+                                 "logWeight for Soft constraint",
+                                 min = -5, 
+                                 max =  2, 
+                                 value = 1,
+                                 sep=""
+                       )
                      )
               )
             )
