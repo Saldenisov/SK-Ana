@@ -72,22 +72,38 @@ getC  = function (S, Psi, C, nonnegC=TRUE,
   
   return(C)
 }
-getS  = function (C, Psi, S, xS, nonnegS, uniS, 
+getS  = function (C, data, S, xS, nonnegS, uniS, 
                   S0, normS, smooth, SumS) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
   #   https://CRAN.R-project.org/package=ALS
+  # 2017-12-07 : replaced direct substitution of S0 by direct elimination 
   
   C[which(is.nan(C))] = 1
+
+  if (!is.null(S0)) {
+    # Enforce equality to external spectrum by direct elimination
+    nS0 = ncol(S0)
+    C0 = matrix(C[,1:nS0],ncol=nS0)
+    C  = matrix(C[,(nS0+1):ncol(C)],ncol=ncol(C)-nS0)
+    S  = matrix(S[,(nS0+1):ncol(S)],ncol=ncol(S)-nS0)
+
+    contrib = matrix(0,nrow=nrow(data),ncol=ncol(data))
+    for (i in 1:nS0)
+      contrib = contrib + C0[,i] %o% S0[,i]
+
+    data = data - contrib
+    data[!is.finite(data)] = 0
+  }
   
-  for (i in 1:ncol(Psi)) {
+  for (i in 1:ncol(data)) {
     if (nonnegS) {
       # Non-negative least quares
-      s <- try(nnls(C, Psi[,i]))
+      s <- try(nnls(C, data[,i]))
     }
     else
-      s <- try(qr.coef(qr(C), Psi[,i]))
+      s <- try(qr.coef(qr(C), data[,i]))
     
     if (class(s) == "try-error") {
       S[i,] = rep(1, ncol(C))
@@ -117,10 +133,10 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS,
     }
   } 
 
-  if (!is.null(S0)) {
-    # Enforce equality to external spectrum
-    S[,1:ncol(S0)] = S0
-  }
+  # if (!is.null(S0)) {
+  #   # Enforce equality to external spectrum by direct substitution
+  #   S[,1:ncol(S0)] = S0
+  # }
   
   if (normS) { 
     # Spectra normalization
@@ -133,6 +149,12 @@ getS  = function (C, Psi, S, xS, nonnegS, uniS,
       for (i in 1:ncol(S)) 
         S[,i] = S[,i] / ifelse(max(S[,i] > 0),max(S[,i]),1) 
     }
+  }
+  
+  if (!is.null(S0)) {
+    # Combine optimized spectra with constrained ones
+    S = cbind(S0,S)
+    C = cbind(C0,C) 
   }
   
   return(S)
@@ -159,6 +181,23 @@ myals = function (C, Psi, S,
     resid[i,] = Psi[i,] - C[i,] %*% t(S)
   
   initialrss <- oldrss <- sum((resid) ^ 2) / sum(Psi ^ 2)
+  
+  if(!is.null(S0)) {
+    if(!is.matrix(S0))
+      S0 = matrix(S0,ncol=1,nrow=length(S0))
+    if (normS) { 
+      # Spectra normalization
+      if (SumS) {
+        # Area 
+        for (i in 1:ncol(S0)) 
+          S0[,i] = S0[,i] / sum(S0[,i])                          
+      } else {
+        # Amplitude 
+        for (i in 1:ncol(S0)) 
+          S0[,i] = S0[,i] / ifelse(max(S0[,i] > 0),max(S0[,i]),1) 
+      }
+    }
+  }
   
   if (!silent)
     cat("Initial RSS", initialrss, "\n")
