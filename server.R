@@ -3,7 +3,7 @@ options(shiny.maxRequestSize=20*1024^2)
 
 # Libraries ####
 libs = c('outliers', 'nnls', 'Iso', 'viridis', 'changepoint',
-         'shiny', 'shinyBS','DT', 'fields', 'NMF')
+         'shiny', 'shinyBS','DT', 'fields', 'NMF','shinycssloaders')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE,quietly=TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -36,20 +36,28 @@ string2Expr = function(string) {
 string2Num = function(x) 
   as.numeric(eval(parse(text=eval(string2Expr(x)))))
 
-getC  = function (S, Psi, C, nonnegC=TRUE, 
-                  nullC = NA, closeC=FALSE) {
+getC  = function (S, data, C, nonnegC=TRUE, 
+                  nullC = NA, closeC=FALSE, wCloseC = 0) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
   #   https://CRAN.R-project.org/package=ALS
 
   S[which(is.nan(S))] = 1
+
+  # Soft closure constraint
+  if (closeC)
+    if (wCloseC !=0 ) {
+      S    = rbind(S   ,rep(wCloseC,ncol(S))   )
+      data = cbind(data,rep(wCloseC,nrow(data)))
+    }
   
-  for (i in 1:nrow(Psi)) {
+  for (i in 1:nrow(data)) {
     if (nonnegC)
-      cc = try(nnls(S ,Psi[i,]))
+      cc = try(nnls(S ,data[i,]))
     else
-      cc = try(qr.coef(qr(S) , Psi[i,]))
+      cc = try(qr.coef(qr(S) , data[i,]))
+    
     if (class(cc) == "try-error")
       sol = rep(1, ncol(S))
     else
@@ -66,9 +74,10 @@ getC  = function (S, Psi, C, nonnegC=TRUE,
   if(!anyNA(nullC))
     if(ncol(nullC) == ncol(C))
       C = C * nullC
-  
-  if(closeC)
-    C = C / rowSums(C, na.rm = TRUE)
+    
+  # Hard closure constrained (replaced by soft) 
+  # if(closeC)
+  #   C = C / rowSums(C, na.rm = TRUE)
   
   return(C)
 }
@@ -171,7 +180,7 @@ myals = function (C, Psi, S,
                   normS = TRUE, uniS = FALSE, S0 = NULL, smooth=0,
                   silent = TRUE, SumS = FALSE, hardS0 = TRUE,
                   wHardS0 = 1.0,
-                  nullC = NA, closeC=FALSE,
+                  nullC = NA, closeC=FALSE, wCloseC = 0,
                   updateProgress = NULL) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
@@ -216,7 +225,7 @@ myals = function (C, Psi, S,
       S = getS(C, Psi, S, xS, nonnegS, uniS, 
                S0, normS, smooth, SumS, hardS0, wHardS0)
     else
-      C = getC(S, Psi, C, nonnegC, nullC, closeC)
+      C = getC(S, Psi, C, nonnegC, nullC, closeC, wCloseC)
     
     for (i in 1:nrow(Psi))
       resid[i,] = Psi[i,] - C[i,] %*% t(S)
@@ -580,7 +589,8 @@ rotAmb2 = function(C0,S0,data,rotVec=1:2,
           OK2 = FALSE
           
           iter = iter+1
-          updateProgress(value = iter / 100)
+          if(!is.null(updateProgress))
+             updateProgress(value = iter / 100)
           
           # Transformation matrix
           R = matrix(c(1  , t12,
@@ -693,6 +703,7 @@ rotAmb3 = function(C0,S0,data,rotVec=1:3,
                           OK6 = FALSE
                           
                           iter = iter+1
+                          if(!is.null(updateProgress))
                           updateProgress(value = iter / 100)
                           
                           # Transformation matrix
@@ -867,7 +878,7 @@ autoDlMask <- function (mat,nmat) {
   ans = cpt.var(diff(trace), penalty='BIC', 
                 method = 'SegNeigh', 
                 Q = 2 + max(1, 2*(nmat-1))
-                )
+  )
   if(nmat==1) 
     chp = cpts(ans)[2]
   else
@@ -922,7 +933,7 @@ shinyServer(function(input, output, session) {
     wavl           = NULL,
     delay          = NULL,
     delaySave      = NULL,  # True delays used in saved kinetics
-    delayId        = NA
+    delayId        = NA     # Reference to original matrices when tiled
   )
   
   
@@ -987,20 +998,10 @@ shinyServer(function(input, output, session) {
       # Restore from project
       doRangeSel = config$keepDoRange
       wlRangeSel = config$keepWlRange
-      wlMaskSel1 = config$keepWlMask1
-      wlMaskSel2 = config$keepWlMask2
-      wlMaskSel3 = config$keepWlMask3
-      wlMaskSel4 = config$keepWlMask4
+      # wlMaskSel1 = config$keepWlMask1
       wlCutSel   = config$keepWlCut
       dlRangeSel = config$keepDlRange
-      dlMaskSel1 = config$keepDlMask1
-      dlMaskSel2 = config$keepDlMask2
-      dlMaskSel3 = config$keepDlMask3
-      dlMaskSel4 = config$keepDlMask4
-      dlMaskSel5 = config$keepDlMask5
-      dlMaskSel6 = config$keepDlMask6
-      dlMaskSel7 = config$keepDlMask7
-      dlMaskSel8 = config$keepDlMask8
+      # dlMaskSel1 = config$keepDlMask1
       dlCutSel   = config$keepDlCut
       cblSel     = config$keepCbl
     } else {
@@ -1008,18 +1009,8 @@ shinyServer(function(input, output, session) {
       doRangeSel = as.vector(quantile(mat,probs = c(0.001,0.999),
                                       na.rm = TRUE))
       wlRangeSel = wlRange
-      # wlMaskSel = list()
-      # if(input$nMasksWl!=0)
-      #   for (mask in 1:isolate(input$nMasksWl)) {
-      #     wlMaskSel[[mask]]  = c(wlMask[1],wlMask[1])
-      #   }
       wlCutSel   = signif(mean(wlCut),3)
       dlRangeSel = dlRange
-      # dlMaskSel = list()
-      # if(input$nMasksDl!=0)
-      #   for (mask in 1:isolate(input$nMasksDl)) {
-      #     dlMaskSel[[mask]]  = c(dlMask[1],dlMask[1])
-      #   }
       dlCutSel   = signif(mean(dlCut),3)
       cblSel     = cblRange[1]
     }
@@ -1031,25 +1022,16 @@ shinyServer(function(input, output, session) {
     nsteps = min(length(wavl),200)
     updateSlider("keepWlRange", wlRange, wlRangeSel, nsteps)
     updateSlider("keepWlCut"  , wlCut  , wlCutSel  , nsteps)
-    # if(input$nMasksWl!=0)
-    #   for (mask in 1:isolate(input$nMasksWl)) {
-    #     maskName = paste0("keepWlMask",mask)
-    #     updateSlider(maskName, wlMask , wlMaskSel[[mask]], nsteps)
-    #   }
+    updateNumericInput(session = session,
+                       inputId = "nMasksWl",
+                       value   = 0)
+    
     # Delay sliders
     nsteps = min(length(delay),500)
     updateSlider("keepDlRange", dlRange, dlRangeSel, nsteps)
     updateSlider("keepDlCut"  , dlCut  , dlCutSel  , nsteps)
-    # if(input$nMasksDl!=0)
-    #   for (mask in 1:isolate(input$nMasksDl)) {
-    #     maskName = paste0("keepDlMask",mask)
-    #     updateSlider(maskName, dlMask , dlMaskSel[[mask]], nsteps)
-    #   }
     updateNumericInput(session = session,
                        inputId = "nMasksDl",
-                       value   = 0)
-    updateNumericInput(session = session,
-                       inputId = "nMasksWl",
                        value   = 0)
     
     # Baseline correction slider
@@ -1168,6 +1150,7 @@ shinyServer(function(input, output, session) {
     Inputs$validData<<- TRUE    # Data type assumed correct
     RawData         <<- list()  # Init list in upper environment
     Inputs$fileOrig <<- NULL    # Invalidate earlier data
+    Inputs$process  <<- FALSE   # Invalidate earlier processing
     
     # Init progress bar
     progress <- shiny::Progress$new()
@@ -1301,8 +1284,6 @@ shinyServer(function(input, output, session) {
       return(NULL)
     
     data = combineMatrix(input$rawData_rows_selected)
-    
-    # print(data)
 
     validate(
       need(!is.null(data),"--> Bad data type")
@@ -1565,12 +1546,6 @@ shinyServer(function(input, output, session) {
     } 
     
   })
-  # output$showui = reactive({
-  #   Inputs$gotData && 
-  #     Inputs$validData && 
-  #     length(input$rawData_rows_selected) != 0
-  # })
-  # outputOptions(output, "showui", suspendWhenHidden = FALSE)
   
   observeEvent(
     input$process,
@@ -1627,8 +1602,6 @@ shinyServer(function(input, output, session) {
     )
   })
   output$showPIN = reactive({
-    # Inputs$gotData &&
-    #   Inputs$validData &&
       Inputs$process &&
       length(input$rawData_rows_selected) != 0
   })
@@ -1764,19 +1737,21 @@ shinyServer(function(input, output, session) {
       for (mask in 1:input$nMasksDl) {
         maskName = paste0("keepDlMask",mask)
         xlim = input[[maskName]] * Inputs$dlScaleFacOrig
-        if (diff(xlim) != 0) {
-          sel = delay >= xlim[1] & delay <= xlim[2]
-          if(sum(sel)!=0) delayMask[sel]  = NA
-        }
+        if(length(xlim)!=0)
+          if (diff(xlim) != 0) {
+            sel = delay >= xlim[1] & delay <= xlim[2]
+            if(sum(sel)!=0) delayMask[sel]  = NA
+          }
       }
     if(input$nMasksWl!=0)
       for (mask in 1:input$nMasksWl) {
         maskName = paste0("keepWlMask",mask)
         ylim = input[[maskName]]
-        if (diff(ylim) != 0) {
-          sel = wavl >= ylim[1] & wavl <= ylim[2]
-          if(sum(sel)!=0) wavlMask[sel]  = NA
-        }
+        if(length(ylim)!=0)
+          if (diff(ylim) != 0) {
+            sel = wavl >= ylim[1] & wavl <= ylim[2]
+            if(sum(sel)!=0) wavlMask[sel]  = NA
+          }
       }
     Inputs$delayMask <<- delayMask
     Inputs$wavlMask  <<- wavlMask
@@ -2237,11 +2212,28 @@ shinyServer(function(input, output, session) {
     if (is.null(s <- doSVD()))
       return(NULL)
     
-    par(cex = cex, mar = mar)
-    plot(s$d[1:ncol(s$u)],ylab = "S. V.",log = "y")
+    par(mfrow=c(1,2),cex = cex, mar = mar, cex.lab=1.5)
+    # S.V.
+    plot(s$d[1:ncol(s$u)],ylab = "Singular Values",log = "y")
     lines(s$d,col = "blue")
     grid()
     
+    #L.o.F
+    lof=c()
+    mat  = Inputs$mat
+    sMat = sum(mat^2)
+    mat1 = rep(0,nrow=nrow(s$u),ncol=ncol(s$v))
+    for (i in 1:10) {
+      mat1  = mat1 + s$u[,i] %o% s$v[,i] * s$d[i]
+      resid = mat - mat1
+      lof[i] = 100*(sum(resid^2)/sMat)^0.5
+    }
+    
+    plot(lof,ylab = "Lack of Fit (%)",log = "y")
+    lines(lof,col = "blue")
+    text(1:length(lof),lof,labels = signif(lof,3),col=2,pos=3)
+    grid()
+  
   },height = 450)
   
   output$svdVec <- renderPlot({
@@ -2524,20 +2516,21 @@ shinyServer(function(input, output, session) {
         res = myals(
           C = C, Psi = mat, S = S, xC = delay, xS = wavl,
           maxiter = input$maxiter,
-          uniS = input$uniS,
+          uniS    = input$uniS,
           nonnegS = input$nonnegS,
           nonnegC = input$nonnegC,
-          thresh = 1e-4,
-          normS = input$normS,
-          S0 =S0,
-          hardS0 = !input$softS0,
+          thresh  = 10^input$alsThresh,
+          normS   = input$normS,
+          S0      = S0,
+          hardS0  = !input$softS0,
           wHardS0 = 10^input$wSoftS0,
           optS1st = input$optS1st,
-          SumS = input$SumS,
-          smooth = input$smooth,
+          SumS    = input$SumS,
+          smooth  = input$smooth,
           updateProgress = updateProgress,
-          nullC = nullC,
-          closeC = input$closeC
+          nullC   = nullC,
+          closeC  = input$closeC,
+          wCloseC = 10^input$wCloseC
         )
         RES <<- res
         msg = list(msg,
@@ -2561,20 +2554,21 @@ shinyServer(function(input, output, session) {
           res = myals(
             C = C, Psi = mat, S = S, xC = delay, xS = wavl,
             maxiter = input$maxiter,
-            uniS = input$uniS,
+            uniS    = input$uniS,
             nonnegS = input$nonnegS,
             nonnegC = input$nonnegC,
-            thresh = 1e-4,
-            normS = input$normS,
-            S0 = S0,
-            hardS0 = !input$softS0,
+            thresh  = 10^input$alsThresh,
+            normS   = input$normS,
+            S0      = S0,
+            hardS0  = !input$softS0,
             wHardS0 = 10^input$wSoftS0,
             optS1st = input$optS1st,
-            smooth = input$smooth,
-            SumS = input$SumS,
+            smooth  = input$smooth,
+            SumS    = input$SumS,
             updateProgress = updateProgress,
-            nullC = nullC,
-            closeC = input$closeC
+            nullC   = nullC,
+            closeC  = input$closeC,
+            wCloseC = 10^input$wCloseC
           )
           S = res$S
           C = res$C
@@ -2738,14 +2732,15 @@ shinyServer(function(input, output, session) {
         dens   = input$alsRotAmbDens
       })
       
-      progress <- shiny::Progress$new()
-      on.exit(progress$close())
-      updateProgress <- function(value = NULL, detail = NULL) {
-        progress$set(value = value, detail = detail)
-      }
-      msg = list()
-      # Progress bar
-      progress$set(message = "Running Ambiguity Analysis ", value = 0)
+      # progress <- shiny::Progress$new()
+      # on.exit(progress$close())
+      # updateProgress <- function(value = NULL, detail = NULL) {
+      #   progress$set(value = value, detail = detail)
+      # }
+      # msg = list()
+      # # Progress bar
+      # progress$set(message = "Running Ambiguity Analysis ", value = 0)
+      updateProgress = NULL  # Progress bar is not efficient (imprevisible run length...)
       
       C0    = alsOut$C
       S0    = alsOut$S

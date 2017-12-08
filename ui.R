@@ -1,5 +1,10 @@
-# library(shiny)
-# library(DT)
+# Libraries ####
+libs = c('shiny', 'shinyBS','shinycssloaders')
+for (lib in libs ) {
+  if(!require(lib,character.only = TRUE,quietly=TRUE))
+    install.packages(lib,dependencies=TRUE)
+  library(lib,character.only = TRUE,quietly=TRUE)
+}
 
 navbarPage( 
   "SK-Ana",
@@ -245,7 +250,10 @@ navbarPage(
               value="dataImg",
               title=h4("Data"),
               br(),
-              plotOutput("image1", height = 450),
+              withSpinner(
+                plotOutput("image1", height = 450),
+                type=4
+              ),
               br(),
               fluidRow(
                 column(4,
@@ -284,7 +292,10 @@ navbarPage(
               value="dataCuts",
               title=h4("Cuts"),
               br(),
-              plotOutput("cuts", height=450)
+              withSpinner(
+                plotOutput("cuts", height=450),
+                type=4
+              )
             )
           ),
           id="svdTabset"
@@ -325,19 +336,28 @@ navbarPage(
               value="delaySV",
               title=h4("Vectors"),
               br(),
-              plotOutput("svdVec", height=550)
+              withSpinner(
+                plotOutput("svdVec", height=550),
+                type=4
+              )
             ),
             tabPanel(
               value="residSVD",
               title=h4("Residuals"),
               br(),
-              plotOutput("svdResid", height=550)
+              withSpinner(
+                plotOutput("svdResid", height=550),
+                type=4
+              )
             ),
             tabPanel(
               value="recSVD",
               title=h4("Contributions"),
               br(),
-              plotOutput("svdContribs", height=550)
+              withSpinner(
+                plotOutput("svdContribs", height=550),
+                type=4
+              )
             )
           ),
           id="svdTabset"
@@ -374,6 +394,17 @@ navbarPage(
                  actionButton("runALS",strong("Run")),
                  tags$style(type='text/css', 
                             "#runALS { width:100%; margin-top: 25px;}")
+          )
+        ),
+        fluidRow(
+          column(8,
+                 sliderInput("alsThresh", 
+                             "Log convergence threshold",
+                             min   =  -10, 
+                             max   =   -2, 
+                             value =   -6,
+                             sep   =   ""
+                 )
           )
         ),
         br(),
@@ -443,25 +474,27 @@ navbarPage(
                      checkboxInput("shapeS", 
                                    label= "External spectrum shape(s)",
                                    value = FALSE),
-                     
-                     fileInput(
-                       inputId = 'S0File',
-                       label   = 'Select file(s)',
-                       multiple= TRUE,
-                       accept  = c('.dat','.txt','.csv')
-                     ),
-                     checkboxInput("softS0", 
-                                   label= "Soft constraint",
-                                   value = FALSE),
                      conditionalPanel(
-                       condition = "input.softS0",
-                       sliderInput("wSoftS0", 
-                                 "logWeight for Soft constraint",
-                                 min   =  -3, 
-                                 max   =   3, 
-                                 value =   1,
-                                 step  = 0.5,
-                                 sep   = ""
+                       condition = "input.shapeS",
+                       fileInput(
+                         inputId = 'S0File',
+                         label   = 'Select file(s)',
+                         multiple= TRUE,
+                         accept  = c('.dat','.txt','.csv')
+                       ),
+                       checkboxInput("softS0", 
+                                     label= "Soft constraint",
+                                     value = FALSE),
+                       conditionalPanel(
+                         condition = "input.softS0",
+                         sliderInput("wSoftS0", 
+                                     "logWeight for Soft constraint",
+                                     min   =  -3, 
+                                     max   =   3, 
+                                     value =   1,
+                                     step  = 0.5,
+                                     sep   = ""
+                         )
                        )
                      )
               )
@@ -479,6 +512,17 @@ navbarPage(
                           value = FALSE),
             shinyBS::bsTooltip("closeC", 
                                title = "Ensures that sum(C)=1 at each delay"),
+            conditionalPanel(
+              condition = "input.closeC",
+              sliderInput("wCloseC", 
+                          "logWeight for Soft constraint",
+                          min   =  -3, 
+                          max   =   3, 
+                          value =   1,
+                          step  = 0.5,
+                          sep   = ""
+              )
+            ),
             uiOutput("maskSpExp_ui")
          )
         )
@@ -505,12 +549,18 @@ navbarPage(
                 tabPanel(
                   value="alsResid1_1",
                   title=h5("Residuals"), br(),
-                  plotOutput("alsResid1", height=550)
+                  withSpinner(
+                    plotOutput("alsResid1", height=550) ,
+                    type=4
+                  )
                 ),
                 tabPanel(
                   value="alsResid1_2",
                   title=h5("SVD of Residuals"), br(),
-                  plotOutput("alsResid2", height=550)
+                  withSpinner(
+                    plotOutput("alsResid2", height=550),
+                    type=4
+                  )
                 ),
                 id="alsResid1" #,
                 # type='pills'
@@ -520,7 +570,10 @@ navbarPage(
               value="alsVectorsTab",
               title=h4("Spectra & Kinetics"),
               br(),
-              plotOutput("alsVectors", height=450),
+              withSpinner(
+                plotOutput("alsVectors", height=450),
+                type=4
+              ),
               wellPanel(
                 fluidRow(
                   column(12,
@@ -535,13 +588,19 @@ navbarPage(
               value="alsContribTab",
               title=h4("Contributions"),
               br(),
-              plotOutput("alsContribs", height=550)
+              withSpinner(
+                plotOutput("alsContribs", height=550),
+                type=4
+              )
             ),
             tabPanel(
               value="alsRotAmbTab",
               title=h4("Ambiguity"),
               br(),
-              plotOutput("alsRotAmb", height=450),
+              withSpinner(
+                plotOutput("alsRotAmb", height=450),
+                type=4
+              ),
               wellPanel( 
                 h4("Explore Rotational/Scaling Ambiguity"),
                 fluidRow(
