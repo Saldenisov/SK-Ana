@@ -237,12 +237,12 @@ myals = function (C, Psi, S,
     
     oneMore <- ( (iter %% 2 != b) && maxiter != 1 && iter <=2)
   }
-  
+  lof = signif(100*(sum(resid^2)/sum(Psi^2))^0.5,4)
   msg = HTML(paste0(
     "Initial RSS / Final RSS = ", signif(initialrss,3),
     "/", signif(rss,3), " = ", signif(initialrss / rss,3),
     "<br/> |RD| : ", signif(abs(RD),3)," <= ",thresh,
-    "<br/> L.O.F. = ",signif(100*(sum(resid^2)/sum(Psi^2))^0.5,4)  
+    "<br/> L.O.F. = ", lof 
     ))
   
   if (!silent)
@@ -251,7 +251,7 @@ myals = function (C, Psi, S,
   return(list(
     C = C, S = S, xC = xC, xS = xS, Psi = Psi,
     rss = rss, resid = resid, iter = iter,
-    msg = msg
+    msg = msg, lof = lof
   ))
 }
 plotResid <- function (delay,wavl,mat,C,S,
@@ -381,7 +381,7 @@ plotAlsVec <- function (alsOut,...) {
     type = ifelse(length(alsOut$xC)>20,'p','b'),
     pch = 19, cex = 0.5, lwd=2, lty=3,
     xlab = 'Delay', ylab = 'C',
-    main = 'ALS Kinetics',
+    main = paste0('ALS Kinetics; L.o.f. =',alsOut$lof),
     xaxs = 'i'
   )
   n=ncol(alsOut$C)
@@ -393,7 +393,7 @@ plotAlsVec <- function (alsOut,...) {
     type = ifelse(length(alsOut$xC)>20,'p','b'),
     pch = 19, cex = 0.5, lwd=2, lty=3,
     xlab = 'Wavelength',ylab = 'S',
-    main = 'Area Normalized ALS Spectra', 
+    main = 'ALS Spectra', 
     xaxs = 'i'
   )
   grid();box()
@@ -1282,7 +1282,7 @@ shinyServer(function(input, output, session) {
         return(NULL)
       list(
         mat       = RawData[[sel]]$mat, 
-        delay     = RawData[[sel]]$delay, 
+        delay     = 1:length(RawData[[sel]]$delay), 
         wavl      = RawData[[sel]]$wavl, 
         delaySave = RawData[[sel]]$delay,
         delayId   = rep(1,length(RawData[[sel]]$delay))
@@ -1627,8 +1627,8 @@ shinyServer(function(input, output, session) {
     )
   })
   output$showPIN = reactive({
-    Inputs$gotData &&
-      Inputs$validData &&
+    # Inputs$gotData &&
+    #   Inputs$validData &&
       Inputs$process &&
       length(input$rawData_rows_selected) != 0
   })

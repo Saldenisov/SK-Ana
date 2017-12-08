@@ -439,6 +439,7 @@ navbarPage(
             ),
             fluidRow(
               column(12,
+                     hr(),
                      checkboxInput("shapeS", 
                                    label= "External spectrum shape(s)",
                                    value = FALSE),
@@ -456,10 +457,11 @@ navbarPage(
                        condition = "input.softS0",
                        sliderInput("wSoftS0", 
                                  "logWeight for Soft constraint",
-                                 min = -5, 
-                                 max =  2, 
-                                 value = 1,
-                                 sep=""
+                                 min   =  -3, 
+                                 max   =   3, 
+                                 value =   1,
+                                 step  = 0.5,
+                                 sep   = ""
                        )
                      )
               )
