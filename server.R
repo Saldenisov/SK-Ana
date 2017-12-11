@@ -11,12 +11,12 @@ for (lib in libs ) {
 }
 
 # Colors ####
-cols = viridis(128)
-col2tr = function(col,alpha)
+cols    = viridis::viridis(128)
+col2tr  = function(col,alpha)
   rgb(unlist(t(col2rgb(col))),alpha = alpha,maxColorValue = 255)
 cyan_tr = col2tr("cyan",120)
 pink_tr = col2tr("pink",120)
-colWR=fields::two.colors(17,start="blue",middle="white",end="red")
+colWR   = fields::two.colors(17,start="blue",middle="white",end="red")
 
 # Global graphical params ####
 cex = 1
@@ -118,7 +118,7 @@ getS  = function (C, data, S, xS, nonnegS, uniS,
   for (i in 1:ncol(data)) {
     
     if (nonnegS)
-      s <- try(nnls(C, data[,i]))
+      s <- try(nnls::nnls(C, data[,i]))
     else
       s <- try(qr.coef(qr(C), data[,i]))
     
@@ -875,9 +875,9 @@ autoDlMask <- function (mat,nmat) {
 
   # Special treatment for nmat=1 
   # (SegNeigh fails with Q=2 !!!)
-  ans = cpt.var(diff(trace), penalty='BIC', 
-                method = 'SegNeigh', 
-                Q = 2 + max(1, 2*(nmat-1))
+  ans = changepoint::cpt.var(diff(trace), penalty='BIC', 
+                             method = 'SegNeigh', 
+                             Q = 2 + max(1, 2*(nmat-1))
   )
   if(nmat==1) 
     chp = cpts(ans)[2]
@@ -895,9 +895,9 @@ autoWlMask <- function (mat,nmat) {
   
   # Special treatment for nmat=1 
   # (SegNeigh fails with Q=2 !!!)
-  ans = cpt.var(diff(trace), penalty='BIC', 
-                method = 'SegNeigh', 
-                Q = 2 + max(1, 2*(nmat-1))
+  ans = changepoint::cpt.var(diff(trace), penalty='BIC', 
+                             method = 'SegNeigh', 
+                             Q = 2 + max(1, 2*(nmat-1))
   )
   chp = sort(cpts(ans))
 
@@ -1205,7 +1205,7 @@ shinyServer(function(input, output, session) {
         v = matTab[,i,j]
         v = v[!is.na(v)]
         if(length(v) >=1) {
-          effData    = rm.outlier(v)
+          effData    = outliers::rm.outlier(v)
           matm[i,j]  = mean(effData,na.rm = TRUE)
         }
       }
@@ -1219,25 +1219,25 @@ shinyServer(function(input, output, session) {
   doTileMatrix  <- function(sel, tileDel=TRUE) {
     nbFiles = length(sel)
     for (i in 1:nbFiles) {
-      j = sel[i]
-      mat1 = RawData[[j]]$mat
-      wav1 = RawData[[j]]$wavl
-      del1 = RawData[[j]]$delay
+      j     = sel[i]
+      mat1  = RawData[[j]]$mat
+      wav1  = RawData[[j]]$wavl
+      del1  = RawData[[j]]$delay
       delS1 = RawData[[j]]$delaySave
       
       if(i==1) {    
-        mat   = mat1
-        delay = del1
-        wavl  = wav1
+        mat       = mat1
+        delay     = del1
+        wavl      = wav1
         delaySave = delS1
-        delayId = rep(i,length(del1))
+        delayId   = rep(i,length(del1))
         
       } else {
         if(tileDel) {
           # Tile matrices by delay (row)
-          delay = c(delay,del1)
-          delayId = c(delayId,rep(i,length(del1)))
-          mat   = rbind(mat,mat1)      
+          delay     = c(delay,del1)
+          delayId   = c(delayId,rep(i,length(del1)))
+          mat       = rbind(mat,mat1)      
           delaySave = c(delaySave,delS1)
         } else {
           # Tile matrices by wavl (col)
@@ -1249,9 +1249,9 @@ shinyServer(function(input, output, session) {
       delay = 1:length(delay) # Replace by ordinal scale
     }
     # Order wavl by increasing value
-    sel = order(wavl)
-    wavl=wavl[sel]
-    mat = mat[,sel]
+    sel  = order(wavl)
+    wavl = wavl[sel]
+    mat  = mat[,sel]
     
     return(list(mat=mat, wavl=wavl, delay=delay, 
                 delaySave=delaySave, delayId = delayId))
@@ -2499,9 +2499,9 @@ shinyServer(function(input, output, session) {
           for (i in 1:nAls)
             fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
           # 2/ NMF
-          res  = nmf(abs(fMat), rank=nAls, method='lee')
-          C = basis(res)
-          S = t(coef(res))
+          res  = MNF::nmf(abs(fMat), rank=nAls, method='lee')
+          C = NMF::basis(res)
+          S = t(NMF::coef(res))
           
         } else {
           # restart from existing solution

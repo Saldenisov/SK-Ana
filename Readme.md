@@ -1,3 +1,4 @@
+
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
 
 
@@ -11,7 +12,34 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
-**Please download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest)**
+
+**Installation** 
+
+* Download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest) 
+  and decompress the archive in a dedicated directory 
+
+* You will also need
+
+    + [R](https://cran.rstudio.com/) (Mandatory)
+    
+    + [RStudio](https://www.rstudio.com/products/rstudio/download/#download) (Optional)
+
+**How to run SK-Ana**
+
+* Using `R`: go to the installation directory and run the command `shiny::runApp()` in a `R` console
+    
+    
+* Using `RStudio`
+
+    1. go to the installation directory and double-click on `server.R` or `ui.R`
+
+    2. in `RStudio` click on `Run App`
+
+For other options and more detailed information see [here](https://shiny.rstudio.com/articles/running.html).
+
+In both cases, a web interface should open in your favorite browser. At the first launch,
+the code will install a set of packages, if they are not installed already: `outliers`, `nnls`, `Iso`, `viridis`, `changepoint`, `shiny`, `shinyBS`,`DT`, `fields`, `NMF`, and `shinycssloaders`. 
+Depending on your OS, you might have to install them manually.
 
 
 **References**
