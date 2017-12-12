@@ -903,6 +903,24 @@ autoWlMask <- function (mat,nmat) {
 
   return(chp)  
 }
+cleanUp <- function (mat,level) {
+  # Remove glitches from matrix by detecting outliers in SVD residuals...
+  
+  # Replace NAs by mean
+  mat0 = mat
+  mat0[is.na(mat)] = mean(mat,na.rm=TRUE)
+
+  # Get SVD residuals at specified level
+  nsvMax = 10
+  s = svd(mat0,nu = nsvMax,nv = nsvMax)
+  for (i in 1:(level-1))
+    mat0 = mat0 - s$u[,i] %o% s$v[,i] * s$d[i]
+
+  # Detect the problematic matrix column and return its index
+  out = which.max(rowSums(abs(mat0)))
+  
+  return(out)
+}
 
 # Server ####
 shinyServer(function(input, output, session) {
@@ -933,7 +951,8 @@ shinyServer(function(input, output, session) {
     wavl           = NULL,
     delay          = NULL,
     delaySave      = NULL,  # True delays used in saved kinetics
-    delayId        = NA     # Reference to original matrices when tiled
+    delayId        = NA,    # Reference to original matrices when tiled
+    delayGlitch    = NA     # List of glitches to mask
   )
   
   
@@ -1753,6 +1772,10 @@ shinyServer(function(input, output, session) {
             if(sum(sel)!=0) wavlMask[sel]  = NA
           }
       }
+    if(!anyNA(Inputs$delayGlitch)) 
+      for (i in Inputs$delayGlitch)
+        delayMask[i] = NA
+    
     Inputs$delayMask <<- delayMask
     Inputs$wavlMask  <<- wavlMask
     
@@ -1979,7 +2002,7 @@ shinyServer(function(input, output, session) {
       
     })
   )
-  
+
   output$image1 <- renderPlot({
     if(is.null(selectArea())) 
       return(NULL)
@@ -2083,10 +2106,10 @@ shinyServer(function(input, output, session) {
       
       close.screen(all.screens = TRUE)
     }
-    
-
-    
   })
+  outputOptions(output, "image1",
+                suspendWhenHidden = FALSE)
+  
   
   output$cuts <- renderPlot({
     if(is.null(selectArea())) 
@@ -2205,8 +2228,19 @@ shinyServer(function(input, output, session) {
                  length(Inputs$wavl)
                  )
     svd(mat,nu = nsvMax,nv = nsvMax)
-    
   })
+
+  ## Clean Up ####
+  observeEvent(
+    input$clean,
+    {
+      gl = cleanUp(Inputs$mat,isolate(input$cleanLevel))
+      if(is.na(Inputs$delayGlitch))
+        Inputs$delayGlitch  <<- gl
+      else
+        Inputs$delayGlitch  <<- unique(c(Inputs$delayGlitch,gl))
+    }
+  )
   
   output$svdSV <- renderPlot({
     if (is.null(s <- doSVD()))
@@ -2221,6 +2255,9 @@ shinyServer(function(input, output, session) {
     #L.o.F
     lof=c()
     mat  = Inputs$mat
+    # Suppress masked areas
+    mat = mat[!is.na(Inputs$delayMask),]
+    mat = mat[,!is.na(Inputs$wavlMask) ]
     sMat = sum(mat^2)
     mat1 = rep(0,nrow=nrow(s$u),ncol=ncol(s$v))
     for (i in 1:10) {
@@ -2235,6 +2272,8 @@ shinyServer(function(input, output, session) {
     grid()
   
   },height = 450)
+  outputOptions(output, "svdSV",
+                suspendWhenHidden = FALSE)
   
   output$svdVec <- renderPlot({
     if (is.null(s <- doSVD()))
@@ -2242,6 +2281,8 @@ shinyServer(function(input, output, session) {
     CS = reshapeCS(s$u,s$v,ncol(s$u))
     plotSVDVecBloc(CS$C,CS$S,Inputs$delay,Inputs$wavl)    
   },height = 500)
+  outputOptions(output, "svdVec",
+                suspendWhenHidden = FALSE)
   
   output$svdResid <- renderPlot({
     if (is.null(s <- doSVD()))

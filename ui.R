@@ -205,13 +205,14 @@ navbarPage(
           ),
           tabPanel(
             value="dataMasksS",
-            title=h4("Wavl Masks"),
+            title=h4("Wavl Mask"),
             br(),
             fluidRow(
               column(4,
                      numericInput('nMasksWl','Nb of masks', width="100px",
                                   value = 0, min = 0, max=15, step=1)),
               column(4,
+                     style = "margin-top: 25px;",
                      actionButton('autoWlMask',
                                   strong("Auto"),
                                   icon = icon("gear") ))
@@ -221,13 +222,14 @@ navbarPage(
           ),
           tabPanel(
             value="dataMasksC",
-            title=h4("Delay Masks"),
+            title=h4("Delay Mask"),
             br(),
             fluidRow(
               column(4,
                      numericInput('nMasksDl','Nb of masks', width="100px",
                                   value = 0, min = 0, max=15, step=1)),
               column(4,
+                     style = "margin-top: 25px;",
                      actionButton('autoDlMask',
                                   strong("Auto"),
                                   icon = icon("gear")))
@@ -309,9 +311,9 @@ navbarPage(
     "SVD",
     sidebarLayout(
       sidebarPanel(
-        h4("SVD parameters"),
         fluidRow(
           column(4,
+                 h4("SVD parameters"),
                  numericInput("nSV", 
                               label = "Dimension", 
                               value =  2, 
@@ -320,6 +322,18 @@ navbarPage(
                               step  =  1,
                               width = '100px')
           )
+        ),
+        hr(),
+        fluidRow(
+          column(4,
+                 h4("Glitch removal"),
+                 numericInput('cleanLevel','Level', width="100px",
+                              value = 2, min = 2, max=10, step=1)),
+          column(4,
+                 style = "margin-top: 65px;",
+                 actionButton('clean',
+                              strong("Clean"),
+                              icon = icon("gear")))
         )
       ),
       mainPanel(
