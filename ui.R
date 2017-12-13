@@ -252,41 +252,66 @@ navbarPage(
               value="dataImg",
               title=h4("Data"),
               br(),
-              withSpinner(
-                plotOutput("image1", height = 450),
-                type=4
-              ),
-              br(),
               fluidRow(
-                column(4,
-                       sliderInput("keepWlCut", 
-                                   "Reference wavelength",
-                                   min = 0, 
-                                   max = 1, 
-                                   value = 0.5,
-                                   sep=""
+                column(6,
+                       # withSpinner(
+                         plotOutput("image1", 
+                                    height = 450,
+                                    dblclick = "image1_dblclick",
+                                    brush = brushOpts(
+                                      id = "image1_brush",
+                                      resetOnNew = TRUE
+                                    )
+                         ),
+                         # type=4
+                       # ),
+                       br(),
+                       wellPanel(
+                         fluidRow(
+                           column(9,
+                                  sliderInput("keepWlCut", 
+                                              "Reference wavl",
+                                              min = 0, 
+                                              max = 1, 
+                                              value = 0.5,
+                                              sep=""
+                                  )
+                           ),
+                           column(3,
+                                  actionButton("delayCutSave","Save",
+                                               icon     = icon('save')),
+                                  tags$style(type='text/css', 
+                                             "#delayCutSave { width:100%; margin-top: 30px;}")
+                                  
+                           )
+                         )
                        )
                 ),
-                column(2,
-                       actionButton("delayCutSave","Save",
-                                    icon     = icon('save')),
-                       tags$style(type='text/css', 
-                                  "#delayCutSave { width:100%; margin-top: 30px;}")
-                ),
-                column(4,
-                       sliderInput("keepDlCut", 
-                                   "Reference delay",
-                                   min = 0, 
-                                   max = 1, 
-                                   value = 0.5,
-                                   sep=""
+                column(6,
+                       # withSpinner(
+                         plotOutput("transects", height = 450),
+                         # type=4
+                       # ),
+                       br(),
+                       wellPanel(
+                         fluidRow(
+                           column(9,
+                                  sliderInput("keepDlCut", 
+                                              "Reference delay",
+                                              min = 0, 
+                                              max = 1, 
+                                              value = 0.5,
+                                              sep=""
+                                  )
+                           ),
+                           column(3,
+                                  actionButton("wavlCutSave","Save",
+                                               icon     = icon('save')),
+                                  tags$style(type='text/css', 
+                                             "#wavlCutSave { width:100%; margin-top: 30px;}")
+                           )
+                         )
                        )
-                ),
-                column(2,
-                       actionButton("wavlCutSave","Save",
-                                    icon     = icon('save')),
-                       tags$style(type='text/css', 
-                                  "#wavlCutSave { width:100%; margin-top: 30px;}")
                 )
               )
             ),
@@ -294,18 +319,63 @@ navbarPage(
               value="dataCuts",
               title=h4("Cuts"),
               br(),
-              withSpinner(
-                plotOutput("cuts", height=450),
-                type=4
+              fluidRow(
+                column(6,
+                       # withSpinner(
+                         plotOutput("cutsDl", 
+                                    height=450,
+                                    dblclick = "cutsDl_dblclick",
+                                    brush = brushOpts(
+                                      id = "cutsDl_brush",
+                                      resetOnNew = TRUE
+                                    )
+                         ),
+                         # type=4
+                       # ),
+                       br(),
+                       wellPanel(
+                         sliderInput("stepDlCut", 
+                                     "Cut freq.",
+                                     min = 0, 
+                                     max = 100, 
+                                     value = 10,
+                                     sep=""
+                         )
+                       )
+                ),
+                column(6,
+                       # withSpinner(
+                         plotOutput("cutsWl", 
+                                    height=450,
+                                    dblclick = "cutsWl_dblclick",
+                                    brush = brushOpts(
+                                      id = "cutsWl_brush",
+                                      resetOnNew = TRUE
+                                    )
+                         ),
+                         # type=4
+                       # ),
+                       br(),
+                       wellPanel(
+                         sliderInput("stepWlCut", 
+                                     "Cut freq.",
+                                     min = 0, 
+                                     max = 100, 
+                                     value = 10,
+                                     sep=""
+                         )
+                         
+                       )
+                )
               )
-            )
-          ),
-          id="svdTabset"
+            ),
+            id="svdTabset"
+          )
         )
       )
     )
   ),
-  
+    
   # SVD ####  
   tabPanel(
     "SVD",
@@ -582,20 +652,38 @@ navbarPage(
             ),
             tabPanel(
               value="alsVectorsTab",
-              title=h4("Spectra & Kinetics"),
+              title=h4("Kinetics & Spectra"),
               br(),
-              withSpinner(
-                plotOutput("alsVectors", height=450),
-                type=4
+              fluidRow(
+                column(6,
+                       withSpinner(
+                         plotOutput("alsKinVectors", height=450,
+                                    dblclick = "alsKin_dblclick",
+                                    brush = brushOpts(
+                                      id = "alsKin_brush",
+                                      resetOnNew = TRUE
+                                    )),
+                         type=4
+                       )
+                ),
+                column(6,
+                       withSpinner(
+                         plotOutput("alsSpVectors", height=450,
+                                    dblclick = "alsSp_dblclick",
+                                    brush = brushOpts(
+                                      id = "alsSp_brush",
+                                      resetOnNew = TRUE
+                                    )),
+                         type=4
+                       )
+                )
               ),
               wellPanel(
-                fluidRow(
-                  column(12,
+                  column(6,
                          h5('Save ALS spectra and kinetics'),
                          actionButton("alsSpKinSave","Save (Ctrl+Click)",
                                       icon     = icon('save'))
                   )
-                )
               )
             ),
             tabPanel(

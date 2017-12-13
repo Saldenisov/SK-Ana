@@ -294,10 +294,14 @@ plotResid <- function (delay,wavl,mat,C,S,
   par(cex = cex,cex.main=cex, mar = mar, 
       mgp = mgp, tcl = tcl, pty=pty)
   resid = matAls - mat
+  lof = 100*(sum(resid^2,na.rm = TRUE)/
+             sum(mat^2,na.rm = TRUE)
+            )^0.5
   image(
     delay,wavl,resid,
     xlab = 'Delay',ylab = 'Wavelength',
-    main = 'Residuals',col = cols
+    main = paste0('Residuals; L.o.f.=',signif(lof,3),'%'),
+    col = cols
   )
   screen(5)
   par(cex = cex,cex.main=cex, mar = mar, 
@@ -380,32 +384,38 @@ plotConbtribs <- function (delay,wavl,mat,C,S,
   }
   dummy = close.screen(all.screens = TRUE)
 }
-plotAlsVec <- function (alsOut,...) {
-  par(mfrow = c(1,2))
+plotAlsVec <- function (alsOut,type="Kin",xlim=NULL,ylim=NULL,...) {
   par(cex = cex,cex.main=cex, mar = mar, 
       mgp = mgp, tcl = tcl, pty=pty)
  
-  matplot(
-    alsOut$xC,alsOut$C,
-    type = ifelse(length(alsOut$xC)>20,'p','b'),
-    pch = 19, cex = 0.5, lwd=2, lty=3,
-    xlab = 'Delay', ylab = 'C',
-    main = paste0('ALS Kinetics; L.o.f. =',alsOut$lof),
-    xaxs = 'i'
-  )
-  n=ncol(alsOut$C)
-  legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
-  grid();box()
+  if(type == "Kin") {
+    matplot(
+      alsOut$xC,alsOut$C,
+      type = ifelse(length(alsOut$xC)>20,'p','b'),
+      pch = 19, cex = 0.5, lwd=2, lty=3,
+      xlab = 'Delay', ylab = 'C',
+      xlim = xlim,
+      ylim = ylim,
+      main = paste0('ALS Kinetics; L.o.f. =',alsOut$lof),
+      xaxs = 'i'
+    )
+    n=ncol(alsOut$C)
+    legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
+    grid();box()
+  } else {
+    matplot(
+      alsOut$xS,alsOut$S,
+      type = ifelse(length(alsOut$xC)>20,'p','b'),
+      pch = 19, cex = 0.5, lwd=2, lty=3,
+      xlab = 'Wavelength',ylab = 'S',
+      xlim = xlim,
+      ylim = ylim,
+      main = 'ALS Spectra', 
+      xaxs = 'i'
+    )
+    grid();box()
+  }
 
-  matplot(
-    alsOut$xS,alsOut$S,
-    type = ifelse(length(alsOut$xC)>20,'p','b'),
-    pch = 19, cex = 0.5, lwd=2, lty=3,
-    xlab = 'Wavelength',ylab = 'S',
-    main = 'ALS Spectra', 
-    xaxs = 'i'
-  )
-  grid();box()
 
   }
 plotSVDVec <- function (X,axis,xlab="x",col='blue',...) {
@@ -1773,8 +1783,8 @@ shinyServer(function(input, output, session) {
           }
       }
     if(!anyNA(Inputs$delayGlitch)) 
-      for (i in Inputs$delayGlitch)
-        delayMask[i] = NA
+      for (i in 1:length(Inputs$delayGlitch))
+        delayMask[which(delay == Inputs$delayGlitch[i])] = NA
     
     Inputs$delayMask <<- delayMask
     Inputs$wavlMask  <<- wavlMask
@@ -1783,6 +1793,11 @@ shinyServer(function(input, output, session) {
     mat[,is.na(wavlMask)]  = NA
     
     Inputs$mat   <<- mat
+    
+    updateSlider("keepDoRange", 
+                 range(Inputs$matOrig,na.rm=TRUE), 
+                 range(mat,na.rm = TRUE), 
+                 200)
     
   })
   
@@ -2003,6 +2018,8 @@ shinyServer(function(input, output, session) {
     })
   )
 
+  rangesImage1 <- reactiveValues(x = NULL, y = NULL)
+  
   output$image1 <- renderPlot({
     if(is.null(selectArea())) 
       return(NULL)
@@ -2018,14 +2035,25 @@ shinyServer(function(input, output, session) {
       text(x=5,y=5,labels='Data not ready...',col=2)
       
     } else {
-      split.screen(c(1, 2))
-      split.screen(c(2, 1),screen=2)
-      screen(1)
+
+      if(is.null(rangesImage1$x))
+        xlim = range(delay)
+      else
+        xlim = rangesImage1$x
+      
+      if(is.null(rangesImage1$y))
+        ylim = range(wavl)
+      else
+        ylim = rangesImage1$y
+      
       par(cex = cex, mar = mar)
       image(
         delay,wavl,mat,
         xlab = 'Delay',ylab = 'Wavelength',
-        col = cols, zlim = input$keepDoRange
+        col = cols,
+        xlim = xlim,
+        ylim = ylim,
+        zlim = input$keepDoRange
       )
       
       abline(
@@ -2049,8 +2077,50 @@ shinyServer(function(input, output, session) {
              col=pink_tr #'gray70'
         )
       }
+    }
+  })
+  outputOptions(output, "image1",
+                suspendWhenHidden = FALSE)
+  
+  observeEvent(input$image1_dblclick, {
+    brush <- input$image1_brush
+    if (!is.null(brush)) {
+      rangesImage1$x <- c(brush$xmin, brush$xmax)
+      rangesImage1$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesImage1$x <- NULL
+      rangesImage1$y <- NULL
+    }
+  })
+
+  output$transects <- renderPlot({
+    if(is.null(selectArea())) 
+      return(NULL)
+    
+    mat   = Inputs$mat
+    wavl  = Inputs$wavl
+    delay = Inputs$delay
+    
+    if(!is.finite(diff(range(wavl)))  ||
+       !is.finite(diff(range(delay))) ||
+       !is.finite(diff(range(mat,na.rm=TRUE)))   ) {
+      plot(1:10,1:10,type='n')
+      text(x=5,y=5,labels='Data not ready...',col=2)
       
-      screen(3)
+    } else {
+      
+      if(is.null(rangesImage1$x))
+        xlim = range(delay)
+      else
+        xlim = rangesImage1$x
+      
+      if(is.null(rangesImage1$y))
+        ylim = range(wavl)
+      else
+        ylim = rangesImage1$y
+      
+      par(mfrow=c(2,1))
+      
       par(cex = cex, mar = mar)
       # Locally Averaged Spectrum
       dCut = input$keepDlCut * Inputs$dlScaleFacOrig
@@ -2065,7 +2135,8 @@ shinyServer(function(input, output, session) {
       if(all(is.na(cutMean))) cutMean=cutMean*0
       matplot(
         wavl,cutMean,type = 'l',col = 'orange', lwd=2,
-        xlab = 'Wavelength', ylab = 'O.D.', 
+        xlab = 'Wavelength', ylab = 'O.D.',
+        xlim = ylim,
         ylim = input$keepDoRange,
         main = paste0('Mean O.D. at delay: ',signif(mean(delay[indx]),3),
                       ifelse(delta==0,
@@ -2077,7 +2148,6 @@ shinyServer(function(input, output, session) {
       abline(h = 0,lty = 2)
       grid();box()
       
-      screen(4)
       par(cex = cex, mar = mar)
       # Locally Averaged Kinetics
       dCut = input$keepWlCut
@@ -2092,7 +2162,8 @@ shinyServer(function(input, output, session) {
       if(all(is.na(cutMean))) cutMean=cutMean*0
       matplot(
         delay,cutMean,type = 'l', col = 'orange', lwd=2,
-        xlab = 'Delay', ylab = 'O.D.', 
+        xlab = 'Delay', ylab = 'O.D.',
+        xlim = xlim,
         ylim = input$keepDoRange,
         main = paste0('Mean O.D. at wavl: ',signif(mean(wavl[indx]),3),
                       ifelse(delta==0,
@@ -2103,44 +2174,78 @@ shinyServer(function(input, output, session) {
       )
       abline(h = 0,lty = 2)
       grid();box()
-      
-      close.screen(all.screens = TRUE)
-    }
+          }
   })
-  outputOptions(output, "image1",
+  outputOptions(output, "transects",
                 suspendWhenHidden = FALSE)
   
+  rangesDl <- reactiveValues(x = NULL, y = NULL)
   
-  output$cuts <- renderPlot({
+  output$cutsDl <- renderPlot({
     if(is.null(selectArea())) 
       return(NULL)
-    # print('Cuts')
+
     mat   = Inputs$mat
     wavl  = Inputs$wavl
     delay = Inputs$delay
     
     wCut = seq(1,length(delay),
-               by = ifelse(length(delay) >= 50, 10, 1)
-               )
-    dCut = seq(1,length(wavl),
-               by = ifelse(length(wavl ) >= 50 , 10, 1)
+               # by = ifelse(length(delay) >= 50, 10, 1)
+               by = max(1,input$stepDlCut)
                )
 
-    ylim = input$keepDoRange
+    if(is.null(rangesDl$y))
+      ylim = input$keepDoRange
+    else
+      ylim = rangesDl$y
     
-    par(mfrow = c(1,2))
     par(cex = cex, mar = mar)
     matplot(
-      wavl,t(mat[wCut,]),type = 'l', ylim = ylim,
+      wavl,t(mat[wCut,]),type = 'l', 
+      xlim = rangesDl$x,
+      ylim = ylim,
       xlab = 'Wavelength', ylab = 'DO',
       xaxs='i', yaxs='i'
     )
     grid();box()
-    # mtext(signif(delay[wCut],3),side=3,at=mat[wCut,length(wavl)])
+  })
 
+  observeEvent(input$cutsDl_dblclick, {
+    brush <- input$cutsDl_brush
+    if (!is.null(brush)) {
+      rangesDl$x <- c(brush$xmin, brush$xmax)
+      rangesDl$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesDl$x <- NULL
+      rangesDl$y <- NULL
+    }
+  })
+
+  rangesWl <- reactiveValues(x = NULL, y = NULL)
+  
+  output$cutsWl <- renderPlot({
+    if(is.null(selectArea())) 
+      return(NULL)
+ 
+    mat   = Inputs$mat
+    wavl  = Inputs$wavl
+    delay = Inputs$delay
+    
+    dCut = seq(1,length(wavl),
+               # by = ifelse(length(wavl ) >= 50 , 10, 1)
+               by = max(1,input$stepWlCut)
+    )
+    
+    if(is.null(rangesWl$y))
+      ylim = input$keepDoRange
+    else
+      ylim = rangesWl$y
+    
     par(cex = cex, mar = mar)
     matplot(
-      delay,mat[,dCut],type = 'l', ylim = ylim,
+      delay,mat[,dCut],type = 'l', 
+      xlim = rangesWl$x,
+      ylim = ylim,
       xlab = 'Delay', ylab = 'DO',
       xaxs='i', yaxs='i'
     )
@@ -2157,8 +2262,19 @@ shinyServer(function(input, output, session) {
            col=pink_tr #'gray70'
       )
     }
+    
+  })
 
-  }, height = 400)
+  observeEvent(input$cutsWl_dblclick, {
+    brush <- input$cutsWl_brush
+    if (!is.null(brush)) {
+      rangesWl$x <- c(brush$xmin, brush$xmax)
+      rangesWl$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesWl$x <- NULL
+      rangesWl$y <- NULL
+    }
+  })
   
   observeEvent(input$wavlCutSave,
                isolate({
@@ -2234,11 +2350,12 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$clean,
     {
-      gl = cleanUp(Inputs$mat,isolate(input$cleanLevel))
+      gl   = cleanUp(Inputs$mat,isolate(input$cleanLevel))
+      dlgl = Inputs$delay[gl]
       if(is.na(Inputs$delayGlitch))
-        Inputs$delayGlitch  <<- gl
+        Inputs$delayGlitch  <<- dlgl
       else
-        Inputs$delayGlitch  <<- unique(c(Inputs$delayGlitch,gl))
+        Inputs$delayGlitch  <<- unique(c(Inputs$delayGlitch,dlgl))
     }
   )
   
@@ -2540,7 +2657,7 @@ shinyServer(function(input, output, session) {
           for (i in 1:nAls)
             fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
           # 2/ NMF
-          res  = MNF::nmf(abs(fMat), rank=nAls, method='lee')
+          res  = NMF::nmf(abs(fMat), rank=nAls, method='lee')
           C = NMF::basis(res)
           S = t(NMF::coef(res))
           
@@ -2711,14 +2828,48 @@ shinyServer(function(input, output, session) {
               CS$C,CS$S,main=main)
     
   },height = 450)
+
+  rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
   
-  output$alsVectors <- renderPlot({
+  output$alsKinVectors <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
-    
-    plotAlsVec(alsOut)
-
+    plotAlsVec(alsOut,type = "Kin",
+               xlim = rangesAlsKin$x,
+               ylim = rangesAlsKin$y)
   },height = 400)
+  
+  observeEvent(input$alsKin_dblclick, {
+    brush <- input$alsKin_brush
+    if (!is.null(brush)) {
+      rangesAlsKin$x <- c(brush$xmin, brush$xmax)
+      rangesAlsKin$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesAlsKin$x <- NULL
+      rangesAlsKin$y <- NULL
+    }
+  })
+
+  rangesAlsSp <- reactiveValues(x = NULL, y = NULL)
+  
+  output$alsSpVectors <- renderPlot({
+    if (is.null(alsOut <- doALS()))
+      return(NULL)
+    plotAlsVec(alsOut,type = "Sp",
+               xlim = rangesAlsSp$x,
+               ylim = rangesAlsSp$y)
+  },height = 400)
+
+  observeEvent(input$alsSp_dblclick, {
+    brush <- input$alsSp_brush
+    if (!is.null(brush)) {
+      rangesAlsSp$x <- c(brush$xmin, brush$xmax)
+      rangesAlsSp$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesAlsSp$x <- NULL
+      rangesAlsSp$y <- NULL
+    }
+  })
   
   observeEvent(
     input$alsSpKinSave,

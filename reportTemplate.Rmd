@@ -100,7 +100,9 @@ if('ALS' %in% input$inReport){
 ```{r echo=FALSE}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
-    plotAlsVec(alsOut,cex=scale)
+    par(mfrow=c(1,2))
+    plotAlsVec(alsOut,type="Kin",cex=scale)
+    plotAlsVec(alsOut,type="Sp" ,cex=scale)
   }
 }
 ```
@@ -141,6 +143,7 @@ if('ALS' %in% input$inReport){
   cat ('## Rotational Ambiguity')
 }
 ```
+
 
 ```{r amb, echo=FALSE}
 if('ALS' %in% input$inReport) {
