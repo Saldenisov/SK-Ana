@@ -14,7 +14,7 @@ for (lib in libs ) {
 cols    = viridis::viridis(128)
 col2tr  = function(col,alpha)
   rgb(unlist(t(col2rgb(col))),alpha = alpha,maxColorValue = 255)
-cyan_tr = col2tr("cyan",120)
+cyan_tr = col2tr("gold", 60)
 pink_tr = col2tr("pink",120)
 colWR   = fields::two.colors(17,start="blue",middle="white",end="red")
 
@@ -384,40 +384,7 @@ plotConbtribs <- function (delay,wavl,mat,C,S,
   }
   dummy = close.screen(all.screens = TRUE)
 }
-plotAlsVec <- function (alsOut,type="Kin",xlim=NULL,ylim=NULL,...) {
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
- 
-  if(type == "Kin") {
-    matplot(
-      alsOut$xC,alsOut$C,
-      type = ifelse(length(alsOut$xC)>20,'p','b'),
-      pch = 19, cex = 0.5, lwd=2, lty=3,
-      xlab = 'Delay', ylab = 'C',
-      xlim = xlim,
-      ylim = ylim,
-      main = paste0('ALS Kinetics; L.o.f. =',alsOut$lof),
-      xaxs = 'i'
-    )
-    n=ncol(alsOut$C)
-    legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
-    grid();box()
-  } else {
-    matplot(
-      alsOut$xS,alsOut$S,
-      type = ifelse(length(alsOut$xC)>20,'p','b'),
-      pch = 19, cex = 0.5, lwd=2, lty=3,
-      xlab = 'Wavelength',ylab = 'S',
-      xlim = xlim,
-      ylim = ylim,
-      main = 'ALS Spectra', 
-      xaxs = 'i'
-    )
-    grid();box()
-  }
 
-
-  }
 plotSVDVec <- function (X,axis,xlab="x",col='blue',...) {
   is = 0
   dummy = split.screen(c(2,4))
@@ -2018,6 +1985,36 @@ shinyServer(function(input, output, session) {
       
     })
   )
+  
+  colorizeMask1D = function(axis='delay', dir='v', ylim=NULL, eps=1e-4) {
+    
+    if(axis == "delay") {
+      mask   = Inputs$delayMask
+      values = Inputs$delay
+    } else {
+      mask   = Inputs$wavlMask
+      values = Inputs$wavl
+    }
+    masked = which(is.na(mask))
+    
+    # Remove extremities
+    sel = masked != 1 & masked != length(values)
+    masked = masked[sel]
+    
+    for(i in masked) {
+      if(is.na(mask[i-1])) 
+        x1 = values[i] # Prevent overlap of rectangles
+      else
+        x1 = values[i-1]
+      
+      x2 = values[i+1]
+      
+      if(dir == 'v')
+        rect(x1+eps,ylim[1],x2-eps,ylim[2],border=NA,col=cyan_tr)
+      else
+        rect(ylim[1],x1+eps,ylim[2],x2-eps,border=NA,col=cyan_tr)
+    }
+  }
 
   rangesImage1 <- reactiveValues(x = NULL, y = NULL)
   
@@ -2067,9 +2064,9 @@ shinyServer(function(input, output, session) {
       )
       
       if(input$keepCbl !=0) {
-        abline(
-          v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
-        )
+        # abline(
+        #   v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
+        # )
         rect(Inputs$delayOrig[1],
              Inputs$wavlOrig[1],
              Inputs$delayOrig[input$keepCbl],
@@ -2078,6 +2075,10 @@ shinyServer(function(input, output, session) {
              col=pink_tr #'gray70'
         )
       }
+      
+      # Show masks
+      colorizeMask1D(axis="delay",ylim=ylim)
+      colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
     }
   })
   outputOptions(output, "image1",
@@ -2147,6 +2148,7 @@ shinyServer(function(input, output, session) {
         )
       )
       abline(h = 0,lty = 2)
+      colorizeMask1D(axis="wavl",ylim=input$keepDoRange)
       grid();box()
       
       par(cex = cex, mar = mar)
@@ -2174,6 +2176,7 @@ shinyServer(function(input, output, session) {
         )
       )
       abline(h = 0,lty = 2)
+      colorizeMask1D(axis="delay",ylim=input$keepDoRange)
       grid();box()
           }
   })
@@ -2208,6 +2211,7 @@ shinyServer(function(input, output, session) {
       xlab = 'Wavelength', ylab = 'DO',
       xaxs='i', yaxs='i'
     )
+    colorizeMask1D(axis="wavl",ylim=ylim)
     grid();box()
   })
 
@@ -2250,11 +2254,12 @@ shinyServer(function(input, output, session) {
       xlab = 'Delay', ylab = 'DO',
       xaxs='i', yaxs='i'
     )
+    colorizeMask1D(axis="delay",ylim=ylim)
     grid();box()
     if(input$keepCbl !=0) {
-      abline(
-        v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
-      )
+      # abline(
+      #   v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
+      # )
       rect(Inputs$delayOrig[1],
            ylim[1],
            Inputs$delayOrig[input$keepCbl],
@@ -2845,6 +2850,42 @@ shinyServer(function(input, output, session) {
     
   },height = 450)
 
+  plotAlsVec <- function (alsOut,type="Kin",xlim=NULL,ylim=NULL,...) {
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    
+    if(type == "Kin") {
+      matplot(
+        alsOut$xC,alsOut$C,
+        type = ifelse(length(alsOut$xC)>20,'p','b'),
+        pch = 19, cex = 0.5, lwd=2, lty=3,
+        xlab = 'Delay', ylab = 'C',
+        xlim = xlim,
+        ylim = ylim,
+        main = paste0('ALS Kinetics; L.o.f. =',alsOut$lof),
+        xaxs = 'i'
+      )
+      n=ncol(alsOut$C)
+      legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
+      colorizeMask1D(axis="delay",ylim=ylim)
+      grid();box()
+      
+    } else {
+      matplot(
+        alsOut$xS,alsOut$S,
+        type = ifelse(length(alsOut$xC)>20,'p','b'),
+        pch = 19, cex = 0.5, lwd=2, lty=3,
+        xlab = 'Wavelength',ylab = 'S',
+        xlim = xlim,
+        ylim = ylim,
+        main = 'ALS Spectra', 
+        xaxs = 'i'
+      )
+      colorizeMask1D(axis="wavl",ylim=ylim)
+      grid();box()
+      
+    }
+  }
   rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
   
   output$alsKinVectors <- renderPlot({
