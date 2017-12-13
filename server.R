@@ -449,14 +449,14 @@ plotSVDVecBloc <- function (C,S,axisC,axisS,...) {
         xlab1='Delay'
         xlab2='Wavelength'
         xaxt='s'
-        mar1=c(4,4,0,0)
-        mar2=c(4,0,0,1)
+        mar1=c(4.2,4,0,0)
+        mar2=c(4.2,0,0,1.2)
       } else {
         xlab1=''
         xlab2=''
         xaxt='n'
         mar1=c(0,4,0,0)
-        mar2=c(0,0,0,1)
+        mar2=c(0,0,0,1.2)
       }
       par( fig = c((icol-1)*0.5,
                    (icol-1)*0.5+0.27,
@@ -1794,9 +1794,10 @@ shinyServer(function(input, output, session) {
     
     Inputs$mat   <<- mat
     
+    # Automatic ajustment of DO range
     updateSlider("keepDoRange", 
-                 range(Inputs$matOrig,na.rm=TRUE), 
-                 range(mat,na.rm = TRUE), 
+                 signif(range(Inputs$matOrig,na.rm=TRUE),3), 
+                 signif(range(mat,na.rm = TRUE),3), 
                  200)
     
   })
@@ -2352,7 +2353,7 @@ shinyServer(function(input, output, session) {
     {
       gl   = cleanUp(Inputs$mat,isolate(input$cleanLevel))
       dlgl = Inputs$delay[gl]
-      if(is.na(Inputs$delayGlitch))
+      if(anyNA(Inputs$delayGlitch))
         Inputs$delayGlitch  <<- dlgl
       else
         Inputs$delayGlitch  <<- unique(c(Inputs$delayGlitch,dlgl))
@@ -2365,9 +2366,20 @@ shinyServer(function(input, output, session) {
     
     par(mfrow=c(1,2),cex = cex, mar = mar, cex.lab=1.5)
     # S.V.
-    plot(s$d[1:ncol(s$u)],ylab = "Singular Values",log = "y")
-    lines(s$d,col = "blue")
-    grid()
+    plot(s$d[1:ncol(s$u)],ylab = "Singular Values",log = "y",
+         pch=19,cex=1.5,col='orange',xlim=c(1,10))
+    
+    # Trend line for noise
+    x = 10:20
+    y = s$d[x]
+    reg = lm(y~x)
+    xpred = 1:20
+    ypred = predict(reg,newdata=data.frame(x=xpred))
+    lines(xpred,ypred,lwd=3,lty=2,col='gray60')
+    
+    lines(s$d,col = "blue",lwd=3,lty=3)
+    points(s$d[1:ncol(s$u)],pch=19,cex=1.5,col='orange')
+    grid();box()
     
     #L.o.F
     lof=c()
@@ -2383,10 +2395,12 @@ shinyServer(function(input, output, session) {
       lof[i] = 100*(sum(resid^2)/sMat)^0.5
     }
     
-    plot(lof,ylab = "Lack of Fit (%)",log = "y")
-    lines(lof,col = "blue")
+    plot(lof,ylab = "Lack of Fit (%)",log = "y",
+         pch=19,cex=1.5,col='orchid')
+    lines(lof,col = "darkgreen",lwd=3,lty=3)
     text(1:length(lof),lof,labels = signif(lof,3),col=2,pos=3)
-    grid()
+    points(lof,pch=19,cex=1.5,col='orchid')
+    grid();box()
   
   },height = 450)
   outputOptions(output, "svdSV",
@@ -2651,6 +2665,8 @@ shinyServer(function(input, output, session) {
           # initialize with SVD + NMF
           if (is.null(s <- doSVD()))
             return(NULL)
+          
+          progress$set(message = "Running NMF ", value = 0)
           
           # 1/ filter matrix to avoid negative values (noise)
           fMat = rep(0,nrow=nrow(data),ncol=ncol(data))

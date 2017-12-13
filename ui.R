@@ -12,17 +12,13 @@ navbarPage(
   theme=shinythemes::shinytheme(c("cosmo","cerulean","spacelab","yeti")[2]),
   
   # Project ####
-  # navbarMenu(
   tabPanel(
     "Project",
     sidebarLayout(
       sidebarPanel(
         tabsetPanel(
-          # type = "pills",
           tabPanel(
             title =h4("New Project"),
-            # h4("Define New Project"),
-            # hr( style="border-color: #666;"),
             br(),
             textInput(
               inputId = 'projectTag', 
@@ -217,7 +213,6 @@ navbarPage(
                                   strong("Auto"),
                                   icon = icon("gear") ))
             ),
-            # uiOutput("masksS")
             tags$div(id = "masksS")
           ),
           tabPanel(
@@ -234,11 +229,9 @@ navbarPage(
                                   strong("Auto"),
                                   icon = icon("gear")))
             ),
-            # uiOutput("masksC")
             tags$div(id = "masksC")
           ),
-          id="selTabset"#,
-          # type='pills'
+          id="selTabset"
         ),
         hr(),
         actionButton("reset",
@@ -247,7 +240,6 @@ navbarPage(
       mainPanel(
         wellPanel(
           tabsetPanel(
-            # type='pills',
             tabPanel(
               value="dataImg",
               title=h4("Data"),
@@ -409,7 +401,6 @@ navbarPage(
       mainPanel(
         wellPanel(                  
           tabsetPanel(
-            # type="pills",
             tabPanel(
               value="singVal",
               title=h4("Singular Values"),
@@ -493,7 +484,6 @@ navbarPage(
         ),
         br(),
         tabsetPanel(
-          # type='pills',
           tabPanel(
             value='ALSparams',
             title=h4("Options"),
@@ -536,7 +526,7 @@ navbarPage(
                                  label= "Normalize",
                                  value = TRUE),
                    shinyBS::bsTooltip("normS",
-                                      title = "Enforces the normalization of S ( default: max(S)=1 )")
+                     title = "Enforces the normalization of S ( default: max(S)=1 )")
             ),
             column(4,
                    numericInput("smooth", 
@@ -550,7 +540,7 @@ navbarPage(
                                  label= "SUM(S)=1",
                                  value = FALSE),
                    shinyBS::bsTooltip("SumS", 
-                                      title = "If Normalize is set, set norm such as sum(S)=1 ")
+                     title = "If Normalize is set, set norm such as sum(S)=1 ")
             ),
             fluidRow(
               column(12,
@@ -646,8 +636,7 @@ navbarPage(
                     type=4
                   )
                 ),
-                id="alsResid1" #,
-                # type='pills'
+                id="alsResid1" 
               )
             ),
             tabPanel(
@@ -679,11 +668,9 @@ navbarPage(
                 )
               ),
               wellPanel(
-                  column(6,
-                         h5('Save ALS spectra and kinetics'),
-                         actionButton("alsSpKinSave","Save (Ctrl+Click)",
-                                      icon     = icon('save'))
-                  )
+                h5('Save ALS spectra and kinetics'),
+                actionButton("alsSpKinSave","Save (Ctrl+Click)",
+                             icon     = icon('save'))
               )
             ),
             tabPanel(
@@ -739,8 +726,7 @@ navbarPage(
                 )
               )
             ),
-            id="alsTabset"#,
-            # type='pills'
+            id="alsTabset"
           )
         )
       )
