@@ -553,15 +553,20 @@ cleanUp <- function (mat,level) {
   # Replace NAs by mean
   mat0 = mat
   mat0[is.na(mat)] = mean(mat,na.rm=TRUE)
-  
+
   # Get SVD residuals at specified level
   nsvMax = 10
   s = svd(mat0,nu = nsvMax,nv = nsvMax)
-  for (i in 1:(level-1))
-    mat0 = mat0 - s$u[,i] %o% s$v[,i] * s$d[i]
   
-  # Detect the problematic matrix column and return its index
-  out = which.max(rowSums(abs(mat0)))
+  # Use explicit residuals matrix
+  # for (i in 1:(level-1))
+  #   mat0 = mat0 - s$u[,i] %o% s$v[,i] * s$d[i]
+  # 
+  # # Detect the problematic matrix column and return its index
+  # out = which.max(rowSums(abs(mat0)))
+
+  # Use SV vectors   
+  out = which.max(abs(s$u[,level]))
   
   return(out)
 }
