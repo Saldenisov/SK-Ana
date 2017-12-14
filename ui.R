@@ -1,11 +1,14 @@
-# Libraries ####
-libs = c('shiny', 'shinyBS','shinycssloaders')
-for (lib in libs ) {
-  if(!require(lib,character.only = TRUE,quietly=TRUE))
-    install.packages(lib,dependencies=TRUE)
-  library(lib,character.only = TRUE,quietly=TRUE)
-}
-
+function(request) {
+  
+# # Libraries ####
+# libs = c('shiny', 'shinyBS','shinycssloaders')
+# for (lib in libs ) {
+#   if(!require(lib,character.only = TRUE,quietly=TRUE))
+#     install.packages(lib,dependencies=TRUE)
+#   library(lib,character.only = TRUE,quietly=TRUE)
+# }
+# 
+  
 navbarPage( 
   "SK-Ana",
   # Config ####
@@ -107,6 +110,7 @@ navbarPage(
           #       ),
           tabPanel(
             title =h4("Save"),
+            # bookmarkButton(id = "bookmark")
             h4("In construction...")
           )
           #       tabPanel("Save",
@@ -386,7 +390,7 @@ navbarPage(
           )
         ),
         hr(),
-        h4("Glitch removal"),
+        h4("Glitch removal in kinetics"),
         fluidRow(
           column(3,
                  numericInput('cleanLevel','Level', width="100px",
@@ -820,3 +824,8 @@ navbarPage(
   
   # END ####
 )
+
+}
+
+
+
