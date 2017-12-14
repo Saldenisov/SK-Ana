@@ -238,8 +238,29 @@ navbarPage(
           id="selTabset"
         ),
         hr(),
-        actionButton("reset",
-                     "Reset All Selections")
+        fluidRow(
+          column(5,
+                 actionButton("reset",
+                              "Reset All Selections")
+          ),
+          column(7,
+                 downloadButton('saveSelectors',
+                                'Save Selections (Ctrl+Click)')
+          )
+        ),
+        fluidRow(
+          column(5,
+                 br()
+          ),
+          column(7, br(),
+                 fileInput(
+                   inputId = 'selectorFile',
+                   label   = 'Load Saved Selections',
+                   multiple= FALSE,
+                   accept  = c('.Rda')
+                 )
+          )       
+        )
       ),
       mainPanel(
         wellPanel(

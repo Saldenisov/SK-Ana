@@ -142,6 +142,8 @@ function(input, output, session) {
     updateCheckboxGroupInput(session,
                              inputId = 'inReport',
                              selected = c('SVD'))
+    # Empty glitches
+    Inputs$delayGlitch  <<- NA
     
   }
   getOneMatrix <- function(dataFile) {
@@ -784,6 +786,174 @@ function(input, output, session) {
   observeEvent(input$reset,
                initSliders()
                )
+
+  output$saveSelectors <- downloadHandler(
+    filename = function()    {
+      paste0('Selectors_',input$projectTag,'_',Sys.Date(),'.Rda')
+    },
+    content  = function(con) {
+      ll = list()
+      ll$projectTag     = input$projectTag
+      ll$matDims        = dim(Inputs$matOrig)
+      ll$keepCbl        = input$keepCbl
+      ll$keepDlRange    = input$keepDlRange
+      ll$keepWlRange    = input$keepWlRange
+      ll$dlScaleFacOrig = Inputs$dlScaleFacOrig
+      ll$nMasksDl       = input$nMasksDl
+      if(input$nMasksDl!=0)
+        for (mask in 1:input$nMasksDl) {
+          maskName = paste0("keepDlMask",mask)
+          ll[[maskName]] = input[[maskName]]
+        }
+      ll$nMasksWl       = input$nMasksWl
+      if(input$nMasksWl!=0)
+        for (mask in 1:input$nMasksWl) {
+          maskName = paste0("keepWlMask",mask)
+          ll[[maskName]] = input[[maskName]]
+        }
+      ll$delayGlitch   = Inputs$delayGlitch
+
+      save(ll,file=con)
+    }
+  )
+  
+  observeEvent(
+    input$selectorFile,
+    isolate({
+      load(input$selectorFile$datapath)
+      
+      # Check project name and matrix dims
+      if(ll$projectTag != input$projectTag ||
+         ll$matDims    != dim(Inputs$matOrig)
+      ) {
+        showModal(modalDialog(
+          title = ">>>> Incorrect File <<<< ",
+          paste0("The chosen file does not match ",
+                 "the current project!"),
+          easyClose = TRUE,
+          size = 's'
+        ))
+        
+      } else {
+        Inputs$dlScaleFacOrig <<- ll$dlScaleFacOrig
+        Inputs$delayGlitch    <<- ll$delayGlitch
+        
+        # Ranges of sliders
+        wavl  = Inputs$wavlOrig
+        delay = Inputs$delayOrig/Inputs$dlScaleFacOrig
+        mat   = Inputs$matOrig
+        wlRange = signif(range(wavl),3)
+        dlRange = signif(range(delay),3)
+        cblRange= c(0,length(delay))
+        
+        nsteps = min(length(wavl),200)
+        wlRangeSel = ll$keepWlRange
+        updateSlider("keepWlRange", wlRange, wlRangeSel, nsteps)
+        
+        nsteps = min(length(delay),500)
+        dlRangeSel = ll$keepDlRange
+        updateSlider("keepDlRange", dlRange, dlRangeSel, nsteps)
+        
+        nsteps = round(diff(cblRange)/10)
+        cblSel = ll$keepCbl
+        updateSlider("keepCbl"    , cblRange, cblSel   , nsteps)      
+        # Wavl masks
+        ## Remove existing Masks sliders
+        for (mask in 1:20) {
+          maskName = paste0("keepWlMask",mask)
+          if( maskName %in% masksWl ) {
+            removeUI(
+              selector = paste0("#",maskName),
+              immediate = TRUE
+            )
+            masksWl <<- masksWl[-which(masksWl == maskName)]
+          }
+        }  
+        
+        ## Generate Masks sliders if necessary
+        nMasks = ll$nMasksWl
+        if(nMasks!=0) {
+          nsteps  = min(length(Inputs$wavlOrig),200)
+          wlRange = signif(range(Inputs$wavlOrig),3)
+          for (mask in 1:nMasks) {
+            maskName = paste0("keepWlMask",mask)
+            sel = ll[[maskName]]
+            value = Inputs$wavlOrig[sel]
+            insertUI(
+              selector = "#masksS",
+              where    = "beforeEnd",
+              ui = tags$div(
+                id = maskName,
+                sliderInput(
+                  inputId = maskName, 
+                  label   = NULL,
+                  min     = wlRange[1],
+                  max     = wlRange[2],
+                  value   = value,
+                  step    = signif(diff(wlRange)/nsteps, 3),
+                  sep     = "")
+              )
+            )
+            masksWl <<- unique(c(masksWl,maskName))
+          }
+        }
+        if(nMasks != input$nMasksWl)
+          updateNumericInput(session = session,
+                             inputId = "nMasksWl",
+                             value   = nMasks)
+        
+        # Delay masks
+        ## Remove existing Masks sliders
+        for (mask in 1:20) {
+          maskName = paste0("keepDlMask",mask)
+          if( maskName %in% masksDl ) {
+            removeUI(
+              selector = paste0("#",maskName),
+              immediate = TRUE
+            )
+            masksDl <<- masksDl[-which(masksDl == maskName)]
+          }
+        }  
+        
+        ## Generate Masks sliders if necessary
+        nMasks = ll$nMasksDl
+        if(nMasks!=0) {
+          nsteps  = min(length(Inputs$delayOrig),500)
+          dlRange = signif(range(Inputs$delayOrig/
+                                   Inputs$dlScaleFacOrig),3)
+          for (mask in 1:nMasks) {
+            maskName = paste0("keepDlMask",mask)
+            sel = ll[[maskName]]
+            value = Inputs$delayOrig[sel]/Inputs$dlScaleFacOrig
+            insertUI(
+              selector = "#masksC",
+              where    = "beforeEnd",
+              ui = tags$div(
+                id = maskName,
+                sliderInput(
+                  inputId = maskName, 
+                  label   = NULL,
+                  min     = dlRange[1],
+                  max     = dlRange[2],
+                  value   = value,
+                  step    = signif(diff(dlRange)/nsteps, 3),
+                  sep     = "")
+              )
+            )
+            masksDl <<- unique(c(masksDl,maskName))
+          }
+        }
+        if(nMasks != input$nMasksDl)
+          updateNumericInput(session = session,
+                             inputId = "nMasksDl",
+                             value   = nMasks)
+        
+      }
+
+
+      
+    })
+  )
   
   selectArea <- reactive({
     if (!checkInputsSanity())
@@ -1104,7 +1274,7 @@ function(input, output, session) {
     
     # Remove extremities
     sel = masked != 1 & masked != length(values)
-    masked = masked[sel]
+    masked = sort(masked[sel],decreasing = FALSE)
     
     for(i in masked) {
       if(is.na(mask[i-1])) 
