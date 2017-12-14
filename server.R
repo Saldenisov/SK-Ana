@@ -2,8 +2,9 @@ options(shiny.maxRequestSize=20*1024^2)
 # options(shiny.json.digits=32)
 
 # Libraries ####
-libs = c('outliers', 'nnls', 'Iso', 'viridis', 'changepoint',
-         'shiny', 'shinyBS','DT', 'fields', 'NMF','shinycssloaders')
+libs = c('outliers', 'nnls', 'Iso', 'viridis', 
+         'changepoint', 'shiny', 'shinyBS','DT', 
+         'fields', 'NMF','shinycssloaders')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE,quietly=TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -14,8 +15,9 @@ for (lib in libs ) {
 cols    = viridis::viridis(128)
 col2tr  = function(col,alpha)
   rgb(unlist(t(col2rgb(col))),alpha = alpha,maxColorValue = 255)
-cyan_tr = col2tr("gold", 60)
+cyan_tr = col2tr("cyan",120)
 pink_tr = col2tr("pink",120)
+mask_tr = "gray95"
 colWR   = fields::two.colors(17,start="blue",middle="white",end="red")
 
 # Global graphical params ####
@@ -263,197 +265,11 @@ myals = function (C, Psi, S,
     msg = msg, lof = lof
   ))
 }
-plotResid <- function (delay,wavl,mat,C,S,
-                       d = rep(1,ncol(C)),
-                       main = 'Data',...) {
-  # Build model matrix
-  matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
-  for (i in 1:ncol(S))
-    matAls = matAls + C[,i] %o% S[,i] * d[i]
-  zlim = range(mat,na.rm = TRUE)
-  
-  dummy = split.screen(c(2,3))
-  screen(1)
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
-  image(
-    delay,wavl,mat,
-    xlab = 'Delay',ylab = 'Wavelength',
-    main = main, col = cols, zlim = zlim
-  )
-  screen(2)
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
-  image(
-    delay,wavl,matAls,
-    xlab = 'Delay',ylab = 'Wavelength',
-    main = paste0('Model ',ncol(S),' species'),
-    col = cols,zlim = zlim
-  )
-  screen(4)
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
-  resid = matAls - mat
-  lof = 100*(sum(resid^2,na.rm = TRUE)/
-             sum(mat^2,na.rm = TRUE)
-            )^0.5
-  image(
-    delay,wavl,resid,
-    xlab = 'Delay',ylab = 'Wavelength',
-    main = paste0('Residuals; L.o.f.=',signif(lof,3),'%'),
-    col = cols
-  )
-  screen(5)
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
-  res = resid[!is.na(resid)]
-  hist(
-    res,col = cyan_tr,xlim = range(c(res,zlim)),
-    xlab = '',main = 'Residuals vs. signal'
-  )
-  hist(mat,col = pink_tr,add = TRUE)
-  legend(
-    'topright',c('Signal','Residuals'),
-    pch = 15,col = c(pink_tr,cyan_tr),cex = 0.75
-  )
-  dummy = close.screen(all.screens = TRUE)
-}
-plotResidAna = function(delay,wavl,mat,C,S,
-                        d = rep(1,ncol(C)),
-                        main = 'Data',...) {
-  
-  # Build model matrix
-  matAls = matrix(0,nrow=nrow(mat),ncol=ncol(mat))
-  for (i in 1:ncol(S))
-    matAls = matAls + C[,i] %o% S[,i] * d[i]
-  resid = matAls - mat
-  resid[!is.finite(resid)] = 0
-  rm(matAls)
-  
-  wres = resid/sd(resid)
-  sv   = svd(wres,nu=2,nv=2)  
-  
-  par(mfrow=c(2,2), cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
-  image(delay,wavl,wres,col=colWR,main="Weighted Residuals",
-        xlab='Delay',ylab='Wavelength')
-  image.plot(delay,wavl,wres,zlim=c(-3,3),col=colWR,add=TRUE,
-             legend.mar=5, legend.shrink=0.8,
-             xlab='Delay',ylab='Wavelength')
-  
-  matplot(sv$v,wavl,type="l",lwd=2,
-          xlab="Sing. Vec.",ylab='Wavelength',
-          main="SVD of Residuals")
-  abline(v=0)
-  
-  matplot(delay,sv$u,type="l",lwd=2,
-          xlab='Delay',ylab="Sing. Vec.",
-          main="SVD of Residuals")
-  abline(h=0)
-  
-  qqnorm(wres);abline(a=0,b=1,col="blue");grid(col="darkgray")
-  
-}
-plotConbtribs <- function (delay,wavl,mat,C,S,
-                           d = rep(1,ncol(C)),
-                           type = 'als',...) {
-  
-  # Estimate weight of species
-  cont = c()
-  for (ic in 1:min(6,ncol(S))) {
-    matSvd = C[,ic] %o% S[,ic] * d[ic]
-    
-    if (type == 'als')
-      cont[ic] = sum(abs(matSvd),na.rm = TRUE)
-    else
-      cont[ic] = d[ic]
-  }    
-  cont = cont / sum(cont) * 100
-  
-  dummy = split.screen(c(2,3))
-  for (ic in 1:min(6,ncol(S))) {
-    screen(ic)
-    par(cex = cex,cex.main=cex, mar = mar, 
-        mgp = mgp, tcl = tcl, pty=pty)
-    matSvd = C[,ic] %o% S[,ic] * d[ic]
-    image(
-      delay,wavl,matSvd,col = cols,
-      xlab = 'Delay',ylab = 'Wavelength',
-      main = paste0('Sp. ',ic,' / Wgt. (%) = ',signif(cont[ic],3))
-    )
-  }
-  dummy = close.screen(all.screens = TRUE)
-}
 
-plotSVDVec <- function (X,axis,xlab="x",col='blue',...) {
-  is = 0
-  dummy = split.screen(c(2,4))
-  for (i in 1:8) {
-    is = is + 1
-    screen(is)
-    par(cex = cex,cex.main=cex, mar = mar)
-    plot(
-      axis,X[,i],type = "l",col = col,
-      xlab = xlab,ylab = 'Arb. units',
-      main = paste0("vector ",i)
-    )
-    abline(h = 0)
-  }
-  dummy = close.screen(all.screens = TRUE)
-}
-plotSVDVecBloc <- function (C,S,axisC,axisS,...) {
-  par(cex = cex,cex.main=cex)
-  nco = 2
-  n   = min(floor(ncol(C)/2),5)
-  fh = 0.18
-  
-  for(icol in 1:nco) {
-    ylim=range(c(C[,((icol-1)*n+1):(icol*n)],
-                 S[,((icol-1)*n+1):(icol*n)]),
-               na.rm=TRUE)
-    for (i in 1:n) {
-      if(i==n) {
-        xlab1='Delay'
-        xlab2='Wavelength'
-        xaxt='s'
-        mar1=c(4.2,4,0,0)
-        mar2=c(4.2,0,0,1.2)
-      } else {
-        xlab1=''
-        xlab2=''
-        xaxt='n'
-        mar1=c(0,4,0,0)
-        mar2=c(0,0,0,1.2)
-      }
-      par( fig = c((icol-1)*0.5,
-                   (icol-1)*0.5+0.27,
-                   max(0,1-fh*i - ifelse(i==n,0.11,0)),
-                   1-fh*(i-1)), 
-           new=ifelse(i*icol==1,FALSE,TRUE),
-           mar=mar1)
-      plot(
-        axisC,C[,(icol-1)*n+i],type = "l",col = 'darkgreen',
-        xlab = xlab1,ylab = 'Arb. units',
-        xaxt=xaxt, ylim=ylim, lwd=2
-      )
-      abline(h = 0,lty=2); grid()
-      legend('topleft',legend=paste0((icol-1)*n+i),bty='n')
-      par( fig = c((icol-1)*0.5+0.27,
-                   (icol-1)*0.5+0.5,                     
-                   max(0,1-fh*i - ifelse(i==n,0.11,0)),
-                   1-fh*(i-1)), 
-           new=TRUE,
-           mar=mar2)
-      plot(
-        axisS,S[,(icol-1)*n+i],type = "l",col = 'orange',
-        xlab = xlab2,ylab = '',lwd=2,
-        xaxt=xaxt, yaxt='n', ylim=ylim
-      )
-      abline(h = 0,lty=2);grid()
-    }
-    
-  }
-}
+
+
+
+
 indxCuts <- function (xCut, coords, minx=50) {
   delta=0
   # Select indices around cut
@@ -477,62 +293,6 @@ indxCuts <- function (xCut, coords, minx=50) {
     }
   }
   return(list(indx=indx,delta=delta))
-}
-
-plotAlsAmbRot = function(alsOut,solutions,twoVec,eps,ylim){
-  
-  ikeep = length(solutions)
-  
-  # # Check solutions
-  # sdr = c()
-  # for (i in 1:ikeep)
-  #   sdr[i] = solutions[[i]]$resd
-  # print(range(sdr))
-  
-  par(mfrow = c(1,3))
-  
-  par(cex=cex,mar=mar)
-  S = alsOut$S
-  for (i in 1:ikeep) {
-    S[,twoVec] = solutions[[i]]$S1
-    matplot(
-      alsOut$xS, S, type = 'p', pch = 19, cex=0.5,
-      ylim=c(eps,1-eps),
-      main = 'Spectra', xlab = 'Wavelength',
-      add = i > 1
-    )
-  }
-  abline(h = 0,lty = 2)
-  grid()
-  
-  par(cex=cex,mar=mar)
-  C = alsOut$C
-  for (i in 1:ikeep) {
-    C[,twoVec] = solutions[[i]]$C1
-    matplot(
-      alsOut$xC, C, type = 'p', pch = 19, cex=0.5,
-      ylim=ylim,
-      main = 'Kinetics', xlab = 'Delay',
-      add = i > 1
-    )
-  }
-  abline(h = 0,lty = 2)
-  grid()
-  
-  par(cex=cex,mar=mar)
-  x = y = vector("numeric",length = ikeep)
-  for (i in 1:ikeep) {
-    x[i] = solutions[[i]]$t12
-    y[i] = solutions[[i]]$t21
-  }
-  xlim = c(-1.1,1.1)*max(abs(c(x,y)))
-  matplot(
-    x,y,type = 'p', pch=0, cex=1, col = 4,
-    xlim = xlim, ylim = xlim,
-    main = 'Transformation Coefs', 
-    xlab = 't12', ylab='t21'
-  )
-  grid()
 }
 
 rotAmb2 = function(C0,S0,data,rotVec=1:2,
@@ -747,102 +507,7 @@ rotAmb3 = function(C0,S0,data,rotVec=1:3,
   
   return(solutions)
 }
-plotRotAmb = function(alsOut, solutions){
 
-  C = alsOut$C;   xC = alsOut$xC; nC = ncol(C)
-  S = alsOut$S;   xS = alsOut$xS; nS = ncol(S)
-  for (i in 1:ncol(C)) {
-    nn = sum(S[,i])
-    S[,i] = S[,i] / nn
-    C[,i] = C[,i] * nn
-  }
-  
-  nkeep = length(solutions)-2
-  allVec = 1:nC
-  rotVec = solutions$rotVec
-  sel    = allVec %in% rotVec
-  nvec   = length(rotVec)
-  eps    = solutions$eps
-  
-  col0  = (1:nC)[!sel]
-  colR  = col2tr(1:nC,120)[sel]
-  
-  par(mfrow = c(1,2))
-  par(cex = cex,cex.main=cex, mar = mar, 
-      mgp = mgp, tcl = tcl, pty=pty)
-  
-  # Estimate ranges of C
-  C1 = C[,sel]  
-  Cmax = matrix( eps,nrow=nrow(C1),ncol=ncol(C1))
-  Cmin = matrix(1e30,nrow=nrow(C1),ncol=ncol(C1))
-  for (i in 1:nkeep) {
-    for(j in 1:nvec) {
-      vec = solutions[[i]]$S1[,j]
-      nn = sum(vec) 
-      for(k in 1:nrow(C1)){
-        val = solutions[[i]]$C1[k,j]*nn # Normalize
-        Cmin[k,j] = min(Cmin[k,j],val,na.rm=TRUE)
-        Cmax[k,j] = max(Cmax[k,j],val,na.rm=TRUE)
-      }
-    }
-  }
-  
-  matplot(xC,C,type='n',
-          ylim=range(c(C,Cmin,Cmax)),xaxs='i',
-          main = 'Kinetics', xlab = 'Delay')
-  abline(h = 0,lty = 2)
-  grid(); box()
-  if(sum(!sel) != 0) {
-    C1 = C[,!sel]  
-    matplot(xC,C1,type='p', pch=19, cex=0.5, col= col0, add=TRUE)
-  }
-  for (j in 1:nvec)
-    polygon(c(xC,rev(xC)),c(Cmin[,j],rev(Cmax[,j])),
-            col= colR[j],border = NA)
-  
-  # Estimate ranges of S
-  S1   = S[,sel] 
-  Smax = matrix( eps,nrow=nrow(S1),ncol=ncol(S1))
-  Smin = matrix(1e30,nrow=nrow(S1),ncol=ncol(S1))
-  for (i in 1:nkeep) {
-    for(j in 1:nvec) {
-      vec = solutions[[i]]$S1[,j]
-      nn = sum(vec)
-      for(k in 1:nrow(S1)){
-        val = vec[k]/nn
-        Smin[k,j] = min(Smin[k,j],val,na.rm=TRUE)
-        Smax[k,j] = max(Smax[k,j],val,na.rm=TRUE)
-      }
-    }
-  }
-  
-  matplot(xS,S,type='n',
-          ylim=range(c(S,Smin,Smax)), xaxs='i',
-          main = 'Area Normalized Spectra', xlab = 'Wavelength')
-  abline(h = 0,lty = 2)
-  grid(); box()
-  if(sum(!sel) != 0) {
-    S1 = S[,!sel]  
-    matplot(xS,S1,type='p', pch=19, cex=0.5, col= col0, add=TRUE)
-  }
-  for (j in 1:nvec)
-    polygon(c(xS,rev(xS)),c(Smin[,j],rev(Smax[,j])),
-            col= colR[j],border = NA)
-  
-  # x = y = vector("numeric",length = nkeep)
-  # for (i in 1:nkeep) {
-  #   x[i] = solutions[[i]]$t12
-  #   y[i] = solutions[[i]]$t21
-  # }
-  # xlim = c(-1.1,1.1)*max(abs(c(x,y)))
-  # matplot(
-  #   x,y,type = 'p', pch=0, cex=1, col = 4,
-  #   xlim = xlim, ylim = xlim,
-  #   main = 'Transformation Coefs',
-  #   xlab = 't12', ylab='t21'
-  # )
-  # grid()
-}
 
 autoDlMask <- function (mat,nmat) {
 # Locate empty delay areas (experimental)
@@ -1986,9 +1651,10 @@ shinyServer(function(input, output, session) {
     })
   )
   
-  colorizeMask1D = function(axis='delay', dir='v', ylim=NULL, eps=1e-4) {
+  colorizeMask1D = function(axis='delay', dir='v', 
+                            ylim=NULL, eps=1e-4) {
     
-    if(axis == "delay") {
+    if(axis == 'delay') {
       mask   = Inputs$delayMask
       values = Inputs$delay
     } else {
@@ -2010,9 +1676,11 @@ shinyServer(function(input, output, session) {
       x2 = values[i+1]
       
       if(dir == 'v')
-        rect(x1+eps,ylim[1],x2-eps,ylim[2],border=NA,col=cyan_tr)
+        rect(x1+eps,ylim[1],x2-eps,ylim[2],
+             border=NA,col=mask_tr)
       else
-        rect(ylim[1],x1+eps,ylim[2],x2-eps,border=NA,col=cyan_tr)
+        rect(ylim[1],x1+eps,ylim[2],x2-eps,
+             border=NA,col=mask_tr)
     }
   }
 
@@ -2139,7 +1807,7 @@ shinyServer(function(input, output, session) {
         wavl,cutMean,type = 'l',col = 'orange', lwd=2,
         xlab = 'Wavelength', ylab = 'O.D.',
         xlim = ylim,
-        ylim = input$keepDoRange,
+        ylim = input$keepDoRange, yaxs='i',
         main = paste0('Mean O.D. at delay: ',signif(mean(delay[indx]),3),
                       ifelse(delta==0,
                              '',
@@ -2167,7 +1835,7 @@ shinyServer(function(input, output, session) {
         delay,cutMean,type = 'l', col = 'orange', lwd=2,
         xlab = 'Delay', ylab = 'O.D.',
         xlim = xlim,
-        ylim = input$keepDoRange,
+        ylim = input$keepDoRange, yaxs='i',
         main = paste0('Mean O.D. at wavl: ',signif(mean(wavl[indx]),3),
                       ifelse(delta==0,
                              '',
@@ -2364,6 +2032,14 @@ shinyServer(function(input, output, session) {
         Inputs$delayGlitch  <<- unique(c(Inputs$delayGlitch,dlgl))
     }
   )
+  observeEvent(
+    input$cleanCancel,
+    {
+      if(!anyNA(Inputs$delayGlitch))
+        Inputs$delayGlitch  <<- 
+          Inputs$delayGlitch[-length(Inputs$delayGlitch)] 
+    }
+  )
   
   output$svdSV <- renderPlot({
     if (is.null(s <- doSVD()))
@@ -2410,6 +2086,64 @@ shinyServer(function(input, output, session) {
   },height = 450)
   outputOptions(output, "svdSV",
                 suspendWhenHidden = FALSE)
+
+  plotSVDVecBloc <- function (C,S,axisC,axisS,...) {
+    par(cex = cex,cex.main=cex)
+    nco = 2
+    n   = min(floor(ncol(C)/2),5)
+    fh = 0.18
+    
+    for(icol in 1:nco) {
+      ylim=range(c(C[,((icol-1)*n+1):(icol*n)],
+                   S[,((icol-1)*n+1):(icol*n)]),
+                 na.rm=TRUE)
+      for (i in 1:n) {
+        if(i==n) {
+          xlab1 = 'Wavelength'
+          xlab2 = 'Delay'
+          xaxt  = 's'
+          mar1  = c(4.2,4,0,0)
+          mar2  = c(4.2,0,0,1.2)
+        } else {
+          xlab1 = ''
+          xlab2 = ''
+          xaxt  = 'n'
+          mar1  = c(0,4,0,0)
+          mar2  = c(0,0,0,1.2)
+        }
+        par( fig = c((icol-1)*0.5,
+                     (icol-1)*0.5+0.27,
+                     max(0,1-fh*i - ifelse(i==n,0.11,0)),
+                     1-fh*(i-1)), 
+             new=ifelse(i*icol==1,FALSE,TRUE),
+             mar=mar1)
+        plot(
+          axisS,S[,(icol-1)*n+i],type = "l",col = 'darkgreen',
+          xlab = xlab1,ylab = 'Arb. units',
+          xaxt=xaxt, ylim=ylim, lwd=2
+        )
+        abline(h = 0,lty=2)
+        colorizeMask1D(axis="wavl",ylim=ylim)
+        grid()
+        legend('topleft',legend=paste0((icol-1)*n+i),bty='n')
+        
+        par( fig = c((icol-1)*0.5+0.27,
+                     (icol-1)*0.5+0.5,                     
+                     max(0,1-fh*i - ifelse(i==n,0.11,0)),
+                     1-fh*(i-1)), 
+             new=TRUE,
+             mar=mar2)
+        plot(
+          axisC,C[,(icol-1)*n+i],type = "l",col = 'orange',
+          xlab = xlab2,ylab = '',lwd=2,
+          xaxt=xaxt, yaxt='n', ylim=ylim
+        )
+        abline(h = 0,lty=2)
+        colorizeMask1D(axis="delay",ylim=ylim)
+        grid()
+      }
+    }
+  }  
   
   output$svdVec <- renderPlot({
     if (is.null(s <- doSVD()))
@@ -2420,6 +2154,75 @@ shinyServer(function(input, output, session) {
   outputOptions(output, "svdVec",
                 suspendWhenHidden = FALSE)
   
+  plotResid <- function (delay,wavl,mat,C,S,
+                         d = rep(1,ncol(C)),
+                         main = 'Data',...) {
+    # Build model matrix
+    matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
+    for (i in 1:ncol(S))
+      matAls = matAls + C[,i] %o% S[,i] * d[i]
+    zlim = range(mat,na.rm = TRUE)
+    
+    xlim=range(delay,na.rm=TRUE)
+    ylim=range(wavl,na.rm=TRUE)
+    
+    dummy = split.screen(c(2,3))
+    screen(1)
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    image(
+      delay,wavl,mat,xlim=xlim,ylim=ylim,
+      xlab = 'Delay',ylab = 'Wavelength',
+      main = main, col = cols, zlim = zlim
+    )
+    colorizeMask1D(axis="delay",ylim=ylim)
+    colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+    
+    screen(2)
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    image(
+      delay,wavl,matAls,xlim=xlim,ylim=ylim,
+      xlab = 'Delay',ylab = 'Wavelength',
+      main = paste0('Model ',ncol(S),' species'),
+      col = cols,zlim = zlim
+    )
+    colorizeMask1D(axis="delay",ylim=ylim)
+    colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+    
+    screen(4)
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    resid = matAls - mat
+    lof = 100*(sum(resid^2,na.rm = TRUE)/
+                 sum(mat^2,na.rm = TRUE)
+    )^0.5
+    image(
+      delay,wavl,resid,xlim=xlim,ylim=ylim,
+      xlab = 'Delay',ylab = 'Wavelength',
+      main = paste0('Residuals; L.o.f.=',signif(lof,3),'%'),
+      col = cols
+    )
+    colorizeMask1D(axis="delay",ylim=ylim)
+    colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+    
+    screen(5)
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    res = resid[!is.na(resid)]
+    hist(
+      res,col = cyan_tr, border=NA,
+      xlim = range(c(res,zlim)),
+      xlab = '',main = 'Residuals vs. signal'
+    )
+    hist(mat,col = pink_tr,border=NA,add = TRUE)
+    legend(
+      'topright',c('Signal','Residuals'),
+      pch = 15,col = c(pink_tr,cyan_tr),cex = 0.75
+    )
+    dummy = close.screen(all.screens = TRUE)
+  }
+  
   output$svdResid <- renderPlot({
     if (is.null(s <- doSVD()))
       return(NULL)
@@ -2427,6 +2230,44 @@ shinyServer(function(input, output, session) {
     plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
               CS$C,CS$S,d = s$d)
   },height = 450)
+  
+  plotConbtribs <- function (delay,wavl,mat,C,S,
+                             d = rep(1,ncol(C)),
+                             type = 'als',...) {
+    
+    xlim=range(delay,na.rm=TRUE)
+    ylim=range(wavl,na.rm=TRUE)
+    
+    # Estimate weight of species
+    cont = c()
+    for (ic in 1:min(6,ncol(S))) {
+      matSvd = C[,ic] %o% S[,ic] * d[ic]
+      
+      if (type == 'als')
+        cont[ic] = sum(abs(matSvd),na.rm = TRUE)
+      else
+        cont[ic] = d[ic]
+    }    
+    cont = cont / sum(cont) * 100
+    
+    dummy = split.screen(c(2,3))
+    for (ic in 1:min(6,ncol(S))) {
+      screen(ic)
+      par(cex = cex,cex.main=cex, mar = mar, 
+          mgp = mgp, tcl = tcl, pty=pty)
+      matSvd = C[,ic] %o% S[,ic] * d[ic]
+      image(
+        delay,wavl,matSvd,col = cols, 
+        xlim=xlim,ylim=ylim,
+        xlab = 'Delay',ylab = 'Wavelength',
+        main = paste0('Sp. ',ic,' / Wgt. (%) = ',
+                      signif(cont[ic],3))
+      )
+      colorizeMask1D(axis="delay",ylim=ylim)
+      colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+    }
+    dummy = close.screen(all.screens = TRUE)
+  }
   
   output$svdContribs <- renderPlot({
     if (is.null(s <- doSVD()))
@@ -2825,6 +2666,54 @@ shinyServer(function(input, output, session) {
     
   },height = 450)
   
+  plotResidAna = function(delay,wavl,mat,C,S,
+                          d = rep(1,ncol(C)),
+                          main = 'Data',...) {
+    
+    # Build model matrix
+    matAls = matrix(0,nrow=nrow(mat),ncol=ncol(mat))
+    for (i in 1:ncol(S))
+      matAls = matAls + C[,i] %o% S[,i] * d[i]
+    resid = matAls - mat
+    resid[!is.finite(resid)] = 0
+    rm(matAls)
+    
+    wres = resid/sd(resid)
+    sv   = svd(wres,nu=2,nv=2)  
+    
+    par(mfrow=c(2,2), cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    image(delay,wavl,wres,col=colWR,main="Weighted Residuals",
+          xlab='Delay',ylab='Wavelength')
+    colorizeMask1D(axis="delay",
+                   ylim=range(wavl,na.rm=TRUE))
+    colorizeMask1D(axis="wavl", dir='h', 
+                   ylim=range(delay,na.rm=TRUE))
+    
+    image.plot(delay,wavl,wres,zlim=c(-3,3),col=colWR,add=TRUE,
+               legend.mar=5, legend.shrink=0.8,
+               xlab='Delay',ylab='Wavelength')
+    
+    matplot(sv$v,wavl,type="l",lwd=2,
+            xlab="Sing. Vec.",ylab='Wavelength',
+            main="SVD of Residuals")
+    colorizeMask1D(axis="wavl", dir='h', 
+                   ylim=range(sv$v,na.rm=TRUE))
+    abline(v=0)
+    box()
+    
+    matplot(delay,sv$u,type="l",lwd=2,
+            xlab='Delay',ylab="Sing. Vec.",
+            main="SVD of Residuals")
+    colorizeMask1D(axis="delay",
+                   ylim=range(sv$u,na.rm=TRUE))
+    abline(h=0)
+    box()
+    
+    qqnorm(wres);abline(a=0,b=1,col="blue");grid(col="darkgray")
+    box()
+    
+  }
   output$alsResid2 <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
@@ -2855,6 +2744,8 @@ shinyServer(function(input, output, session) {
         mgp = mgp, tcl = tcl, pty=pty)
     
     if(type == "Kin") {
+      if(is.null(ylim))
+        ylim = range(alsOut$C)
       matplot(
         alsOut$xC,alsOut$C,
         type = ifelse(length(alsOut$xC)>20,'p','b'),
@@ -2862,8 +2753,8 @@ shinyServer(function(input, output, session) {
         xlab = 'Delay', ylab = 'C',
         xlim = xlim,
         ylim = ylim,
-        main = paste0('ALS Kinetics; L.o.f. =',alsOut$lof),
-        xaxs = 'i'
+        main = paste0('ALS Kinetics'),
+        xaxs = 'i', yaxs='i'
       )
       n=ncol(alsOut$C)
       legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
@@ -2871,6 +2762,8 @@ shinyServer(function(input, output, session) {
       grid();box()
       
     } else {
+      if(is.null(ylim))
+        ylim = range(alsOut$S)
       matplot(
         alsOut$xS,alsOut$S,
         type = ifelse(length(alsOut$xC)>20,'p','b'),
@@ -2878,8 +2771,8 @@ shinyServer(function(input, output, session) {
         xlab = 'Wavelength',ylab = 'S',
         xlim = xlim,
         ylim = ylim,
-        main = 'ALS Spectra', 
-        xaxs = 'i'
+        main = paste0('ALS Spectra; L.o.f. =',alsOut$lof,'%'), 
+        xaxs = 'i', yaxs='i'
       )
       colorizeMask1D(axis="wavl",ylim=ylim)
       grid();box()
@@ -3013,17 +2906,158 @@ shinyServer(function(input, output, session) {
     }
   )
   
-  output$alsRotAmb <- renderPlot({
+  plotAmbVec <- function (alsOut, solutions, 
+                          type="Kin",xlim=NULL,ylim=NULL,...) {
+    
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+    
+    C = alsOut$C;   xC = alsOut$xC; nC = ncol(C)
+    S = alsOut$S;   xS = alsOut$xS; nS = ncol(S)
+    for (i in 1:ncol(C)) {
+      nn = sum(S[,i])
+      S[,i] = S[,i] / nn
+      C[,i] = C[,i] * nn
+    }
+    
+    nkeep = length(solutions)-2
+    allVec = 1:nC
+    rotVec = solutions$rotVec
+    sel    = allVec %in% rotVec
+    nvec   = length(rotVec)
+    eps    = solutions$eps
+    
+    col0  = (1:nC)[!sel]
+    colR  = col2tr(1:nC,120)[sel]
+    
+    if(type == 'Sp') {
+      # Estimate ranges of S
+      S1   = S[,sel] 
+      Smax = matrix( eps,nrow=nrow(S1),ncol=ncol(S1))
+      Smin = matrix(1e30,nrow=nrow(S1),ncol=ncol(S1))
+      for (i in 1:nkeep) {
+        for(j in 1:nvec) {
+          vec = solutions[[i]]$S1[,j]
+          nn = sum(vec)
+          for(k in 1:nrow(S1)){
+            val = vec[k]/nn
+            Smin[k,j] = min(Smin[k,j],val,na.rm=TRUE)
+            Smax[k,j] = max(Smax[k,j],val,na.rm=TRUE)
+          }
+        }
+      }
+      if(is.null(xlim))
+        xlim=range(xS,na.rm=TRUE)
+      if(is.null(ylim))
+        ylim=range(c(S,Smin,Smax),na.rm=TRUE)
+      
+      matplot(xS,S,type='n',
+              xlim=xlim, ylim=ylim, 
+              xaxs='i', yaxs='i',
+              main = 'Area Normalized Spectra', 
+              xlab = 'Wavelength')
+      abline(h = 0,lty = 2)
+      if(sum(!sel) != 0) {
+        S1 = S[,!sel]  
+        matplot(xS,S1,type='p', pch=19, cex=0.5, 
+                col= col0, add=TRUE)
+      }
+      for (j in 1:nvec)
+        polygon(c(xS,rev(xS)),c(Smin[,j],rev(Smax[,j])),
+                col= colR[j],border = NA)
+      colorizeMask1D(axis="wavl",ylim=ylim)
+      grid(); box()
+      
+    } else {
+      # Estimate ranges of C
+      C1 = C[,sel]  
+      Cmax = matrix( eps,nrow=nrow(C1),ncol=ncol(C1))
+      Cmin = matrix(1e30,nrow=nrow(C1),ncol=ncol(C1))
+      for (i in 1:nkeep) {
+        for(j in 1:nvec) {
+          vec = solutions[[i]]$S1[,j]
+          nn = sum(vec) 
+          for(k in 1:nrow(C1)){
+            val = solutions[[i]]$C1[k,j]*nn # Normalize
+            Cmin[k,j] = min(Cmin[k,j],val,na.rm=TRUE)
+            Cmax[k,j] = max(Cmax[k,j],val,na.rm=TRUE)
+          }
+        }
+      }
+      if(is.null(xlim))
+        xlim=range(xC,na.rm=TRUE)
+      if(is.null(ylim))
+        ylim=range(c(C,Cmin,Cmax),na.rm=TRUE)
+      
+      matplot(xC,C,type='n',
+              xlim=xlim,ylim=ylim, 
+              xaxs='i', yaxs='i',
+              main = 'Kinetics', xlab = 'Delay')
+      abline(h = 0,lty = 2)
+      if(sum(!sel) != 0) {
+        C1 = C[,!sel]  
+        matplot(xC,C1,type='p', pch=19, cex=0.5, 
+                col= col0, add=TRUE)
+      }
+      for (j in 1:nvec)
+        polygon(c(xC,rev(xC)),c(Cmin[,j],rev(Cmax[,j])),
+                col= colR[j],border = NA)
+      colorizeMask1D(axis="delay",ylim=ylim)
+      grid(); box()
+    }
+
+  }
+  rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
+  
+  output$ambSpVectors <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
     
     if (!is.list(solutions <- doAmbRot())) 
       cat(paste0("No solutions found \n"))
     else 
-      plotRotAmb(alsOut,solutions)
-    
+      plotAmbVec(alsOut, solutions,
+                 type = "Sp",
+                 xlim = rangesAmbSp$x,
+                 ylim = rangesAmbSp$y)
   },height = 400)
   
+  observeEvent(input$ambSp_dblclick, {
+    brush <- input$ambSp_brush
+    if (!is.null(brush)) {
+      rangesAmbSp$x <- c(brush$xmin, brush$xmax)
+      rangesAmbSp$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesAmbSp$x <- NULL
+      rangesAmbSp$y <- NULL
+    }
+  })
+  
+  rangesAmbKin <- reactiveValues(x = NULL, y = NULL)
+  
+  output$ambKinVectors <- renderPlot({
+    if (is.null(alsOut <- doALS()))
+      return(NULL)
+    
+    if (!is.list(solutions <- doAmbRot())) 
+      cat(paste0("No solutions found \n"))
+    else 
+      plotAmbVec(alsOut, solutions,
+                 type = "Kin",
+                 xlim = rangesAmbKin$x,
+                 ylim = rangesAmbKin$y)
+  },height = 400)
+  
+  observeEvent(input$ambKin_dblclick, {
+    brush <- input$ambKin_brush
+    if (!is.null(brush)) {
+      rangesAmbKin$x <- c(brush$xmin, brush$xmax)
+      rangesAmbKin$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesAmbKin$x <- NULL
+      rangesAmbKin$y <- NULL
+    }
+  })
   
 # Report ####
   observe(updateTextInput(

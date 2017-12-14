@@ -373,9 +373,9 @@ navbarPage(
     "SVD",
     sidebarLayout(
       sidebarPanel(
+        h4("SVD parameters"),
         fluidRow(
-          column(4,
-                 h4("SVD parameters"),
+          column(3,
                  numericInput("nSV", 
                               label = "Dimension", 
                               value =  2, 
@@ -386,16 +386,21 @@ navbarPage(
           )
         ),
         hr(),
+        h4("Glitch removal"),
         fluidRow(
-          column(4,
-                 h4("Glitch removal"),
+          column(3,
                  numericInput('cleanLevel','Level', width="100px",
                               value = 2, min = 2, max=10, step=1)),
-          column(4,
-                 style = "margin-top: 65px;",
+          column(3,
+                 style = "margin-top: 25px;",
                  actionButton('clean',
                               strong("Clean"),
-                              icon = icon("gear")))
+                              icon = icon("gear"))),
+          column(3,
+                 style = "margin-top: 25px;",
+                 actionButton('cleanCancel',
+                              strong("Cancel"),
+                              icon = icon("eraser")))
         )
       ),
       mainPanel(
@@ -646,10 +651,10 @@ navbarPage(
               fluidRow(
                 column(6,
                        withSpinner(
-                         plotOutput("alsKinVectors", height=450,
-                                    dblclick = "alsKin_dblclick",
+                         plotOutput("alsSpVectors", height=450,
+                                    dblclick = "alsSp_dblclick",
                                     brush = brushOpts(
-                                      id = "alsKin_brush",
+                                      id = "alsSp_brush",
                                       resetOnNew = TRUE
                                     )),
                          type=4
@@ -657,10 +662,10 @@ navbarPage(
                 ),
                 column(6,
                        withSpinner(
-                         plotOutput("alsSpVectors", height=450,
-                                    dblclick = "alsSp_dblclick",
+                         plotOutput("alsKinVectors", height=450,
+                                    dblclick = "alsKin_dblclick",
                                     brush = brushOpts(
-                                      id = "alsSp_brush",
+                                      id = "alsKin_brush",
                                       resetOnNew = TRUE
                                     )),
                          type=4
@@ -686,9 +691,29 @@ navbarPage(
               value="alsRotAmbTab",
               title=h4("Ambiguity"),
               br(),
-              withSpinner(
-                plotOutput("alsRotAmb", height=450),
-                type=4
+              fluidRow(
+                column(6,
+                       withSpinner(
+                         plotOutput("ambSpVectors", height=450,
+                                    dblclick = "ambSp_dblclick",
+                                    brush = brushOpts(
+                                      id = "ambSp_brush",
+                                      resetOnNew = TRUE
+                                    )),
+                         type=4
+                       )
+                ),
+                column(6,
+                       withSpinner(
+                         plotOutput("ambKinVectors", height=450,
+                                    dblclick = "ambKin_dblclick",
+                                    brush = brushOpts(
+                                      id = "ambKin_brush",
+                                      resetOnNew = TRUE
+                                    )),
+                         type=4
+                       )
+                )
               ),
               wellPanel( 
                 h4("Explore Rotational/Scaling Ambiguity"),
