@@ -1,14 +1,5 @@
 function(request) {
-  
-# # Libraries ####
-# libs = c('shiny', 'shinyBS','shinycssloaders')
-# for (lib in libs ) {
-#   if(!require(lib,character.only = TRUE,quietly=TRUE))
-#     install.packages(lib,dependencies=TRUE)
-#   library(lib,character.only = TRUE,quietly=TRUE)
-# }
-# 
-  
+
 navbarPage( 
   "SK-Ana",
   # Config ####
@@ -241,11 +232,13 @@ navbarPage(
         fluidRow(
           column(5,
                  actionButton("reset",
-                              "Reset All Selections")
+                              strong("Reset Selections"),
+                              icon = icon("eraser"))
           ),
           column(7,
-                 downloadButton('saveSelectors',
-                                'Save Selections (Ctrl+Click)')
+                 actionButton('saveSelectors',
+                              strong('Save Selections'),
+                              icon = icon("save"))
           )
         ),
         fluidRow(
@@ -496,7 +489,10 @@ navbarPage(
                               width = '100px')
           ),
           column(4,
-                 actionButton("runALS",strong("Run")),
+                 actionButton("runALS",
+                              strong("Run"),
+                              icon=icon('gear')
+                              ),
                  tags$style(type='text/css', 
                             "#runALS { width:100%; margin-top: 25px;}")
           )
@@ -699,7 +695,7 @@ navbarPage(
               ),
               wellPanel(
                 h5('Save ALS spectra and kinetics'),
-                actionButton("alsSpKinSave","Save (Ctrl+Click)",
+                actionButton("alsSpKinSave","Save",
                              icon     = icon('save'))
               )
             ),
@@ -834,8 +830,8 @@ navbarPage(
       h5("Author      : P. Pernot"),
       a(href="https://doi.org/10.5281/zenodo.1064370",">>> How to Cite"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 2.3"),
-      h5("Date        : 2017/11/30"),
+      h5("Version     : 2.4"),
+      h5("Date        : 2017/12/15"),
       hr(),
       a(href="https://github.com/ppernot/SK-Ana","Code@GitHub"),
       br(),

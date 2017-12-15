@@ -16,7 +16,8 @@
 **Installation** 
 
 * Download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest) 
-  and decompress the archive in a dedicated directory 
+  and decompress the archive in a dedicated directory. If you want the most recent code
+  version (with more bugs risks) download it [here](https://github.com/ppernot/SK-Ana/archive/master.zip)
 
 * You will also need
 

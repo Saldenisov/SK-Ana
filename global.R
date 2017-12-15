@@ -6,7 +6,7 @@ options(shiny.maxRequestSize=20*1024^2)
 # Libraries ####
 libs = c('outliers', 'nnls', 'Iso', 'viridis', 
          'changepoint', 'shiny', 'shinyBS','DT', 
-         'fields', 'NMF','shinycssloaders')
+         'fields', 'NMF','shinycssloaders', 'tools')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE,quietly=TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -548,7 +548,7 @@ autoWlMask <- function (mat,nmat) {
   return(chp)  
 }
 cleanUp <- function (mat,level) {
-  # Remove glitches from matrix by detecting outliers in SVD residuals...
+  # Remove glitches from matrix by detecting outliers in SVD vectors...
   
   # Replace NAs by mean
   mat0 = mat
@@ -557,13 +557,6 @@ cleanUp <- function (mat,level) {
   # Get SVD residuals at specified level
   nsvMax = 10
   s = svd(mat0,nu = nsvMax,nv = nsvMax)
-  
-  # Use explicit residuals matrix
-  # for (i in 1:(level-1))
-  #   mat0 = mat0 - s$u[,i] %o% s$v[,i] * s$d[i]
-  # 
-  # # Detect the problematic matrix column and return its index
-  # out = which.max(rowSums(abs(mat0)))
 
   # Use SV vectors   
   out = which.max(abs(s$u[,level]))

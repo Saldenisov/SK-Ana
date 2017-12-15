@@ -275,7 +275,8 @@ function(input, output, session) {
           title = ">>>> Data problem <<<< ",
           paste0("The chosen data type does not ",
                  "correspond to the opened data file(s)!"),
-          easyClose = TRUE,
+          easyClose = TRUE, 
+          footer = modalButton("Close"),
           size = 's'
         ))
       }
@@ -435,12 +436,18 @@ function(input, output, session) {
         } else {
           if(input$projectTag == '') {
             if(nrow(input$dataFile) == 1) {
-              projName = substr(input$dataFile$name,1,14)
+              projName = substr(
+                tools::file_path_sans_ext(
+                  input$dataFile$name
+                ),
+                1,14)
             } else {
               prefix = 'Mean_'
               if( input$procMult != 'avrg') prefix = 'Tile_'
               projName = paste0(prefix,
-                                substr(input$dataFile$name[1],1,8))
+                                substr(tools::file_path_sans_ext(
+                                  input$dataFile$name[1]
+                                ),1,8))
             }
             updateTextInput(session,
                             inputId = "projectTag",
@@ -621,26 +628,35 @@ function(input, output, session) {
           title = ">>>> Data problem <<<< ",
           paste0("The chosen data have inconsient dimensions. ",
                  "They cannot be treated simultaneously !"),
-          easyClose = TRUE,
+          easyClose = TRUE, 
+          footer = modalButton("Close"),
           size = 's'
         ))
       } else {
         verticalLayout(
-          column(6,
-                 radioButtons(
-                   inputId  = 'procMult', 
-                   label    = h4('Please choose processing option'),
-                   choices  = choices,
-                   selected = choices[length(choices)],
-                   inline   = TRUE),
-                 shinyBS::bsTooltip(
-                   'procMult',
-                   title = 'Choice based on dims of matrices')
+          column(
+            6,
+            radioButtons(
+              inputId  = 'procMult', 
+              label    = h4('Please choose processing option'),
+              choices  = choices,
+              selected = choices[length(choices)],
+              inline   = TRUE),
+            shinyBS::bsTooltip(
+              'procMult',
+              title = 'Choice based on dims of matrices')
           ),
-          column(2,
-                 actionButton("process",strong("Do it!")),
-                 tags$style(type='text/css',
-                            "#process { width:100%; margin-top: 5px;}")
+          column(
+            2,
+            actionButton(
+              "process",
+              strong("Do it!"),
+              icon=icon('gear')
+            ),
+            tags$style(
+              type='text/css',
+              "#process { width:100%; margin-top: 5px;}"
+            )
           )
         )
       }
@@ -783,55 +799,67 @@ function(input, output, session) {
   
 # Select Area ####
 
-  observeEvent(input$reset,
-               initSliders()
-               )
-
-  output$saveSelectors <- downloadHandler(
-    filename = function()    {
-      paste0('Selectors_',input$projectTag,'_',Sys.Date(),'.Rda')
-    },
-    content  = function(con) {
+  observeEvent(
+    input$reset,
+    initSliders()
+  )
+  
+  observeEvent(
+    input$saveSelectors,
+    isolate({
       ll = list()
+      # ID
       ll$projectTag     = input$projectTag
       ll$matDims        = dim(Inputs$matOrig)
+      # Selectors
       ll$keepCbl        = input$keepCbl
       ll$keepDlRange    = input$keepDlRange
       ll$keepWlRange    = input$keepWlRange
       ll$dlScaleFacOrig = Inputs$dlScaleFacOrig
-      ll$nMasksDl       = input$nMasksDl
-      if(input$nMasksDl!=0)
-        for (mask in 1:input$nMasksDl) {
-          maskName = paste0("keepDlMask",mask)
-          ll[[maskName]] = input[[maskName]]
-        }
+      # Masks
       ll$nMasksWl       = input$nMasksWl
       if(input$nMasksWl!=0)
         for (mask in 1:input$nMasksWl) {
           maskName = paste0("keepWlMask",mask)
           ll[[maskName]] = input[[maskName]]
         }
+      ll$nMasksDl       = input$nMasksDl
+      if(input$nMasksDl!=0)
+        for (mask in 1:input$nMasksDl) {
+          maskName = paste0("keepDlMask",mask)
+          ll[[maskName]] = input[[maskName]]
+        }
       ll$delayGlitch   = Inputs$delayGlitch
-
-      save(ll,file=con)
-    }
+      # Save
+      file = file.path(
+        "outputDir",
+        paste0(input$projectTag,'_Selections.Rda')
+      )
+      save(ll,file = file)
+      showModal(modalDialog(
+        title = ">>>> Selections Saved <<<< ",
+        paste0("File:",file), 
+        footer = modalButton("Close"),
+        easyClose = TRUE, fade = TRUE, size = 'm'
+      ))
+    })
   )
   
   observeEvent(
     input$selectorFile,
     isolate({
+      # Get data
       load(input$selectorFile$datapath)
       
       # Check project name and matrix dims
-      if(ll$projectTag != input$projectTag ||
-         ll$matDims    != dim(Inputs$matOrig)
-      ) {
+      if(ll$projectTag != input$projectTag    ||
+        ll$matDims    != dim(Inputs$matOrig) ) {
         showModal(modalDialog(
           title = ">>>> Incorrect File <<<< ",
-          paste0("The chosen file does not match ",
-                 "the current project!"),
-          easyClose = TRUE,
-          size = 's'
+          paste0("The chosen selections file does not match ",
+                 "the current project!"), 
+          footer = modalButton("Close"),
+          easyClose = TRUE, fade = TRUE, size = 'm'
         ))
         
       } else {
@@ -857,6 +885,7 @@ function(input, output, session) {
         nsteps = round(diff(cblRange)/10)
         cblSel = ll$keepCbl
         updateSlider("keepCbl"    , cblRange, cblSel   , nsteps)      
+        
         # Wavl masks
         ## Remove existing Masks sliders
         for (mask in 1:20) {
@@ -873,12 +902,9 @@ function(input, output, session) {
         ## Generate Masks sliders if necessary
         nMasks = ll$nMasksWl
         if(nMasks!=0) {
-          nsteps  = min(length(Inputs$wavlOrig),200)
-          wlRange = signif(range(Inputs$wavlOrig),3)
+          nsteps  = min(length(wavl),200)
           for (mask in 1:nMasks) {
             maskName = paste0("keepWlMask",mask)
-            sel = ll[[maskName]]
-            value = Inputs$wavlOrig[sel]
             insertUI(
               selector = "#masksS",
               where    = "beforeEnd",
@@ -889,7 +915,7 @@ function(input, output, session) {
                   label   = NULL,
                   min     = wlRange[1],
                   max     = wlRange[2],
-                  value   = value,
+                  value   = ll[[maskName]],
                   step    = signif(diff(wlRange)/nsteps, 3),
                   sep     = "")
               )
@@ -897,7 +923,7 @@ function(input, output, session) {
             masksWl <<- unique(c(masksWl,maskName))
           }
         }
-        if(nMasks != input$nMasksWl)
+        # if(nMasks != input$nMasksWl)
           updateNumericInput(session = session,
                              inputId = "nMasksWl",
                              value   = nMasks)
@@ -918,13 +944,9 @@ function(input, output, session) {
         ## Generate Masks sliders if necessary
         nMasks = ll$nMasksDl
         if(nMasks!=0) {
-          nsteps  = min(length(Inputs$delayOrig),500)
-          dlRange = signif(range(Inputs$delayOrig/
-                                   Inputs$dlScaleFacOrig),3)
+          nsteps  = min(length(delay),500)
           for (mask in 1:nMasks) {
             maskName = paste0("keepDlMask",mask)
-            sel = ll[[maskName]]
-            value = Inputs$delayOrig[sel]/Inputs$dlScaleFacOrig
             insertUI(
               selector = "#masksC",
               where    = "beforeEnd",
@@ -935,7 +957,7 @@ function(input, output, session) {
                   label   = NULL,
                   min     = dlRange[1],
                   max     = dlRange[2],
-                  value   = value,
+                  value   = ll[[maskName]],
                   step    = signif(diff(dlRange)/nsteps, 3),
                   sep     = "")
               )
@@ -943,7 +965,7 @@ function(input, output, session) {
             masksDl <<- unique(c(masksDl,maskName))
           }
         }
-        if(nMasks != input$nMasksDl)
+        # if(nMasks != input$nMasksDl)
           updateNumericInput(session = session,
                              inputId = "nMasksDl",
                              value   = nMasks)
@@ -1341,15 +1363,12 @@ function(input, output, session) {
       )
       
       if(input$keepCbl !=0) {
-        # abline(
-        #   v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
-        # )
         rect(Inputs$delayOrig[1],
              Inputs$wavlOrig[1],
              Inputs$delayOrig[input$keepCbl],
              Inputs$wavlOrig[length(Inputs$wavlOrig)],
              border=NA,
-             col=pink_tr #'gray70'
+             col=pink_tr
         )
       }
       
@@ -1471,7 +1490,6 @@ function(input, output, session) {
     delay = Inputs$delay
     
     wCut = seq(1,length(delay),
-               # by = ifelse(length(delay) >= 50, 10, 1)
                by = max(1,input$stepDlCut)
                )
 
@@ -1534,15 +1552,12 @@ function(input, output, session) {
     colorizeMask1D(axis="delay",ylim=ylim)
     grid();box()
     if(input$keepCbl !=0) {
-      # abline(
-      #   v = Inputs$delayOrig[input$keepCbl],lwd = 2,col = 'red',lty = 2
-      # )
       rect(Inputs$delayOrig[1],
            ylim[1],
            Inputs$delayOrig[input$keepCbl],
            ylim[2],
            border=NA,
-           col=pink_tr #'gray70'
+           col=pink_tr
       )
     }
     
