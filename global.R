@@ -26,7 +26,7 @@ colWR   = fields::two.colors(17,start="blue",middle="white",end="red")
 cex = 1
 mar = c(4.5,5,2,1)
 mgp = c(2,.75,0)
-pty = 's'
+pty = 'm'
 tcl = -0.5
 
 # Functions ####
@@ -39,6 +39,42 @@ string2Expr = function(string) {
 } 
 string2Num = function(x) 
   as.numeric(eval(parse(text=eval(string2Expr(x)))))
+
+downsizeMatrix = function(delay,wavl,mat,fw) {
+  # Downsize matrix by factor fw
+  
+    # pad matrix with Nas
+    newNcol = ceiling(ncol(mat)/fw)*fw
+    newNrow = ceiling(nrow(mat)/fw)*fw
+    lmat = matrix(NA,nrow=newNrow,ncol=newNcol)
+    lmat[1:nrow(mat),1:ncol(mat)]=mat
+    # Block average
+    nRowBloc = newNrow/fw
+    nColBloc = newNcol/fw
+    amat = matrix(NA, nrow=nRowBloc,ncol=nColBloc)
+    for(i in 1:nRowBloc) 
+      for(j in 1:nColBloc)
+        amat[i,j] = mean(lmat[((i-1)*fw+1):(i*fw),
+                              ((j-1)*fw+1):(j*fw)],
+                         na.rm=TRUE)
+    delay[newNrow]=NA
+    adelay = c()
+    for(i in 1:nRowBloc) 
+      adelay[i] = mean(delay[((i-1)*fw+1):(i*fw)],
+                       na.rm=TRUE)
+    wavl[newNcol]=NA
+    awavl = c()
+    for(i in 1:nColBloc) 
+      awavl[i] = mean(wavl[((i-1)*fw+1):(i*fw)],
+                      na.rm=TRUE)
+    return(
+      list(    
+        mat   = amat,
+        delay = adelay,
+        wavl  = awavl
+      )
+    )    
+}
 
 getC  = function (S, data, C, nonnegC=TRUE, 
                   nullC = NA, closeC=FALSE, wCloseC = 0) {

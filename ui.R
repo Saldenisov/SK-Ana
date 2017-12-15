@@ -1,15 +1,20 @@
 function(request) {
-
+  
+  sideWidth = 4
+  mainWidth = 12 - sideWidth
+  
 navbarPage( 
   "SK-Ana",
+  
   # Config ####
-  theme=shinythemes::shinytheme(c("cosmo","cerulean","spacelab","yeti")[2]),
+  theme = shinythemes::shinytheme(c("cosmo","cerulean","spacelab","yeti")[2]),
   
   # Project ####
   tabPanel(
     "Project",
     sidebarLayout(
       sidebarPanel(
+        width = sideWidth,
         tabsetPanel(
           tabPanel(
             title =h4("New Project"),
@@ -24,57 +29,67 @@ navbarPage(
               inputId='style', 
               label = 'Predefined File Formats', 
               choices = list(
-                "CSV"    = "csvStyle",
-                "Münich" = 'munichStyle',
-                "ELYSE"  = 'elyseStyle',
-                "Streak" = 'streakStyle',
-                "Fluo"   = 'heleneStyle'
+                "CSV"     = "csvStyle",
+                "ELYSE"   = 'elyseStyle',
+                "Fluo"    = 'heleneStyle',
+                "Münich"  = 'munichStyle',
+                "Streak"  = 'streakStyle',
+                "Other..."= 'otherStyle'
               ), 
               selected = 'csvStyle', 
               multiple = FALSE,
               selectize = FALSE, 
               width = NULL, 
               size = NULL),
-            hr( style="border-color: #FFF;"),
-            checkboxInput(
-              inputId = 'header', 
-              label   = 'Header', 
-              value   = FALSE),
-            radioButtons(
-              inputId = 'sep', 
-              label   = 'Separator',
-              choices = c(Comma = ',',
-                          Semicolon = ';',
-                          Tab = '\t',
-                          Space = ' '),
-              selected = '\t',
-              inline = TRUE),
-            radioButtons(
-              inputId = 'dec', 
-              label   = 'Decimal',
-              choices = c(Comma=',',
-                          Dot='.'),
-              selected = '.',
-              inline = TRUE),
-            radioButtons(
-              inputId = 'datStr', 
-              label   = 'Data structure',
-              choices = list("Wavl on a row"   = 'dxw',
-                             "Wavl on a column"= 'wxd'),
-              selected= 'dxw',
-              inline = TRUE),
+            conditionalPanel(
+              condition = "input.style == 'otherStyle'",
+              hr( style="border-color: #FFF;"),
+              checkboxInput(
+                inputId = 'header', 
+                label   = 'Header', 
+                value   = FALSE),
+              radioButtons(
+                inputId = 'sep', 
+                label   = 'Separator',
+                choices = c(Comma = ',',
+                            Semicolon = ';',
+                            Tab = '\t',
+                            Space = ' '),
+                selected = '\t',
+                inline = TRUE),
+              radioButtons(
+                inputId = 'dec', 
+                label   = 'Decimal',
+                choices = c(Comma=',',
+                            Dot='.'),
+                selected = '.',
+                inline = TRUE),
+              radioButtons(
+                inputId = 'datStr', 
+                label   = 'Data structure',
+                choices = list("Wavl on a row"   = 'dxw',
+                               "Wavl on a column"= 'wxd'),
+                selected= 'dxw',
+                inline = TRUE)
+            ),
             numericInput(
               inputId = 'compFac', 
-              label   = 'Compression factor', 
-              value   = 1, min=1, max=100, step=1,
-              width   = '150px'),
+              label   = 'Load compression factor', 
+              value   = 1, min=1, max=20, step=1,
+              width   = '200px'),
             hr( style="border-color: #666;"),
             fileInput(
               inputId = 'dataFile',
               label   = 'Select data file(s)',
               multiple= TRUE,
               accept  = c('.dat','.txt','.csv')
-            )
+            ),
+            hr( style="border-color: #666;"),
+            numericInput(
+              inputId = 'postCompFac', 
+              label   = 'Post compression factor', 
+              value   = 1, min=1, max=20, step=1,
+              width   = '200px')
           ),
           tabPanel(
             title =h4("Open"),
@@ -118,6 +133,7 @@ navbarPage(
         )
         ),
         mainPanel(
+          width = mainWidth,
           uiOutput("loadMsg"),
         conditionalPanel(
           condition = "output.rawData !== null",
@@ -159,6 +175,7 @@ navbarPage(
     "Data Selection",
     sidebarLayout(
       sidebarPanel(
+        width = sideWidth,
         tabsetPanel(
           tabPanel(
             value="dataSel",
@@ -228,7 +245,7 @@ navbarPage(
           ),
           id="selTabset"
         ),
-        hr(),
+                    hr( style="border-color: #666;"),
         fluidRow(
           column(5,
                  actionButton("reset",
@@ -256,6 +273,7 @@ navbarPage(
         )
       ),
       mainPanel(
+        width = mainWidth,
         wellPanel(
           tabsetPanel(
             tabPanel(
@@ -391,6 +409,7 @@ navbarPage(
     "SVD",
     sidebarLayout(
       sidebarPanel(
+        width = sideWidth,
         h4("SVD parameters"),
         fluidRow(
           column(3,
@@ -403,7 +422,7 @@ navbarPage(
                               width = '100px')
           )
         ),
-        hr(),
+                    hr( style="border-color: #666;"),
         h4("Glitch removal in kinetics"),
         fluidRow(
           column(3,
@@ -422,6 +441,7 @@ navbarPage(
         )
       ),
       mainPanel(
+        width = mainWidth,
         wellPanel(                  
           tabsetPanel(
             tabPanel(
@@ -469,6 +489,7 @@ navbarPage(
     "ALS",
     sidebarLayout(
       sidebarPanel(
+        width = sideWidth,
         fluidRow(
           column(4,
                  numericInput("nALS", 
@@ -570,7 +591,7 @@ navbarPage(
             ),
             fluidRow(
               column(12,
-                     hr(),
+                                 hr( style="border-color: #666;"),
                      checkboxInput("shapeS", 
                                    label= "External spectrum shape(s)",
                                    value = FALSE),
@@ -628,6 +649,7 @@ navbarPage(
         )
       ),
       mainPanel(
+        width = mainWidth,
         wellPanel(
           tabsetPanel(
             tabPanel(
@@ -783,6 +805,7 @@ navbarPage(
   tabPanel(
     title="Downloads",
     sidebarPanel(
+      width = sideWidth,
       wellPanel(
         h4("Generate Report"),
         checkboxGroupInput(
@@ -827,12 +850,13 @@ navbarPage(
   tabPanel(
     title="About",
     sidebarPanel(
+      width = sideWidth,
       h5("Author      : P. Pernot"),
       a(href="https://doi.org/10.5281/zenodo.1064370",">>> How to Cite"),
       h5("Affiliation : CNRS"),
       h5("Version     : 2.4"),
       h5("Date        : 2017/12/15"),
-      hr(),
+      hr( style="border-color: #666;"),
       a(href="https://github.com/ppernot/SK-Ana","Code@GitHub"),
       br(),
       a(href="https://github.com/ppernot/SK-Ana/issues","Bug report")

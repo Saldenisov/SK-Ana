@@ -202,35 +202,11 @@ function(input, output, session) {
     
     # Downsize
     if(input$compFac >= 2) {
-      fw = input$compFac
-      # pad matrix with Nas
-      newNcol = ceiling(ncol(mat)/fw)*fw
-      newNrow = ceiling(nrow(mat)/fw)*fw
-      lmat = matrix(NA,nrow=newNrow,ncol=newNcol)
-      lmat[1:nrow(mat),1:ncol(mat)]=mat
-      # Block average
-      nRowBloc = newNrow/fw
-      nColBloc = newNcol/fw
-      amat = matrix(NA, nrow=nRowBloc,ncol=nColBloc)
-      for(i in 1:nRowBloc) 
-        for(j in 1:nColBloc)
-          amat[i,j] = mean(lmat[((i-1)*fw+1):(i*fw),
-                                ((j-1)*fw+1):(j*fw)],
-                           na.rm=TRUE)
-      delay[newNrow]=NA
-      adelay = c()
-      for(i in 1:nRowBloc) 
-        adelay[i] = mean(delay[((i-1)*fw+1):(i*fw)],
-                         na.rm=TRUE)
-      wavl[newNcol]=NA
-      awavl = c()
-      for(i in 1:nColBloc) 
-        awavl[i] = mean(wavl[((i-1)*fw+1):(i*fw)],
-                        na.rm=TRUE)
-      
-      mat   = amat
-      delay = adelay
-      wavl  = awavl
+      dsm = downsizeMatrix(delay,wavl,mat,fw=input$compFac)
+      mat   = dsm$mat
+      delay = dsm$delay
+      wavl  = dsm$wavl
+      rm(dsm)
     }
     
     # Transpose if necessary
@@ -392,6 +368,22 @@ function(input, output, session) {
       need(!is.null(data),"--> Bad data type")
     )
     
+    fw = input$postCompFac
+    if(fw >= 2) {
+      dls = data$delay
+      dId = data$delayId
+      data = downsizeMatrix(data$delaySave,data$wavl,data$mat,fw=fw)
+      data$delaySave = data$delay
+      data$delay     = 1:length(data$delay)
+      data$delayId   = dId[seq(1,length(dls),by=fw)]
+      # If necessary, adjust delayId
+      if(length(data$delayId) < length(data$delay)) 
+        data$delayId[(length(data$delayId)+1):length(data$delay)] =
+        data$delayId[length(data$delayId)]
+      else if(length(data$delayId) > length(data$delay))
+        data$delayId = data$delayId[1:length(data$delay)]
+    }
+    
     if(is.null(data)) {
       Inputs$fileOrig       <<- NULL
       
@@ -459,17 +451,20 @@ function(input, output, session) {
 
           # Install data
           Inputs$fileOrig       <<- input$dataFile$name
+          Inputs$dlScaleFacOrig <<- dlScaleFac
+
           Inputs$matOrig        <<- data$mat
           Inputs$wavlOrig       <<- data$wavl
           Inputs$delayOrig      <<- data$delay
           Inputs$delayIdOrig    <<- data$delayId
           Inputs$delaySaveOrig  <<- data$delaySave
-          Inputs$dlScaleFacOrig <<- dlScaleFac
+          
           Inputs$mat            <<- data$mat
           Inputs$wavl           <<- data$wavl
           Inputs$delay          <<- data$delay
-          Inputs$delaySave      <<- data$delaySave
           Inputs$delayId        <<- data$delayId
+          Inputs$delaySave      <<- data$delaySave
+
           # Initialize config
           initSliders()
           projConfig <<- NULL
@@ -479,6 +474,15 @@ function(input, output, session) {
     }
   })
   
+  # observeEvent(
+  #   input$postCompFac,
+  #   isolate({
+  #     Inputs$process <<- TRUE
+  #     finishMatrix()
+  #   })
+  # )
+  
+  
 # Project ####
   
   # Predefined input styles
@@ -486,6 +490,12 @@ function(input, output, session) {
     input$style, isolate({
       switch( input$style,
               csvStyle = {
+                header = FALSE
+                sep= ","
+                dec= "."
+                datStr= "wxd"
+              },
+              otherStyle = {
                 header = FALSE
                 sep= ","
                 dec= "."
@@ -528,7 +538,6 @@ function(input, output, session) {
       updateRadioButtons(session,
                          inputId  = "datStr",
                          selected = datStr)
-      
     })
   )
     
@@ -672,6 +681,9 @@ function(input, output, session) {
       finishMatrix()
     })
   )
+  
+
+
 
   # # Open saved project
   # observeEvent(
@@ -2306,7 +2318,8 @@ function(input, output, session) {
     sv   = svd(wres,nu=2,nv=2)  
     
     par(mfrow=c(2,2), cex = cex,cex.main=cex, mar = mar, 
-        mgp = mgp, tcl = tcl, pty=pty)
+        mgp = mgp, tcl = tcl, pty='s')
+    
     image(delay,wavl,wres,col=colWR,main="Weighted Residuals",
           xlab='Delay',ylab='Wavelength')
     colorizeMask1D(axis="delay",
