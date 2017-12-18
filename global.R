@@ -583,19 +583,22 @@ autoWlMask <- function (mat,nmat) {
   
   return(chp)  
 }
-cleanUp <- function (mat,level) {
+cleanUp <- function (delayMask,wavlMask,mat,level) {
   # Remove glitches from matrix by detecting outliers in SVD vectors...
   
-  # Replace NAs by mean
+  # Replace masks/NAs by 0 (do not eliminate to facilitate indexing)
   mat0 = mat
-  mat0[is.na(mat)] = mean(mat,na.rm=TRUE)
-
+  mat0[is.na(delayMask),] = 0
+  mat0[,is.na(wavlMask)]  = 0
+  
   # Get SVD residuals at specified level
   nsvMax = 10
   s = svd(mat0,nu = nsvMax,nv = nsvMax)
 
-  # Use SV vectors   
-  out = which.max(abs(s$u[,level]))
+  # Use SV vectors
+  vec = abs(s$u[,level])
+  vec[is.na(delayMask)] = 0
+  out = which.max(vec)
   
   return(out)
 }

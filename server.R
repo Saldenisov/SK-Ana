@@ -1660,7 +1660,11 @@ function(input, output, session) {
   observeEvent(
     input$clean,
     {
-      gl   = cleanUp(Inputs$mat,isolate(input$cleanLevel))
+      gl   = cleanUp(Inputs$delayMask,
+                     Inputs$wavlMask,
+                     Inputs$mat,
+                     isolate(input$cleanLevel)
+                     )
       dlgl = Inputs$delay[gl]
       if(anyNA(Inputs$delayGlitch))
         Inputs$delayGlitch  <<- dlgl
@@ -1755,8 +1759,8 @@ function(input, output, session) {
              mar=mar1)
         plot(
           axisS,S[,(icol-1)*n+i],type = "l",col = 'darkgreen',
-          xlab = xlab1,ylab = 'Arb. units',
-          xaxt=xaxt, ylim=ylim, lwd=2
+          xlab = xlab1, ylab = 'Arb. units',
+          xaxt=xaxt, ylim=ylim, lwd=1
         )
         abline(h = 0,lty=2)
         colorizeMask1D(axis="wavl",ylim=ylim)
@@ -1770,8 +1774,8 @@ function(input, output, session) {
              new=TRUE,
              mar=mar2)
         plot(
-          axisC,C[,(icol-1)*n+i],type = "l",col = 'orange',
-          xlab = xlab2,ylab = '',lwd=2,
+          axisC,C[,(icol-1)*n+i],type = "l",col = 'red',
+          xlab = xlab2, ylab = '', lwd=1,
           xaxt=xaxt, yaxt='n', ylim=ylim
         )
         abline(h = 0,lty=2)
