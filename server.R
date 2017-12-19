@@ -1,6 +1,6 @@
-# shinyServer(
 function(input, output, session) {
   
+  # Attempt at bookmarking: failed !!!
   # setBookmarkExclude("bookmark") 
   # observeEvent(input$bookmark, {
   #   session$doBookmark()
@@ -2504,6 +2504,47 @@ function(input, output, session) {
                   CS$C,CS$S)
   },height = 450)
   
+  output$selAmbParams <- renderUI({
+    if (is.null(alsOut <- doALS()))
+      return(NULL)
+    
+    lv = list()
+    for (i in 1:input$nALS)
+      lv[[i]] = i
+    
+    list(
+      column(2,
+             checkboxGroupInput("vecsToRotate", 
+                                label = "Pick 2 (or 3) vectors",
+                                choices = lv,
+                                selected = c(1,2))
+      ),
+      column(4,
+             sliderInput("alsRotAmbEps",
+                         label = "Relative positivity threshold",
+                         min   = signif(-0.1),
+                         max   = signif( 0.1),
+                         value = -0.01,
+                         step  =  0.01,
+                         sep   = "")
+      ),
+      column(4,
+             sliderInput("alsRotAmbDens",
+                         label = "Exploration Step",
+                         min=signif(0.01),
+                         max=signif(0.1),
+                         value = 0.05,
+                         step  = 0.01,
+                         sep="")
+             ),
+      column(2,
+             actionButton("runALSAmb",strong("Start")),
+             tags$style(type='text/css', 
+                        "#runALSAmb { width:100%; margin-top: 25px;}")
+      )
+    )
+  })
+  
   doAmbRot <- eventReactive(
     input$runALSAmb, {
       if (is.null(alsOut <- doALS()))
@@ -2523,7 +2564,7 @@ function(input, output, session) {
       # msg = list()
       # # Progress bar
       # progress$set(message = "Running Ambiguity Analysis ", value = 0)
-      updateProgress = NULL  # Progress bar is not efficient (imprevisible run length...)
+      updateProgress = NULL  # Progress bar is not informative (imprevisible run length...)
       
       C0    = alsOut$C
       S0    = alsOut$S
@@ -2648,6 +2689,7 @@ function(input, output, session) {
     }
 
   }
+  
   rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
   
   output$ambSpVectors <- renderPlot({
@@ -2750,8 +2792,5 @@ function(input, output, session) {
     contentType = "application/zip"
   )
   
-# END ####
-  
 }
 
-# )

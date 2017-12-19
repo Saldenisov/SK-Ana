@@ -288,8 +288,8 @@ myals = function (C, Psi, S,
   }
   lof = signif(100*(sum(resid^2)/sum(Psi^2))^0.5,4)
   msg = HTML(paste0(
-    "Initial RSS / Final RSS = ", signif(initialrss,3),
-    "/", signif(rss,3), " = ", signif(initialrss / rss,3),
+    # "Initial RSS / Final RSS = ", signif(initialrss,3),
+    # "/", signif(rss,3), " = ", signif(initialrss / rss,3),
     "<br/> |RD| : ", signif(abs(RD),3)," <= ",thresh,
     "<br/> L.O.F. = ", lof 
   ))
@@ -392,8 +392,9 @@ rotAmb2 = function(C0,S0,data,rotVec=1:2,
               C1 = C1 * nullC[,rotVec]
             
             # Test for positivity
-            if(min(S1,na.rm=TRUE) >= eps &
-               min(C1,na.rm=TRUE) >= eps*max(data,na.rm=TRUE)) {
+            if(min(S1,na.rm=TRUE) >= eps*max(S1,na.rm=TRUE)  &
+               min(C1,na.rm=TRUE) >= eps*max(C1,na.rm=TRUE)
+               ) {
               ikeep = ikeep+1
               solutions[[ikeep]] = list(S1=S1, C1=C1, 
                                         t12=t12, t21=t21)
@@ -507,8 +508,9 @@ rotAmb3 = function(C0,S0,data,rotVec=1:3,
                               C1 = C1 * nullC[,rotVec]
                             
                             # Test for positivity
-                            if(min(S1,na.rm=TRUE) >= eps &
-                               min(C1,na.rm=TRUE) >= eps*max(data,na.rm=TRUE)) {
+                            if(min(S1,na.rm=TRUE) >= eps*max(S1,na.rm=TRUE)  &
+                               min(C1,na.rm=TRUE) >= eps*max(C1,na.rm=TRUE)
+                              ) {
                               ikeep = ikeep+1
                               solutions[[ikeep]] = list(S1=S1, C1=C1, 
                                                         t12=t12, t21=t21,
@@ -545,7 +547,6 @@ rotAmb3 = function(C0,S0,data,rotVec=1:3,
   
   return(solutions)
 }
-
 
 autoDlMask <- function (mat,nmat) {
   # Locate empty delay areas (experimental)
@@ -591,13 +592,11 @@ cleanUp <- function (delayMask,wavlMask,mat,level) {
   mat0[is.na(delayMask),] = 0
   mat0[,is.na(wavlMask)]  = 0
   
-  # Get SVD residuals at specified level
-  nsvMax = 10
-  s = svd(mat0,nu = nsvMax,nv = nsvMax)
+  # SVD
+  s = svd(mat0,nu = level,nv = level)
 
   # Use SV vectors
-  vec = abs(s$u[,level])
-  vec[is.na(delayMask)] = 0
+  vec = abs(s$u[,level]) 
   out = which.max(vec)
   
   return(out)

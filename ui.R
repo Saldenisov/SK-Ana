@@ -761,36 +761,7 @@ navbarPage(
               wellPanel( 
                 h4("Explore Rotational/Scaling Ambiguity"),
                 fluidRow(
-                  column(3,
-                         checkboxGroupInput("vecsToRotate", 
-                                     label = "Pick 2 or 3 vectors",
-                                     choices = list("1" = 1, "2" = 2, "3" = 3,
-                                                    "4" = 4, "5" = 5),
-                                     selected = c(1,2))
-                  ),
-                  column(3,
-                         sliderInput("alsRotAmbEps",
-                                     label = "Positivity threshold",
-                                     min=signif(-0.1),
-                                     max=signif( 0.1),
-                                     value = -0.01,
-                                     step  = 0.01,
-                                     sep="")
-                  ),
-                  column(3,
-                         sliderInput("alsRotAmbDens",
-                                     label = "Exploration Step",
-                                     min=signif(0.001),
-                                     max=signif(0.1),
-                                     value = 0.04,
-                                     step  = 0.01,
-                                     sep="")
-                  ),
-                  column(3,
-                         actionButton("runALSAmb",strong("Start")),
-                         tags$style(type='text/css', 
-                                    "#runALSAmb { width:100%; margin-top: 25px;}")
-                  )
+                  uiOutput("selAmbParams")
                 )
               )
             ),
