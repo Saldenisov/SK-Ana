@@ -1941,7 +1941,6 @@ function(input, output, session) {
     }
   )
   
-  ## Presence matrix #####
   showMSE = function(a,b,c) {
     if(is.null(a))
       return(FALSE)
@@ -2513,80 +2512,346 @@ function(input, output, session) {
       lv[[i]] = i
     
     list(
-      column(2,
-             checkboxGroupInput("vecsToRotate", 
-                                label = "Pick 2 (or 3) vectors",
-                                choices = lv,
-                                selected = c(1,2))
-      ),
-      column(4,
-             sliderInput("alsRotAmbEps",
-                         label = "Relative positivity threshold",
-                         min   = signif(-0.1),
-                         max   = signif( 0.1),
-                         value = -0.01,
-                         step  =  0.01,
-                         sep   = "")
-      ),
-      column(4,
-             sliderInput("alsRotAmbDens",
-                         label = "Exploration Step",
-                         min=signif(0.01),
-                         max=signif(0.1),
-                         value = 0.05,
-                         step  = 0.01,
-                         sep="")
-             ),
-      column(2,
-             actionButton("runALSAmb",strong("Start")),
-             tags$style(type='text/css', 
-                        "#runALSAmb { width:100%; margin-top: 25px;}")
+      fluidRow(
+        column(4,
+               checkboxGroupInput("vecsToRotate", 
+                                  label = "Pick 2 (or 3) vectors",
+                                  choices = lv,
+                                  selected = c(1,2))
+        ),
+        column(4,
+               sliderInput("alsRotAmbEps",
+                           label = "Relative positivity threshold",
+                           min   = signif(-0.1),
+                           max   = signif( 0.1),
+                           value = -0.01,
+                           step  =  0.01,
+                           sep   = "")
+        ),
+        column(4,
+               sliderInput("alsRotAmbDens",
+                           label = "Exploration Step",
+                           min=signif(0.01),
+                           max=signif(0.1),
+                           value = 0.05,
+                           step  = 0.01,
+                           sep="")
+        )
       )
     )
   })
   
-  doAmbRot <- eventReactive(
-    input$runALSAmb, {
-      if (is.null(alsOut <- doALS()))
-        return(NULL)
-      
-      isolate({
-        rotVec = as.numeric(unlist(input$vecsToRotate))
-        eps    = input$alsRotAmbEps
-        dens   = input$alsRotAmbDens
-      })
-      
-      # progress <- shiny::Progress$new()
-      # on.exit(progress$close())
-      # updateProgress <- function(value = NULL, detail = NULL) {
-      #   progress$set(value = value, detail = detail)
-      # }
-      # msg = list()
-      # # Progress bar
-      # progress$set(message = "Running Ambiguity Analysis ", value = 0)
-      updateProgress = NULL  # Progress bar is not informative (imprevisible run length...)
-      
-      C0    = alsOut$C
-      S0    = alsOut$S
-      nullC = alsOut$nullC
-      
-      solutions = NULL
-      if(length(rotVec)==2) {
-        solutions = rotAmb2(C0, S0, data=Inputs$mat,nullC=nullC,
-                            rotVec=rotVec,dens=dens,eps=eps,
-                            updateProgress=updateProgress)
-      } 
-      else if(length(rotVec)==3) {
-        solutions = rotAmb3(C0,S0,data=Inputs$mat,nullC=nullC,
-                            rotVec=rotVec,dens=dens,eps=eps,
-                            updateProgress=updateProgress)
-      } 
-      else {
-        cat('Length of rotVec should be 2 or 3\n')  
+  rotAmb2 = function(C0,S0,data,rotVec=1:2,
+                     dens=0.05,eps=-0.01,
+                     updateProgress=NULL,
+                     nullC=NA) {
+    
+    S = S0[,rotVec]
+    C = C0[,rotVec]
+    
+    ttry = function(i) dens*i
+    
+    ikeep = 0
+    solutions = list() 
+    ntry = 0; iter=0
+    
+    for(s12 in c(0,-1,1)) {
+      i12 = 0
+      OK1 = TRUE
+      while(OK1) {
+        i12 = i12 + s12
+        t12 = ttry(i12)
+        OK1 = FALSE
+        
+        for(s21 in c(0,-1,1)) {
+          i21 = 0
+          OK2  = TRUE
+          while(OK2) {
+            i21 = i21 + s21
+            t21 = ttry(i21)
+            OK2 = FALSE
+            
+            iter = iter+1
+            # if(!is.null(updateProgress))
+            #   updateProgress(value = iter / 100)
+            
+            # Transformation matrix
+            R = matrix(c(1  , t12,
+                         t21,   1),
+                       nrow = 2,ncol = 2,
+                       byrow = TRUE)
+            Ri = try(solve(R),silent=TRUE)
+            
+            if(class(Ri) !='try-error') {
+              ntry = ntry +1
+              
+              # Transform spectra and kinetics
+              S1 = t(R %*% t(S))
+              C1 = C %*% Ri
+              
+              # Renormalize spectra
+              for(i in 1:2) {
+                n = max(S1[,i],na.rm=TRUE)
+                S1[,i] = S1[,i] / n
+                C1[,i] = C1[,i] * n
+              }
+              
+              
+              if(!anyNA(nullC))
+                C1 = C1 * nullC[,rotVec]
+              
+              # Test for positivity
+              if(min(S1,na.rm=TRUE) >= eps*max(S1,na.rm=TRUE)  &
+                 min(C1,na.rm=TRUE) >= eps*max(C1,na.rm=TRUE)
+              ) {
+                ikeep = ikeep+1
+                solutions[[ikeep]] = list(S1=S1, C1=C1, 
+                                          t12=t12, t21=t21)
+                OK1 = OK2 = TRUE
+                
+                if(s21 == 0) OK2 = FALSE
+              }
+            }
+            
+            httpuv::service()    
+            if(input$killALSAmb) {# Get out of here
+              if(length(solutions)!=0) {
+                solutions$rotVec = rotVec
+                solutions$eps    = eps
+              }
+              return(
+                list(solutions = solutions,
+                     finished  = FALSE)
+              )
+            }
+          
+          }
+          if(s12 == 0) OK1 = FALSE
+        }
       }
-      return(solutions)
     }
-  )
+    
+    if(length(solutions)!=0) {
+      solutions$rotVec = rotVec
+      solutions$eps    = eps
+    }
+    
+    return(
+      list(solutions = solutions,
+           finished  = TRUE)
+    )
+  }
+  rotAmb3 = function(C0,S0,data,rotVec=1:3,
+                     dens=0.05,eps=-0.01,
+                     updateProgress=NULL,
+                     nullC=NA) {
+    
+    S = S0[,rotVec]
+    C = C0[,rotVec]
+    
+    ttry = function(i) dens*i
+    
+    ikeep = 0
+    solutions = list() 
+    ntry = 0; iter=0
+    
+    for(s12 in c(0,-1,1)) {
+      i12 = 0
+      OK1 = TRUE
+      while(OK1) {
+        i12 = i12 + s12
+        t12 = ttry(i12)
+        OK1 = FALSE
+        
+        for(s21 in c(0,-1,1)) {
+          i21 = 0
+          OK2  = TRUE
+          while(OK2) {
+            i21 = i21 + s21
+            t21 = ttry(i21)
+            OK2 = FALSE
+            
+            for(s23 in c(0,-1,1)) {
+              i23 = 0
+              OK3 = TRUE
+              while(OK3) {
+                i23 = i23 + s23
+                t23 = ttry(i23)
+                OK3 = FALSE
+                
+                for(s32 in c(0,-1,1)) {
+                  i32 = 0
+                  OK4 = TRUE
+                  while(OK4) {
+                    i32 = i32 + s32
+                    t32 = ttry(i32)
+                    OK4 = FALSE
+                    
+                    for(s13 in c(0,-1,1)) {
+                      i13 = 0
+                      OK5 = TRUE
+                      while(OK5) {
+                        i13 = i13 + s13
+                        t13 = ttry(i13)
+                        OK5 = FALSE
+                        
+                        for(s31 in c(0,-1,1)) {
+                          i31 = 0
+                          OK6 = TRUE
+                          while(OK6) {
+                            i31 = i31 + s31
+                            t31 = ttry(i31)
+                            OK6 = FALSE
+                            
+                            iter = iter+1
+                            # if(!is.null(updateProgress))
+                            #   updateProgress(value = iter / 100)
+                            
+                            # Transformation matrix
+                            R = matrix(c(1  , t12,  t13,
+                                         t21,   1,  t23,
+                                         t31, t32,    1),
+                                       nrow = 3,ncol = 3,
+                                       byrow = TRUE)
+                            Ri = try(solve(R),silent=TRUE)
+                            
+                            if(class(Ri) !='try-error') {
+                              ntry = ntry +1
+                              
+                              # Transform spectra and kinetics
+                              S1 = t(R %*% t(S))
+                              C1 = C %*% Ri
+                              
+                              # Renormalize spectra
+                              for(i in 1:3) {
+                                n = max(S1[,i],na.rm=TRUE)
+                                S1[,i] = S1[,i] / n
+                                C1[,i] = C1[,i] * n
+                              }
+                              
+                              
+                              if(!anyNA(nullC))
+                                C1 = C1 * nullC[,rotVec]
+                              
+                              # Test for positivity
+                              if(min(S1,na.rm=TRUE) >= eps*max(S1,na.rm=TRUE)  &
+                                 min(C1,na.rm=TRUE) >= eps*max(C1,na.rm=TRUE)
+                              ) {
+                                ikeep = ikeep+1
+                                solutions[[ikeep]] = list(S1=S1, C1=C1, 
+                                                          t12=t12, t21=t21,
+                                                          t23=t23, t32=t32,
+                                                          t13=t13, t31=t31)
+                                
+                                OK1 = OK2 = OK3 = OK4 = OK5 = OK6 = TRUE
+                                
+                                if(s31 == 0) OK6 = FALSE
+                              }
+
+                            }
+                            httpuv::service()                           
+                            if(input$killALSAmb) {# Get out of here
+                              # print(length(solutions))
+                              if(length(solutions)!=0) {
+                                solutions$rotVec = rotVec
+                                solutions$eps    = eps
+                              }
+                              return(
+                                list(solutions = solutions,
+                                     finished  = FALSE)
+                              )
+                            }
+                          }
+                          if(s13 == 0) OK5 = FALSE
+                        }
+                      }
+                      if(s32 == 0) OK4 = FALSE
+                    }
+                  }
+                  if(s23 == 0) OK3 = FALSE
+                }
+              }
+              if(s21 == 0) OK2 = FALSE
+            }
+          }
+          if(s12 == 0) OK1 = FALSE
+        }
+      }
+    }
+    
+    if(length(solutions)!=0) {
+      solutions$rotVec = rotVec
+      solutions$eps    = eps
+    }
+    
+    return(
+      list(solutions = solutions,
+           finished  = TRUE)
+    )
+  }
+  
+  doAmbRot <- eventReactive(
+    input$runALSAmb,
+    {
+    if (is.null(alsOut <- doALS()))
+      return(NULL)
+    
+    updateButton(session,"killALSAmb",value=FALSE)
+    
+    isolate({
+      rotVec = as.numeric(unlist(input$vecsToRotate))
+      eps    = input$alsRotAmbEps
+      dens   = input$alsRotAmbDens
+    })
+    
+    if(length(rotVec) > 3)
+      showModal(modalDialog(
+        title = ">>>> Too Many Vectors Selected <<<< ",
+        paste0("Please choose 3 vectors max."),
+        easyClose = TRUE, 
+        footer = modalButton("Close"),
+        size = 's'
+      ))
+    
+    C0    = alsOut$C
+    S0    = alsOut$S
+    nullC = alsOut$nullC
+    
+    solutions = NULL
+    
+    if(length(rotVec)==2) {
+      sol = rotAmb2(C0, S0, data=Inputs$mat,nullC=nullC,
+                    rotVec=rotVec,dens=dens,eps=eps,
+                    updateProgress=NULL)
+    } 
+    else if(length(rotVec)==3) {
+      sol = rotAmb3(C0,S0,data=Inputs$mat,nullC=nullC,
+                    rotVec=rotVec,dens=dens,eps=eps,
+                    updateProgress=updateProgress)
+    } 
+    solutions = sol$solutions
+    
+    if(length(solutions)==0)
+      if(sol$finished)
+        showModal(modalDialog(
+          title = ">>>> No Solution Found <<<< ",
+          paste0("Try to decrease the exploration step ",
+                 "and/or the relative positivity threshold!"),
+          easyClose = TRUE, 
+          footer = modalButton("Close"),
+          size = 's'
+        ))
+    else
+      showModal(modalDialog(
+        title = ">>>> No Solution Found <<<< ",
+        paste0("Try to let the algorithm run for a longer time!"),
+        easyClose = TRUE, 
+        footer = modalButton("Close"),
+        size = 's'
+      ))
+    
+    return(solutions)
+  })
   
   plotAmbVec <- function (alsOut, solutions, 
                           type="Kin",xlim=NULL,ylim=NULL,...) {
@@ -2646,7 +2911,7 @@ function(input, output, session) {
       }
       for (j in 1:nvec)
         polygon(c(xS,rev(xS)),c(Smin[,j],rev(Smax[,j])),
-                col= colR[j],border = NA)
+                col= colR[j],border = j)
       colorizeMask1D(axis="wavl",ylim=ylim)
       grid(); box()
       
@@ -2683,7 +2948,7 @@ function(input, output, session) {
       }
       for (j in 1:nvec)
         polygon(c(xC,rev(xC)),c(Cmin[,j],rev(Cmax[,j])),
-                col= colR[j],border = NA)
+                col= colR[j],border = j)
       colorizeMask1D(axis="delay",ylim=ylim)
       grid(); box()
     }
@@ -2695,7 +2960,7 @@ function(input, output, session) {
   output$ambSpVectors <- renderPlot({
     if (is.null(alsOut <- doALS()))
       return(NULL)
-    
+  
     if (!is.list(solutions <- doAmbRot())) 
       cat(paste0("No solutions found \n"))
     else 
@@ -2703,6 +2968,7 @@ function(input, output, session) {
                  type = "Sp",
                  xlim = rangesAmbSp$x,
                  ylim = rangesAmbSp$y)
+
   },height = 400)
   
   observeEvent(input$ambSp_dblclick, {

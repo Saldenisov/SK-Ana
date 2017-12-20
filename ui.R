@@ -74,7 +74,7 @@ navbarPage(
             ),
             numericInput(
               inputId = 'compFac', 
-              label   = 'Load compression factor', 
+              label   = 'Load-time compression factor', 
               value   = 1, min=1, max=20, step=1,
               width   = '200px'),
             hr( style="border-color: #666;"),
@@ -87,7 +87,7 @@ navbarPage(
             hr( style="border-color: #666;"),
             numericInput(
               inputId = 'postCompFac', 
-              label   = 'Post compression factor', 
+              label   = 'Post-process compression factor', 
               value   = 1, min=1, max=20, step=1,
               width   = '200px')
           ),
@@ -761,7 +761,23 @@ navbarPage(
               wellPanel( 
                 h4("Explore Rotational/Scaling Ambiguity"),
                 fluidRow(
-                  uiOutput("selAmbParams")
+                  column(10,
+                         uiOutput("selAmbParams")
+                  ),
+                  column(2,
+                         actionButton("runALSAmb",
+                                      strong("Start"),
+                                      icon=icon("cog")),
+                         tags$style(type='text/css',
+                                    "#runALSAmb { width:100%; margin-top: 0px;}"),
+                         shinyBS::bsButton("killALSAmb", 
+                                           label = "Stop",
+                                           type  = "toggle", 
+                                           value = FALSE, 
+                                           size  = "default", 
+                                           icon  = icon("ban")),
+                         tags$style(type='text/css',"#killALSAmb { width:100%;}")
+                  )
                 )
               )
             ),
