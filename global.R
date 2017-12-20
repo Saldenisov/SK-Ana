@@ -288,11 +288,12 @@ myals = function (C, Psi, S,
   }
   lof = signif(100*(sum(resid^2)/sum(Psi^2))^0.5,4)
   msg = HTML(paste0(
-    # "Initial RSS / Final RSS = ", signif(initialrss,3),
-    # "/", signif(rss,3), " = ", signif(initialrss / rss,3),
-    "<br/> |RD| : ", signif(abs(RD),3)," <= ",thresh,
+    "|RD| : ", signif(abs(RD),3)," <= ",thresh,
     "<br/> L.O.F. = ", lof 
   ))
+  
+  # "Initial RSS / Final RSS = ", signif(initialrss,3),
+  # "/", signif(rss,3), " = ", signif(initialrss / rss,3),
   
   if (!silent)
     cat(msg)
@@ -303,10 +304,6 @@ myals = function (C, Psi, S,
     msg = msg, lof = lof
   ))
 }
-
-
-
-
 
 indxCuts <- function (xCut, coords, minx=50) {
   delta=0

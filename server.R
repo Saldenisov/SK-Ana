@@ -2074,77 +2074,82 @@ function(input, output, session) {
   
 
   doALS <- eventReactive(
-    input$runALS, {
-    isolate({
-      if (!checkInputsSanity())
-        return(NULL)
-      
-      nAls = input$nALS
-      updateCheckboxGroupInput(
-        session,
-        inputId = "vecsToRotate",
-        selected = c(1,2)
-      )
-      
-      # Suppress masked areas
-      delay   = Inputs$delay[!is.na(Inputs$delayMask)]
-      delayId = Inputs$delayId[!is.na(Inputs$delayMask)]
-      wavl    = Inputs$wavl[!is.na(Inputs$wavlMask)]
-      
-      if(input$useFiltered) { # Choose SVD filtered matrix  
-        s <- doSVD()
-        mat = matrix(0,nrow=length(delay),ncol=length(wavl))
-        for (ic in 1:input$nSV) 
-          mat = mat + s$u[,ic] %o% s$v[,ic] * s$d[ic]
+    input$runALS, 
+    {
+      isolate({
+        if (!checkInputsSanity())
+          return(NULL)
         
-      } else {
-        mat = Inputs$mat 
-        mat = mat[!is.na(Inputs$delayMask),]
-        mat = mat[,!is.na(Inputs$wavlMask) ]
-      }
-
-      # External spectrum shapes      
-      S0 = NULL
-      if(input$shapeS) {
-        if(is.null(S0_in))
-          S0_in <- getS0()
-        ii = 0; S0 = c()
-        for (i in 1:length(S0_in)) {
-          tmp = S0_in[[i]]
-          for (k in 2:ncol(tmp))
-            S0 = cbind(S0,spline(tmp[,1],tmp[,k],xout=wavl)$y)
+        nAls = input$nALS
+        updateCheckboxGroupInput(
+          session,
+          inputId = "vecsToRotate",
+          selected = c(1,2)
+        )
+        
+        # Suppress masked areas
+        delay   = Inputs$delay[!is.na(Inputs$delayMask)]
+        delayId = Inputs$delayId[!is.na(Inputs$delayMask)]
+        wavl    = Inputs$wavl[!is.na(Inputs$wavlMask)]
+        
+        if(input$useFiltered) { # Choose SVD filtered matrix  
+          s <- doSVD()
+          mat = matrix(0,nrow=length(delay),ncol=length(wavl))
+          for (ic in 1:input$nSV) 
+            mat = mat + s$u[,ic] %o% s$v[,ic] * s$d[ic]
+          
+        } else {
+          mat = Inputs$mat 
+          mat = mat[!is.na(Inputs$delayMask),]
+          mat = mat[,!is.na(Inputs$wavlMask) ]
         }
-      }
-      
-      # Null C constraints
-      nullC = NA
-      if(!anyNA(Inputs$maskSpExp)) {
-        nullC = matrix(1, nrow=length(delayId),ncol=nAls)
-        for(i in 1:nAls) {
-          for (j in 1:nrow(Inputs$maskSpExp)) {
-            if(Inputs$maskSpExp[j,i] == 0) {
-              sel = which(delayId == j)
-              nullC[sel,i] = 0
-            } 
+        
+        # External spectrum shapes      
+        S0 = NULL
+        if(input$shapeS) {
+          if(is.null(S0_in))
+            S0_in <- getS0()
+          ii = 0; S0 = c()
+          for (i in 1:length(S0_in)) {
+            tmp = S0_in[[i]]
+            for (k in 2:ncol(tmp))
+              S0 = cbind(S0,spline(tmp[,1],tmp[,k],xout=wavl)$y)
           }
         }
-      } 
-
-      progress <- shiny::Progress$new()
-      on.exit(progress$close())
-      updateProgress <- function(value = NULL, detail = NULL) {
-        progress$set(value = value, detail = detail)
-      }
-      msg = list()
-
-      if (input$initALS != 'seq') {
-        if (input$initALS == 'SVD') {
+        
+        # Null C constraints
+        nullC = NA
+        if(!anyNA(Inputs$maskSpExp)) {
+          nullC = matrix(1, nrow=length(delayId),ncol=nAls)
+          for(i in 1:nAls) {
+            for (j in 1:nrow(Inputs$maskSpExp)) {
+              if(Inputs$maskSpExp[j,i] == 0) {
+                sel = which(delayId == j)
+                nullC[sel,i] = 0
+              } 
+            }
+          }
+        } 
+        
+        progress <- shiny::Progress$new()
+        on.exit(progress$close())
+        updateProgress <- function(value = NULL, detail = NULL) {
+          progress$set(value = value, detail = detail)
+        }
+        msg = list()
+        
+        if (input$initALS == 'seq') 
+          nStart = 2
+        else
+          nStart = nAls
+        
+        if (input$initALS == 'SVD' || input$initALS == 'seq') {
           # initialize with abs(SVD)
           if (is.null(s <- doSVD()))
             return(NULL)
           
-          S = matrix(abs(s$v[,1:nAls]),ncol=nAls)
-          C = matrix(abs(s$u[,1:nAls]),ncol=nAls)
+          S = matrix(abs(s$v[,1:nStart]),ncol=nStart)
+          C = matrix(abs(s$u[,1:nStart]),ncol=nStart)
           
         } else if (input$initALS == 'NMF') {
           # initialize with SVD + NMF
@@ -2155,10 +2160,10 @@ function(input, output, session) {
           
           # 1/ filter matrix to avoid negative values (noise)
           fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
-          for (i in 1:nAls)
+          for (i in 1:nStart)
             fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
           # 2/ NMF
-          res  = NMF::nmf(abs(fMat), rank=nAls, method='lee')
+          res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
           C = NMF::basis(res)
           S = t(NMF::coef(res))
           
@@ -2166,49 +2171,14 @@ function(input, output, session) {
           # restart from existing solution
           if (!exists('RES'))
             return(NULL)
-          S = RES$S
-          C = RES$C
+          S = RES$S[,1:nStart]
+          C = RES$C[,1:nStart]
         }
         # Progress bar
         progress$set(message = "Running ALS ", value = 0)
+        
         #Run
-        res = myals(
-          C = C, Psi = mat, S = S, xC = delay, xS = wavl,
-          maxiter = input$maxiter,
-          uniS    = input$uniS,
-          nonnegS = input$nonnegS,
-          nonnegC = input$nonnegC,
-          thresh  = 10^input$alsThresh,
-          normS   = input$normS,
-          S0      = S0,
-          hardS0  = !input$softS0,
-          wHardS0 = 10^input$wSoftS0,
-          optS1st = input$optS1st,
-          SumS    = input$SumS,
-          smooth  = input$smooth,
-          updateProgress = updateProgress,
-          nullC   = nullC,
-          closeC  = input$closeC,
-          wCloseC = 10^input$wCloseC
-        )
-        RES <<- res
-        msg = list(msg,
-                   h4('Single step: ',nAls,' species'),
-                   h5('Spectra constrained: ',ifelse(!is.null(S0),ncol(S0),0)),
-                   h5('Results after ',res$iter,' iterations'),
-                   h5(res$msg),br()
-        )
-      } else {
-        # Sequential update
-        # 1 - Start from first SVD
-        if (is.null(s <- doSVD()))
-          return(NULL)
-        S = matrix(abs(s$v[,1]),ncol=1)
-        C = matrix(abs(s$u[,1]),ncol=1)
-
-        for (n in 2:nAls) {
-          S = cbind(S,1)
-          C = cbind(C,1)
+        for (n in nStart:nAls) {
           progress$set(message = paste0("Running ALS ",n), value = 0)
           res = myals(
             C = C, Psi = mat, S = S, xC = delay, xS = wavl,
@@ -2229,43 +2199,39 @@ function(input, output, session) {
             closeC  = input$closeC,
             wCloseC = 10^input$wCloseC
           )
-          S = res$S
-          C = res$C
+          if(n < nAls) {
+            # Prepare next iteration
+            S = res$S
+            C = res$C
+            S = cbind(S,1)
+            C = cbind(C,1)
+          }
           RES <<- res
           msg = list(msg,
-              h4('Step ',n-1,': ',n,' species'),
-              h5('Results after ',res$iter,' iterations'),
-              h5(res$msg),br()
-            )
+                     h4(n,' species'),
+                     h5('Terminated in ',res$iter,' iterations'),
+                     res$msg,br()
+          )
         }
-      }
-      
-      # Sort contributions by decreasing amplitude
-      # cont = c()
-      # for (ic in 1:nAls)
-      #   cont[ic] = sum(abs(res$C[,ic] %o% res$S[,ic]), na.rm = TRUE)
-      # perm  = order(cont, decreasing = TRUE)
-      # res$C = matrix(res$C[,perm],ncol=nAls)
-      # res$S = matrix(res$S[,perm],ncol=nAls)
-      
-      colnames(res$S) = paste0('S_',1:nAls)
-      colnames(res$C) = paste0('C_',1:nAls)
-      
-      # Update Reporting
-      updateCheckboxGroupInput(session,
-                               inputId = 'inReport',
-                               selected = c('SVD','ALS'))
-      
-      output[[paste0('iter', 1)]] <- renderUI({
-        msg
+        
+        colnames(res$S) = paste0('S_',1:nAls)
+        colnames(res$C) = paste0('C_',1:nAls)
+        
+        # Update Reporting
+        updateCheckboxGroupInput(session,
+                                 inputId = 'inReport',
+                                 selected = c('SVD','ALS'))
+        
+        output[[paste0('iter', 1)]] <- renderUI({
+          msg
+        })
+        
+        res$nullC = nullC
+        
+        return(res)
+        
       })
-      
-      res$nullC = nullC
-      
-      return(res)
-      
     })
-  })
   
   output$alsOpt <- renderUI({
     if (input$runALS == 0) {
@@ -2818,21 +2784,24 @@ function(input, output, session) {
     nullC = alsOut$nullC
     
     solutions = NULL
-    
+    finished  = FALSE
     if(length(rotVec)==2) {
       sol = rotAmb2(C0, S0, data=Inputs$mat,nullC=nullC,
                     rotVec=rotVec,dens=dens,eps=eps,
                     updateProgress=NULL)
+      solutions = sol$solutions
+      finished  = sol$finished
     } 
     else if(length(rotVec)==3) {
       sol = rotAmb3(C0,S0,data=Inputs$mat,nullC=nullC,
                     rotVec=rotVec,dens=dens,eps=eps,
                     updateProgress=updateProgress)
+      solutions = sol$solutions
+      finished  = sol$finished
     } 
-    solutions = sol$solutions
     
     if(length(solutions)==0)
-      if(sol$finished)
+      if(finished)
         showModal(modalDialog(
           title = ">>>> No Solution Found <<<< ",
           paste0("Try to decrease the exploration step ",
@@ -2875,7 +2844,8 @@ function(input, output, session) {
     eps    = solutions$eps
     
     col0  = (1:nC)[!sel]
-    colR  = col2tr(1:nC,120)[sel]
+    colF  = (1:nC)[sel]
+    colR  = col2tr(colF,120)
     
     if(type == 'Sp') {
       # Estimate ranges of S
@@ -2911,7 +2881,7 @@ function(input, output, session) {
       }
       for (j in 1:nvec)
         polygon(c(xS,rev(xS)),c(Smin[,j],rev(Smax[,j])),
-                col= colR[j],border = j)
+                col= colR[j],border = colF[j])
       colorizeMask1D(axis="wavl",ylim=ylim)
       grid(); box()
       
@@ -2948,7 +2918,7 @@ function(input, output, session) {
       }
       for (j in 1:nvec)
         polygon(c(xC,rev(xC)),c(Cmin[,j],rev(Cmax[,j])),
-                col= colR[j],border = j)
+                col= colR[j],border = colF[j])
       colorizeMask1D(axis="delay",ylim=ylim)
       grid(); box()
     }
