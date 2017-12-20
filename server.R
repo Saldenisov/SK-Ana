@@ -201,8 +201,10 @@ function(input, output, session) {
     mat = mat[iord,] 
     
     # Downsize
-    if(input$compFac >= 2) {
-      dsm = downsizeMatrix(delay,wavl,mat,fw=input$compFac)
+    if(input$compFacD >= 2 || input$compFacW >= 2) {
+      dsm = downsizeMatrix(delay,wavl,mat,
+                           fwD=input$compFacD, 
+                           fwW=input$compFacW)
       mat   = dsm$mat
       delay = dsm$delay
       wavl  = dsm$wavl
@@ -368,14 +370,17 @@ function(input, output, session) {
       need(!is.null(data),"--> Bad data type")
     )
     
-    fw = input$postCompFac
-    if(fw >= 2) {
+    fwD = input$postCompFacD
+    fwW = input$postCompFacW
+    
+    if(fwD >= 2 || fwW >=2) {
       dls = data$delay
       dId = data$delayId
-      data = downsizeMatrix(data$delaySave,data$wavl,data$mat,fw=fw)
+      data = downsizeMatrix(data$delaySave,data$wavl,data$mat,
+                            fwD=fwD, fwW=fwW)
       data$delaySave = data$delay
       data$delay     = 1:length(data$delay)
-      data$delayId   = dId[seq(1,length(dls),by=fw)]
+      data$delayId   = dId[seq(1,length(dls),by=fwD)]
       # If necessary, adjust delayId
       if(length(data$delayId) < length(data$delay)) 
         data$delayId[(length(data$delayId)+1):length(data$delay)] =
@@ -473,15 +478,6 @@ function(input, output, session) {
       })
     }
   })
-  
-  # observeEvent(
-  #   input$postCompFac,
-  #   isolate({
-  #     Inputs$process <<- TRUE
-  #     finishMatrix()
-  #   })
-  # )
-  
   
 # Project ####
   

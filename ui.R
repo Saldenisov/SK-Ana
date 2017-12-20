@@ -22,7 +22,8 @@ navbarPage(
             textInput(
               inputId = 'projectTag', 
               label   = 'Project Name', 
-              value   = ""
+              value   = "",
+              placeholder = "Please type project's name"
             ),
             hr( style="border-color: #666;"),
             selectInput(
@@ -72,11 +73,25 @@ navbarPage(
                 selected= 'dxw',
                 inline = TRUE)
             ),
-            numericInput(
-              inputId = 'compFac', 
-              label   = 'Load-time compression factor', 
-              value   = 1, min=1, max=20, step=1,
-              width   = '200px'),
+            hr( style="border-color: #666;"),
+            strong('Load-time compression factors'),
+            br(),br(),
+            fluidRow(
+              column(3,
+                      numericInput(
+                        inputId = 'compFacD', 
+                        label   = 'Delay', 
+                        value   = 1, min=1, max=20, step=1,
+                        width   = '100px')
+              ),
+              column(3,
+                      numericInput(
+                        inputId = 'compFacW', 
+                        label   = 'Wavl', 
+                        value   = 1, min=1, max=20, step=1,
+                        width   = '100px')
+              )
+            ),
             hr( style="border-color: #666;"),
             fileInput(
               inputId = 'dataFile',
@@ -85,11 +100,24 @@ navbarPage(
               accept  = c('.dat','.txt','.csv')
             ),
             hr( style="border-color: #666;"),
-            numericInput(
-              inputId = 'postCompFac', 
-              label   = 'Post-process compression factor', 
-              value   = 1, min=1, max=20, step=1,
-              width   = '200px')
+            strong('Post-process compression factor'),
+            br(),br(),
+            fluidRow(
+              column(3,
+                     numericInput(
+                       inputId = 'postCompFacD', 
+                       label   = 'Delay', 
+                       value   = 1, min=1, max=20, step=1,
+                       width   = '100px')
+              ),
+              column(3,
+                     numericInput(
+                       inputId = 'postCompFacW', 
+                       label   = 'Wavl', 
+                       value   = 1, min=1, max=20, step=1,
+                       width   = '100px')
+              )
+            )
           ),
           tabPanel(
             title =h4("Open"),
@@ -841,8 +869,8 @@ navbarPage(
       h5("Author      : P. Pernot"),
       a(href="https://doi.org/10.5281/zenodo.1064370",">>> How to Cite"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 2.4"),
-      h5("Date        : 2017/12/15"),
+      h5("Version     : 2.5"),
+      h5("Date        : 2017/12/20"),
       hr( style="border-color: #666;"),
       a(href="https://github.com/ppernot/SK-Ana","Code@GitHub"),
       br(),
