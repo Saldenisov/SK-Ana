@@ -2974,7 +2974,206 @@ function(input, output, session) {
     }
   })
   
-# Report ####
+  # Kinet ####
+  # Kinetic Parser ####################################################
+  kinParse = function(filename) {
+    
+    scheme = scan(file=filename, what="character", sep="%",
+                  comment.char="#",
+                  blank.lines.skip = TRUE, quiet=TRUE)
+    nbReac=length(scheme)
+    print("Reaction scheme:")
+    for (i in 1:length(scheme))
+      cat('R',i,': ',scheme[[i]],'\n')
+    # lapply(scheme,print)
+    
+    # Extract relevant parts
+    parts=c()
+    for (reac in scheme) {
+      m = regexec("(.+?)\\s*->\\s*(.+?)\\s*(?:;\\s*(.*))?$",reac)    
+      parts = rbind(parts,unlist(regmatches(reac,m))[2:5])
+    }
+    parts=data.frame(parts,stringsAsFactors=FALSE)
+    names(parts)=c("reactants","products","rateConstant")
+    
+    reactants = products = list()
+    kReac = kReacF = c()
+    for (i in 1:nbReac) {
+      reactants[[i]] = gsub(" ","",unlist(strsplit(parts[i,"reactants"],
+                                                   split="\\+")))
+      products [[i]] = gsub(" ","",unlist(strsplit(parts[i,"products" ],
+                                                   split="\\+")))   
+      cRate=as.numeric(unlist(strsplit(parts[i,"rateConstant"],split="/")))
+      kReac[i] =cRate[1]
+      if (length(cRate)>1)
+        kReacF[i]=cRate[2]
+      else
+        kReacF[i]=1.0
+    }
+    
+    species=levels(as.factor(unlist(c(reactants,products))))
+    nbSpecies=length(species)
+    # print("Species List:")
+    # print(species)
+    
+    # R, L, D matrices 
+    L = R = matrix(0,ncol=nbSpecies,nrow=nbReac)
+    for (m in 1:nbReac) {
+      for (n in 1:nbSpecies) {
+        search=species[n]
+        L[m,n] = length(which( search == unlist(reactants[m]) )) # Loss
+        R[m,n] = length(which( search == unlist(products[m] ) )) # Prod
+      }
+    }
+    D = R - L # Step change matrix
+    
+    return(list(nbSpecies=nbSpecies,nbReac=nbReac,species=species,
+                D=D,L=L,kReac=kReac,kReacF=kReacF,reactants=reactants,
+                products=products))  
+  }
+  
+  # Spectrokinetic model ##############################################
+  model = function (pars,x,y,z,parms) {
+    C = kinet(pars,x,parms)
+    Ca=matrix(nrow=nrow(C),ncol=sum(parms$active))
+    Ca[,1:sum(parms$active)] = C[,parms$active]
+    S = spectra(Ca,pars,y,z,parms)
+    
+    nx=length(x)
+    ny=length(y)  
+    mod=matrix(0,nrow=nx,ncol=ny)
+    for (i in 1:ncol(Ca)) {
+      mod = mod + Ca[,i] %o% S[,i]
+    }
+    return(mod)
+  }
+  C.model <- function(t,y,parms) {
+    kReacT=parms$kReac
+    # kReacT[1]=kReacT[1] *(1+parms$kRecom/(t^0.5))
+    dC = t(parms$D*kReacT) %*% apply(parms$L,1,function(x) prod(y^x))
+    return(list(dy=dC))
+  }
+  kinet = function (pars,x,parms) {
+    with(parms,{
+      nExp = length(startd)
+      
+      # update initial conc
+      for (iExp in 1:nExp) {  
+        for (spec in rownames(state)) {
+          pName=paste0("logc_",spec,iExp)
+          if(pName %in% names(pars)) state[spec,iExp]=exp(pars[[pName]])
+        }
+      }
+      # state["OHd",2] = state["OHd",1] * pars[['ratio_OHd12']]
+      
+      for (iReac in 1:length(kReac)) {
+        pName=paste("logk_",iReac,sep="")
+        if(pName %in% names(pars)) kReac[iReac]=exp(pars[[pName]])
+      } 
+      kReac[6] = kReac[7] * pars[['Keq']]
+      
+      # parms$kRecom=pars[["kRecom"]]
+      
+      C=c()
+      i0=0
+      
+      A = 0.509 
+      # A = 2^0.5*Faraday^2*elec / (8*pi*(eps*R*Temp)^1.5)
+      B = 3.28 # for radius en nm 
+      # B = (2*Faraday^2/(eps*R*Temp))^0.5
+      
+      for (iExp in 1:nExp) {     
+        # Ionic strength
+        I = 0.5*sum(state[,iExp]*charge^2)
+        for (iReac in 1:length(kReac)) {
+          gamma = 0
+          if (length(reactants[[iReac]]) == 2) {
+            z1 = charge[reactants[[iReac]][1]]
+            z2 = charge[reactants[[iReac]][2]]
+            if(z1*z2 != 0) {
+              r1 = radius[reactants[[iReac]][1]]
+              r2 = radius[reactants[[iReac]][2]]
+              gamma = -A*I^0.5*(
+                z1^2 / (1+r1*B*I^0.5) +
+                  z2^2 / (1+r2*B*I^0.5) -
+                  (z1+z2)^2 / (1+(r1+r2)*B*I^0.5) 
+              )
+            }
+          } 
+          kReac[iReac] = kReac[iReac] * 10^gamma
+        }
+        parms$kReac=kReac
+        
+        # Time grid for current experiment
+        tExp = parms$times[(i0+1):startd[iExp]]
+        i0 = startd[iExp]
+        tExp = tExp - tExp[1] + parms$deltaStart[iExp] + 10e-12
+        tc=c(0.01*tExp[1],tExp)
+        conc = ode(y=state[,iExp], times=tc, func=C.model, parms=parms,
+                   method="lsoda",rtol=1e-6,atol=1e-8,verbose=FALSE)
+        C=rbind(C,conc[-1,-1])
+      }  
+      
+      return(C)
+    })      
+  }
+  
+  # Interactive ####
+  Scheme = reactiveValues(
+    gotData        = FALSE
+  )
+  getScheme <- function (fileName) {
+    
+    # (Re)initialize data tables
+    # Inputs$gotData  <<- FALSE
+    # Inputs$validData<<- TRUE    # Data type assumed correct
+    # RawData         <<- list()  # Init list in upper environment
+    # Inputs$fileOrig <<- NULL    # Invalidate earlier data
+    # Inputs$process  <<- FALSE   # Invalidate earlier processing
+    
+    # Load data files
+    kinList   = kinParse(fileName)
+    Scheme[['nbReac']]    <<- kinList$nbReac
+    Scheme[['nbSpecies']] <<- kinList$nbSpecies
+    Scheme[['D']]         <<- kinList$D
+    Scheme[['L']]         <<- kinList$L
+    Scheme[['kReac']]     <<- kinList$kReac
+    Scheme[['kReacF']]    <<- kinList$kReacF
+    Scheme[['species']]   <<- kinList$species
+    Scheme[['reactants']] <<- kinList$reactants
+    Scheme[['products']]  <<- kinList$products
+    
+        #   if (!is.null(O)) 
+    #     O$name = fName
+    #   else {
+    #     Inputs$validData <<- FALSE
+    #     showModal(modalDialog(
+    #       title = ">>>> Data problem <<<< ",
+    #       paste0("The chosen data type does not ",
+    #              "correspond to the opened data file(s)!"),
+    #       easyClose = TRUE, 
+    #       footer = modalButton("Close"),
+    #       size = 's'
+    #     ))
+    #   }
+    #   RawData[[i]] <<- O
+    # }
+    Scheme$gotData <<- TRUE
+  }
+
+  output$scheme     = renderPrint({
+    inFile <- input$schemeFile
+    
+    if (is.null(inFile))
+      return(NULL)
+    
+    getScheme(inFile$datapath)
+
+    # reactiveValuesToList(Scheme)
+  })
+  
+  # Report ####
+
   observe(updateTextInput(
     session,
     inputId = "reportName",

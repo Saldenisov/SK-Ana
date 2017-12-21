@@ -815,6 +815,36 @@ navbarPage(
       )
     )
   ),
+  
+  # Kinet ####
+  tabPanel(
+    title="Kinet",
+    sidebarPanel(
+      width = sideWidth,
+      wellPanel(
+        h4("Load model"),
+        hr( style="border-color: #666;"),
+        fileInput(
+          inputId = 'schemeFile',
+          label   = 'Select scheme file',
+          multiple= FALSE,
+          accept  = '.txt'
+        )
+      )
+    ),
+    mainPanel(
+      width = mainWidth,
+      wellPanel(
+        tabsetPanel(
+          tabPanel(
+            h4("Scheme"),
+            verbatimTextOutput('scheme')
+          )
+        )
+      )
+    )
+  ),
+  
     
   # Report ####
   tabPanel(
@@ -861,6 +891,7 @@ navbarPage(
     )
   ),
   
+ 
   # About ####
   tabPanel(
     title="About",

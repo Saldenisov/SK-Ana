@@ -1,12 +1,14 @@
 # enableBookmarking(store = "server")
 
 options(shiny.maxRequestSize=20*1024^2)
+
 # options(shiny.json.digits=32)
 
 # Libraries ####
+## CRAN
 libs = c('outliers', 'nnls', 'Iso', 'viridis', 'httpuv',
          'changepoint', 'shiny', 'shinyBS','DT', 
-         'fields', 'NMF','shinycssloaders', 'tools')
+         'fields', 'NMF', 'tools', 'shinycssloaders')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE,quietly=TRUE))
     install.packages(lib,dependencies=TRUE)
