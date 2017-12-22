@@ -830,6 +830,29 @@ navbarPage(
           multiple= FALSE,
           accept  = '.txt'
         )
+      ),
+      wellPanel(
+        h4("Run model"),
+        hr( style="border-color: #666;"),        
+        fluidRow(
+          column(8,
+                 sliderInput("kinThresh", 
+                             "Log convergence threshold",
+                             min   =  -10, 
+                             max   =   -2, 
+                             value =   -6,
+                             sep   =   ""
+                 )
+          ),
+          column(4,
+                 actionButton("runKin",
+                              strong("Run"),
+                              icon=icon('gear')
+                 ),
+                 tags$style(type='text/css', 
+                            "#runKin { width:100%; margin-top: 25px;}")
+          )
+        )
       )
     ),
     mainPanel(
@@ -839,6 +862,14 @@ navbarPage(
           tabPanel(
             h4("Scheme"),
             verbatimTextOutput('scheme')
+          ),
+          tabPanel(
+            h4("Species"),
+            uiOutput('species')
+          ),
+          tabPanel(
+            h4("Reac. rates"),
+            uiOutput('rates')
           )
         )
       )

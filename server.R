@@ -2997,8 +2997,9 @@ function(input, output, session) {
     names(parts)=c("reactants","products","rateConstant")
     
     reactants = products = list()
-    kReac = kReacF = c()
+    kReac = kReacF = tag = c()
     for (i in 1:nbReac) {
+      tag[i] = paste0('R',i)
       reactants[[i]] = gsub(" ","",unlist(strsplit(parts[i,"reactants"],
                                                    split="\\+")))
       products [[i]] = gsub(" ","",unlist(strsplit(parts[i,"products" ],
@@ -3029,11 +3030,11 @@ function(input, output, session) {
     
     return(list(nbSpecies=nbSpecies,nbReac=nbReac,species=species,
                 D=D,L=L,kReac=kReac,kReacF=kReacF,reactants=reactants,
-                products=products))  
+                products=products, tags = tag))  
   }
   
   # Spectrokinetic model ##############################################
-  model = function (pars,x,y,z,parms) {
+  model   = function(pars,x,y,z,parms) {
     C = kinet(pars,x,parms)
     Ca=matrix(nrow=nrow(C),ncol=sum(parms$active))
     Ca[,1:sum(parms$active)] = C[,parms$active]
@@ -3047,13 +3048,13 @@ function(input, output, session) {
     }
     return(mod)
   }
-  C.model <- function(t,y,parms) {
+  C.model = function(t,y,parms) {
     kReacT=parms$kReac
     # kReacT[1]=kReacT[1] *(1+parms$kRecom/(t^0.5))
     dC = t(parms$D*kReacT) %*% apply(parms$L,1,function(x) prod(y^x))
     return(list(dy=dC))
   }
-  kinet = function (pars,x,parms) {
+  kinet   = function(pars,x,parms) {
     with(parms,{
       nExp = length(startd)
       
@@ -3122,7 +3123,7 @@ function(input, output, session) {
   Scheme = reactiveValues(
     gotData        = FALSE
   )
-  getScheme <- function (fileName) {
+  getScheme       = function (fileName) {
     
     # (Re)initialize data tables
     # Inputs$gotData  <<- FALSE
@@ -3142,7 +3143,7 @@ function(input, output, session) {
     Scheme[['species']]   <<- kinList$species
     Scheme[['reactants']] <<- kinList$reactants
     Scheme[['products']]  <<- kinList$products
-    
+    Scheme[['tags']]      <<- kinList$tags    
         #   if (!is.null(O)) 
     #     O$name = fName
     #   else {
@@ -3160,18 +3161,211 @@ function(input, output, session) {
     # }
     Scheme$gotData <<- TRUE
   }
-
-  output$scheme     = renderPrint({
+  output$scheme   = renderPrint({
     inFile <- input$schemeFile
-    
     if (is.null(inFile))
       return(NULL)
-    
     getScheme(inFile$datapath)
-
     # reactiveValuesToList(Scheme)
   })
+  outputOptions(output, "scheme",suspendWhenHidden = FALSE)
+  output$species  = renderUI({
+    if (is.null(Scheme$gotData))
+      return(NULL)
+    species = Scheme$species
+    ui = list( br(),
+               fluidRow(
+                 column(
+                   1,
+                   h4("Species")
+                 ),
+                 column(
+                   2,
+                   h4("Init. conc.")
+                 ),
+                 column(
+                   2,
+                   h4("F uncert.")
+                 ),
+                 column(
+                   2,
+                   h4("Epsilon")
+                 )
+               ),
+               hr( style="border-color: #666;")
+    )
+    for (sp in species) {
+      ui[[sp]] = 
+        fluidRow(
+          column(
+            1,
+            h5(sp)
+          ),
+          column(
+            2,
+            numericInput(
+              paste0('c0_',sp),
+              label=NULL,
+              value=0
+            )
+          ),
+          column(
+            2,
+            numericInput(
+              paste0('c0F_',sp),
+              label = NULL,
+              min   = 1,
+              max   = 5,
+              value = 1,
+              step  = 0.1
+            )
+          ),
+          column(
+            4,
+            sliderInput(
+              paste0('eps_',sp),
+              label =NULL,
+              min   =       0,
+              max   =   10000,
+              step  =     100,
+              value = c(0,10000)
+            )
+          )
+        )
+    }
+    ui
+    
+  })
+  outputOptions(output, "species",suspendWhenHidden = FALSE)
+  output$rates    = renderUI({
+    if (is.null(Scheme$gotData))
+      return(NULL)
+    
+    kReac  = Scheme[['kReac']]
+    kReacF = Scheme[['kReacF']]
+    tags   = Scheme[['tags']]
+    
+    ui = list( br(),
+               fluidRow(
+                 column(
+                   1,
+                   h4("Reaction")
+                 ),
+                 column(
+                   2,
+                   h4("Rate ct.")
+                 ),
+                 column(
+                   2,
+                   h4("F uncert.")
+                 )
+               ),
+               hr( style="border-color: #666;")
+    )
+    for (i in 1:length(kReac)) {
+      ui[[i+3]] = 
+        fluidRow(
+          column(
+            1,
+            h5(tags[i])
+          ),
+          column(
+            2,
+            numericInput(
+              paste0('k_',i),
+              label = NULL,
+              value = kReac[i]
+            )
+          ),
+          column(
+            2,
+            numericInput(
+              paste0('kF_',i),
+              label = NULL,
+              min   = 1,
+              max   = 5,
+              step  = 0.1,
+              value = kReacF[i]
+            )
+          )
+        )
+    }
+    ui
+    
+  })
+  outputOptions(output, "rates",suspendWhenHidden = FALSE)
   
+  doKin <- eventReactive(
+    input$runKin, 
+    {
+      isolate({
+        
+        parOpt = list()
+        eps    = list()
+        
+        species   = Scheme$species
+        nbSpecies = length(species)
+        nbReac    = Scheme$nbReac
+        
+        # Spectral constraints
+        active=rep(TRUE,nbSpecies)
+        names(active)=species
+        for (sp in species) {
+          param = paste0('eps_',sp)
+          rangeEps = input[[param]]
+          if(max(rangeEps)== 0)
+            active[[sp]] = FALSE
+          else
+            if(diff(rangeEps)==0)
+              eps[[sp]] = rangeEps[1]
+            else
+              parOpt[[param]] = 
+                paste0('unif(',rangeEps[1],',',
+                               rangeEps[2],')')
+        }
+        
+        # Initial concentrations
+        state=matrix(0,ncol=1,nrow=nbSpecies)
+        rownames(state) = species
+        for (sp in species) {
+          param = paste0('c0_',sp)
+          c0 = input[[param]]
+          # Nominal value
+          state[sp,1] = c0
+          param = paste0('c0F_',sp)
+          c0F = input[[param]]
+          if(c0F > 1)
+            parOpt[[paste0('logc_',sp)]] =
+              paste0('tnorm(',log(c0),',',log(c0F),')')
+        }
+        
+        # Reaction rates
+        kReac = c()
+        for (i in 1:nbReac) {
+          param = paste0('k_',i)
+          k = input[[param]]
+          # Nominal value
+          kReac[i] = k
+          param = paste0('kF_',i)
+          kF = input[[param]]
+          if(kF > 1)
+            parOpt[[paste0('logk_',i)]] =
+              paste0('tnorm(',log(k),',',log(kF),')')
+        }
+        
+      })
+      
+      print(parOpt)
+      # print(active)
+      # print(eps)
+      # print(state)
+      # print(kReac)
+    }
+  )
+  observeEvent(input$runKin,{doKin()})
+  
+    
+    
   # Report ####
 
   observe(updateTextInput(
