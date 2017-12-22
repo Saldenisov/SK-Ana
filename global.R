@@ -7,8 +7,9 @@ options(shiny.maxRequestSize=20*1024^2)
 # Libraries ####
 ## CRAN
 libs = c('outliers', 'nnls', 'Iso', 'viridis', 'httpuv',
-         'changepoint', 'shiny', 'shinyBS','DT', 
-         'fields', 'NMF', 'tools', 'shinycssloaders')
+         'changepoint', 'shiny', 'shinyBS','DT', 'Rsolnp',
+         'fields', 'NMF', 'tools', 'shinycssloaders',
+         'rgenoud', 'mvtnorm', 'deSolve', 'msm')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE,quietly=TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -391,4 +392,3 @@ cleanUp <- function (delayMask,wavlMask,mat,level) {
   
   return(out)
 }
-

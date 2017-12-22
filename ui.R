@@ -870,6 +870,80 @@ navbarPage(
           tabPanel(
             h4("Reac. rates"),
             uiOutput('rates')
+          ),
+          tabPanel(
+            h4("Optimization"),
+            withSpinner(
+              uiOutput('kinOpt'),
+              type = 4
+            )
+          ),
+          tabPanel(
+            value="kinResid",
+            title=h4("Residuals"),
+            br(),
+            tabsetPanel(
+              tabPanel(
+                value="kinResid1_1",
+                title=h5("Residuals"), br(),
+                withSpinner(
+                  plotOutput("kinResid1", height=550) ,
+                  type=4
+                )
+              ),
+              tabPanel(
+                value="kinResid1_2",
+                title=h5("SVD of Residuals"), br(),
+                withSpinner(
+                  plotOutput("kinResid2", height=550),
+                  type=4
+                )
+              ),
+              id="kinResidIn" 
+            )
+          ),
+          tabPanel(
+            value="kinVectorsTab",
+            title=h4("Kinetics & Spectra"),
+            br(),
+            fluidRow(
+              column(6,
+                     withSpinner(
+                       plotOutput("kinSpVectors", height=450,
+                                  dblclick = "kinSp_dblclick",
+                                  brush = brushOpts(
+                                    id = "kinSp_brush",
+                                    resetOnNew = TRUE
+                                  )),
+                       type=4
+                     )
+              ),
+              column(6,
+                     withSpinner(
+                       plotOutput("kinKinVectors", height=450,
+                                  dblclick = "kinKin_dblclick",
+                                  brush = brushOpts(
+                                    id = "kinKin_brush",
+                                    resetOnNew = TRUE
+                                  )),
+                       type=4
+                     )
+              )
+            ),
+            wellPanel(
+              h5('Save ALS spectra and kinetics'),
+              actionButton("kinSpKinSave","Save",
+                           icon     = icon('save'))
+            )
+          ),
+          tabPanel(
+            value="kinContribTab",
+            title=h4("Contributions"),
+            br(),
+            withSpinner(
+              plotOutput("kinContribs", height=550),
+              type=4
+            )
           )
         )
       )

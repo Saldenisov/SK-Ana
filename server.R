@@ -2355,7 +2355,7 @@ function(input, output, session) {
         xlab = 'Delay', ylab = 'C',
         xlim = xlim,
         ylim = ylim,
-        main = paste0('ALS Kinetics'),
+        main = paste0('Kinetics'),
         xaxs = 'i', yaxs='i'
       )
       n=ncol(alsOut$C)
@@ -2373,7 +2373,7 @@ function(input, output, session) {
         xlab = 'Wavelength',ylab = 'S',
         xlim = xlim,
         ylim = ylim,
-        main = paste0('ALS Spectra; L.o.f. =',alsOut$lof,'%'), 
+        main = paste0('Spectra; L.o.f. =',alsOut$lof,'%'), 
         xaxs = 'i', yaxs='i'
       )
       colorizeMask1D(axis="wavl",ylim=ylim)
@@ -2381,6 +2381,7 @@ function(input, output, session) {
       
     }
   }
+
   rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
   
   output$alsKinVectors <- renderPlot({
@@ -2975,6 +2976,188 @@ function(input, output, session) {
   })
   
   # Kinet ####
+  
+  # Hypercube transfo of NLopt parameters #############################
+  parExpand = function (popt,params) {
+    p=params
+    iopt=0
+    for (item in names(params)) {
+      if(is.numeric(params[[item]])) {
+        p[[item]]=params[[item]]
+      } else {
+        iopt=iopt+1
+        parts = unlist(strsplit(params[[item]], split="[(,)]" ))
+        priorPDF=parts[1]
+        paramPDF=as.numeric(parts[2:3])
+        p[[item]]=switch(priorPDF,
+                         unif  = paramPDF[1]+popt[iopt]*(paramPDF[2]-paramPDF[1]),
+                         norm  = paramPDF[1]+popt[iopt]*paramPDF[2], 
+                         tnorm = paramPDF[1]+popt[iopt]*paramPDF[2],                        lnorm = exp(paramPDF[1]+popt[iopt]*paramPDF[2])
+        )              
+      }  
+    }
+    return(p)
+  }
+  sdExpand = function (popt,params) {
+    p=params
+    iopt=0
+    for (item in names(params)) {
+      if(is.numeric(params[[item]])) {
+        p[[item]]=params[[item]]
+      } else {
+        iopt=iopt+1
+        parts = unlist(strsplit(params[[item]], split="[(,)]" ))
+        priorPDF=parts[1]
+        paramPDF=as.numeric(parts[2:3])
+        p[[item]]=switch(priorPDF,
+                         unif  = popt[iopt]*(paramPDF[2]-paramPDF[1]),
+                         norm  = popt[iopt]*paramPDF[2], 
+                         tnorm = popt[iopt]*paramPDF[2], 
+                         lnorm = 1
+        )              
+      }  
+    }
+    return(p)
+  }
+  parContract = function (params) {
+    p0=c(); LB=c(); UB=c(); names=c(); priorPDF=c()
+    paramPDF=matrix(0,ncol=2,nrow=length(params))
+    iopt=0
+    for (item in names(params)) {
+      if(!is.numeric(params[[item]])) {
+        iopt=iopt+1
+        names[iopt]=item
+        parts = unlist(strsplit(params[[item]], split="[(,)]" ))
+        priorPDF[iopt]=parts[1]
+        paramPDF[iopt,1:2]=as.numeric(parts[2:3])
+        if(priorPDF[iopt]=="unif") {
+          p0[iopt]=0.5
+          LB[iopt]=0
+          UB[iopt]=1       
+        } else {
+          p0[iopt]=0
+          LB[iopt]=-5
+          UB[iopt]=5
+        }
+      } 
+    }
+    paramPDF=paramPDF[-(iopt+1:length(params)),]
+    
+    return(list(p0=p0,LB=LB,UB=UB,names=names,priorPDF=priorPDF,paramPDF=paramPDF))
+  }
+  sampleContract = function(sample,paropt) {
+    # Contract sample to variable parameters
+    psample=sample
+    for (item in names(paropt)) {
+      if(is.numeric(paropt[[item]]))
+        psample=psample[,-which(colnames(psample) == item)]
+    }
+    psample
+  }
+  genPriorPDF = function(paropt) {
+    priorPDF=parContract(paropt)$priorPDF
+    bodyFunc="{logpri = 0\n" 
+    for (ip in 1:length(priorPDF)) {
+      add = switch(priorPDF[ip],
+                   # Special arguments for tnorm...
+                   tnorm  = paste0("logpri = logpri + d",priorPDF[ip],
+                                   "(x=x[",ip,"],0,1,lower=-5,upper=5,log=TRUE)\n"),
+                   paste0("logpri = logpri + d",priorPDF[ip],
+                          "(x=x[",ip,"],0,1,log=TRUE)\n")
+      )  
+      bodyFunc = paste0(bodyFunc,add)
+    }
+    bodyFunc=paste0(bodyFunc,"return(logpri)\n}")
+    f = function(x) {}
+    body(f) = parse(text =bodyFunc) 
+    return(f)
+  }
+  c2w = function (x,ip,pars) {
+    priorPDF= pars$priorPDF[ip]
+    paramPDF= pars$paramPDF[ip,]
+    xw=switch(priorPDF,
+              unif  = paramPDF[1]+x*(paramPDF[2]-paramPDF[1]),
+              norm  = paramPDF[1]+x*paramPDF[2], 
+              tnorm = paramPDF[1]+x*paramPDF[2], 
+              lnorm = exp(paramPDF[1]+x*paramPDF[2])
+    )  
+    return(xw)
+  }
+  w2c = function (x,ip,pars) {
+    priorPDF= pars$priorPDF[ip]
+    paramPDF= pars$paramPDF[ip,]  
+    xw=switch(priorPDF,
+              unif  = (x-paramPDF[1])/(paramPDF[2]-paramPDF[1]),
+              norm  = (x-paramPDF[1])/paramPDF[2], 
+              tnorm = (x-paramPDF[1])/paramPDF[2], 
+              lnorm = (log(x)-paramPDF[1])/paramPDF[2]
+    )  
+    return(xw)
+  }
+  w2cVec = function (vec,pars) {
+    vw=c()
+    for (i in 1:length(vec))  vw[i]=w2c(vec[i],i,pars)
+    return(vw)
+  }
+  priorDensity = function(item,paropt) {
+    pars=parContract(paropt)
+    priorPDF= pars$priorPDF
+    pnames  = pars$names
+    LB      = pars$LB
+    UB      = pars$UB
+    ip= which(pnames == item)
+    nout=500
+    xtab=seq(LB[ip],UB[ip],length.out=nout)
+    ytab=c();xw=c()
+    for (i in 1:nout) {
+      x=xtab[i]
+      xw[i] = c2w(x,ip,pars)
+      ytab [i] = switch(priorPDF[ip],
+                        # Special arguments for tnorm...
+                        tnorm  = eval(call(paste("d",priorPDF[ip],sep=""),
+                                           x,0,1,lower=-5,upper=5,log=FALSE)),
+                        eval(call(paste("d",priorPDF[ip],sep=""),x,0,1,log=FALSE))
+      )
+    }
+    xw=c(xw[1],xw,xw[nout])
+    ytab=c(0,ytab,0)
+    return(cbind(xw,ytab/max(ytab)))
+  }
+  priorSampler = function(paropt) {
+    pars=parContract(paropt)
+    priorPDF= pars$priorPDF
+    pnames  = pars$names
+    samp=c()
+    for (ip in 1:length(pnames)) {
+      samp[ip] = switch(priorPDF[ip],
+                        # Special arguments for tnorm...
+                        tnorm  = eval(call(paste("r",priorPDF[ip],sep=""),1,0,1,
+                                           lower=-5,upper=5)),
+                        eval(call(paste("r",priorPDF[ip],sep=""),1,0,1))
+      )
+    }
+    return(samp)
+  }
+  startpInit = function(map, parOpt) {
+    # Transfer MAP values to startp with 
+    # overlapping set of parameters
+    
+    # 1- Initialize to center of prior
+    pC = parContract(parOpt)
+    startp = pC$p0
+    names(startp) = pC$names
+    
+    # 2- Recycle values of previous MAP, if any
+    if(!is.null(map)) {
+      for (item in pC$names) {
+        if(item %in% names(map))
+          startp[item] = map[item]
+      }
+    }
+    
+    return(startp)
+  }
+  
   # Kinetic Parser ####################################################
   kinParse = function(filename) {
     
@@ -3034,90 +3217,244 @@ function(input, output, session) {
   }
   
   # Spectrokinetic model ##############################################
-  model   = function(pars,x,y,z,parms) {
-    C = kinet(pars,x,parms)
+  C.model = function(t,y,parms) {
+    dC = t(parms$kReac) %*% apply(parms$L,1,function(x) prod(y^x))
+    return(list(dy=dC))
+  }
+  kinet   = function(pars,parms) {
+    with(parms,{
+      
+      nExp = length(startd)
+      
+      # Update parameters with optimized values
+      for (iExp in 1:nExp) {  
+        for (spec in rownames(state)) {
+          pName=paste0("logc_",spec,iExp)
+          if(pName %in% names(pars)) state[spec,iExp] = exp(pars[[pName]])
+        }
+      }
+      for (iReac in 1:length(kReac)) {
+        pName=paste("logk_",iReac,sep="")
+        if(pName %in% names(pars)) kReac[iReac]=exp(pars[[pName]])
+      } 
+      
+      # A = 0.509 
+      # # A = 2^0.5*Faraday^2*elec / (8*pi*(eps*R*Temp)^1.5)
+      # B = 3.28 # for radius en nm 
+      # # B = (2*Faraday^2/(eps*R*Temp))^0.5
+      # 
+      # for (iExp in 1:nExp) {     
+      #   # Ionic strength
+      #   I = 0.5*sum(state[,iExp]*charge^2)
+      #   for (iReac in 1:length(kReac)) {
+      #     gamma = 0
+      #     if (length(reactants[[iReac]]) == 2) {
+      #       z1 = charge[reactants[[iReac]][1]]
+      #       z2 = charge[reactants[[iReac]][2]]
+      #       if(z1*z2 != 0) {
+      #         r1 = radius[reactants[[iReac]][1]]
+      #         r2 = radius[reactants[[iReac]][2]]
+      #         gamma = -A*I^0.5*(
+      #           z1^2 / (1+r1*B*I^0.5) +
+      #             z2^2 / (1+r2*B*I^0.5) -
+      #             (z1+z2)^2 / (1+(r1+r2)*B*I^0.5) 
+      #         )
+      #       }
+      #     } 
+      #     kReac[iReac] = kReac[iReac] * 10^gamma
+      #   }
+      
+      parms$kReac = parms$D * kReac
+      
+      C=c()
+      i0=0
+      for (iExp in 1:nExp) {     
+        # Time grid for current experiment
+        tExp = parms$times[(i0+1):startd[iExp]]
+        i0 = startd[iExp]
+        # tExp = tExp - tExp[1] + parms$deltaStart[iExp] + 10e-12
+        # tc=c(0.01*tExp[1],tExp)
+        
+        conc = deSolve::ode(y=state[,iExp], times=tExp, 
+                            func=C.model, parms=parms,
+                            method="lsoda",
+                            rtol=1e-6,atol=1e-8,
+                            verbose=FALSE)
+        
+        C=rbind(C,conc[,-1])
+      }  
+      
+      return(C)
+    })      
+  }
+  spectra = function (C,pars,parms) {
+    
+    S = matrix(0,nrow=length(parms$wavl),ncol=ncol(C))
+    colnames(S) = names(parms$active)[parms$active]
+    colnames(C) = colnames(S)
+    
+    # Constraints
+    freeS=rep(TRUE,ncol(S))
+    names(freeS)=colnames(S)
+    
+    eps=rep(NA,ncol(S))
+    names(eps)=colnames(S)
+    
+    M = parms$mat
+    for (spec in colnames(S)) {
+      pName = paste0("eps_",spec)
+      if(pName %in% names(pars)) 
+        eps[spec] = pars[[pName]] # Amplitude constraint for spec
+      if(pName %in% names(parms)) 
+        eps[spec] = parms[[pName]] # Amplitude constraint for spec
+      
+      pName=paste0("S_",spec)
+      if(pName %in% names(parms)) { 
+        if(!is.null(parms[[pName]])) {
+          freeS[[spec]]=FALSE
+          S[,spec]= ifelse(!is.na(eps[spec]),eps[spec],1)*parms[[pName]]  
+          M = M - C[,spec] %o% S[,spec]
+        }
+      }
+    }
+    
+    if(sum(freeS)==1){
+      # 1 component: linear regression
+      spec=names(freeS)[freeS]
+      x=C[,spec]
+      xm=mean(x)
+      for (i in 1:ncol(M)) {
+        y=M[,i]
+        ym=mean(y)
+        S[i,spec]=max(0,sum((y-ym)*(x-xm))/sum((x-xm)*(x-xm)))
+      }
+      
+    } else {
+      for (i in 1:ncol(M)) {
+        if (parms$nonnegS) {
+          s <- try(nnls(C[,freeS],M[,i]))
+        }
+        else
+          s <- try(qr.coef(qr(C[,freeS]), M[,i]))
+        
+        if (class(s) == "try-error") 
+          S[i,freeS] = rep(0,sum(parms$active))
+        else {
+          S[i,freeS] = if (parms$nonnegS) s$x else s
+        }
+      }
+    }
+    
+    if (parms$uniS) {
+      for (i in 1:ncol(S))
+        S[,i] = ufit(y = S[,i], x = y)$y
+    }
+    
+    if(parms$smooth != 0) {
+      for (i in 1:ncol(S)) {
+        y=S[,i]
+        x = 1:length(y)
+        mod = try(loess(y~x,span=parms$smooth),
+                  silent=TRUE)
+        if (class(mod) != "try-error") {
+          y=predict(mod)
+          y[y<0]=0
+          S[,i]=y      
+        } 
+      }
+    } 
+    
+    for (spec in colnames(S)) {
+      pName=paste0("eps_",spec)
+      if(pName %in% names(pars) |
+         pName %in% names(parms)) {
+        y=S[,spec]
+        emax=max(y)
+        S[,spec] = (S[,spec]/emax) * eps[spec]
+      }
+    }
+    
+    return(S)
+  }
+  model   = function(pars,parms) {
+    
+    C = kinet(pars,parms)
     Ca=matrix(nrow=nrow(C),ncol=sum(parms$active))
     Ca[,1:sum(parms$active)] = C[,parms$active]
-    S = spectra(Ca,pars,y,z,parms)
     
-    nx=length(x)
-    ny=length(y)  
+    S = spectra(Ca,pars,parms)
+    
+    nx = length(parms$delay)
+    ny = length(parms$wavl)  
     mod=matrix(0,nrow=nx,ncol=ny)
     for (i in 1:ncol(Ca)) {
       mod = mod + Ca[,i] %o% S[,i]
     }
     return(mod)
   }
-  C.model = function(t,y,parms) {
-    kReacT=parms$kReac
-    # kReacT[1]=kReacT[1] *(1+parms$kRecom/(t^0.5))
-    dC = t(parms$D*kReacT) %*% apply(parms$L,1,function(x) prod(y^x))
-    return(list(dy=dC))
+  
+  # Bayesian inference functions #########################################
+  uresid  = function (pars,parms)
+    parms$mat - model(pars,parms)
+  uchisq  = function (pars,parms)
+    sum(uresid(pars,parms)^2)
+  ulogL   = function (pars,parms)
+    -length(parms$mat)/2*log(uchisq(pars,parms))
+  logP   = function (pars,paropt,parms) {
+    logL =  wlogL(parExpand(pars,paropt),parms)  
+    logP  = logL + logPri(pars)
+    if ( is.nan(logP) || is.infinite(logP) ) logP=-1e30
+    return(logP)
+  } 
+  mlogP  = function (pars,paropt,parms) 
+    -logP(pars,paropt,parms)
+  wlogL  = function (pars,parms)
+    -0.5*wchisq(pars,parms)
+  wchisq = function (pars,parms)
+    sum(wresid(pars,parms)^2)
+  wresid = function (pars,parms)
+    (parms$mat - model(pars,parms))/parms$sigma
+  bmc_hyb = function (paropt, parms, 
+                      mc=FALSE, global=0, startp=NULL, 
+                      niter=50, tune=0.8) {   
+    
+    pars=parContract(paropt)
+    np=length(pars$p0) 
+    
+    if (global != 0) {
+      xopt=rgenoud::genoud(mlogP, 
+                           parms = parms, 
+                           paropt = paropt,
+                           starting.values = startp,
+                           nvars = np,
+                           BFGS=FALSE,
+                           print.level=1,
+                           max.generations=niter, 
+                           wait.generations=5,
+                           gradient.check=FALSE,
+                           pop.size = global,
+                           Domains=cbind(pars$LB,pars$UB),
+                           boundary.enforcement=2
+      )  
+      best1 = xopt$par    
+    } else {
+      if(!is.null(startp))
+        best1 = startp
+      else
+        best1 = pars$p0
+    } 
+    
+    best = Rsolnp::solnp(best1, fun = mlogP, LB=pars$LB, UB=pars$UB, 
+                         control=list(tol=1e-12,trace=2), 
+                         parms=parms,paropt=paropt)
+    p1=best$pars
+    names(p1) = names(paropt)
+    
+    out=list(map=p1,hessian=best$hessian)
+    
+    return( out )
   }
-  kinet   = function(pars,x,parms) {
-    with(parms,{
-      nExp = length(startd)
-      
-      # update initial conc
-      for (iExp in 1:nExp) {  
-        for (spec in rownames(state)) {
-          pName=paste0("logc_",spec,iExp)
-          if(pName %in% names(pars)) state[spec,iExp]=exp(pars[[pName]])
-        }
-      }
-      # state["OHd",2] = state["OHd",1] * pars[['ratio_OHd12']]
-      
-      for (iReac in 1:length(kReac)) {
-        pName=paste("logk_",iReac,sep="")
-        if(pName %in% names(pars)) kReac[iReac]=exp(pars[[pName]])
-      } 
-      kReac[6] = kReac[7] * pars[['Keq']]
-      
-      # parms$kRecom=pars[["kRecom"]]
-      
-      C=c()
-      i0=0
-      
-      A = 0.509 
-      # A = 2^0.5*Faraday^2*elec / (8*pi*(eps*R*Temp)^1.5)
-      B = 3.28 # for radius en nm 
-      # B = (2*Faraday^2/(eps*R*Temp))^0.5
-      
-      for (iExp in 1:nExp) {     
-        # Ionic strength
-        I = 0.5*sum(state[,iExp]*charge^2)
-        for (iReac in 1:length(kReac)) {
-          gamma = 0
-          if (length(reactants[[iReac]]) == 2) {
-            z1 = charge[reactants[[iReac]][1]]
-            z2 = charge[reactants[[iReac]][2]]
-            if(z1*z2 != 0) {
-              r1 = radius[reactants[[iReac]][1]]
-              r2 = radius[reactants[[iReac]][2]]
-              gamma = -A*I^0.5*(
-                z1^2 / (1+r1*B*I^0.5) +
-                  z2^2 / (1+r2*B*I^0.5) -
-                  (z1+z2)^2 / (1+(r1+r2)*B*I^0.5) 
-              )
-            }
-          } 
-          kReac[iReac] = kReac[iReac] * 10^gamma
-        }
-        parms$kReac=kReac
-        
-        # Time grid for current experiment
-        tExp = parms$times[(i0+1):startd[iExp]]
-        i0 = startd[iExp]
-        tExp = tExp - tExp[1] + parms$deltaStart[iExp] + 10e-12
-        tc=c(0.01*tExp[1],tExp)
-        conc = ode(y=state[,iExp], times=tc, func=C.model, parms=parms,
-                   method="lsoda",rtol=1e-6,atol=1e-8,verbose=FALSE)
-        C=rbind(C,conc[-1,-1])
-      }  
-      
-      return(C)
-    })      
-  }
+  
   
   # Interactive ####
   Scheme = reactiveValues(
@@ -3300,6 +3637,10 @@ function(input, output, session) {
     {
       isolate({
         
+        nExp=1
+        deltaStart=c(0)
+        startd = length(Inputs$delay)
+        
         parOpt = list()
         eps    = list()
         
@@ -3325,7 +3666,7 @@ function(input, output, session) {
         }
         
         # Initial concentrations
-        state=matrix(0,ncol=1,nrow=nbSpecies)
+        state=matrix(0,ncol=nExp,nrow=nbSpecies)
         rownames(state) = species
         for (sp in species) {
           param = paste0('c0_',sp)
@@ -3352,20 +3693,234 @@ function(input, output, session) {
             parOpt[[paste0('logk_',i)]] =
               paste0('tnorm(',log(k),',',log(kF),')')
         }
-        
-      })
       
-      print(parOpt)
-      # print(active)
-      # print(eps)
-      # print(state)
-      # print(kReac)
+        # Gather parameters in list
+        kinParms = list(
+          times      = Inputs$delaySave,
+          delay      = Inputs$delay,
+          wavl       = Inputs$wavl,
+          mat        = Inputs$mat,
+          kReac      = kReac,
+          L          = Scheme$L,
+          D          = Scheme$D,
+          state      = state,
+          active     = active,
+          startd     = startd,
+          deltaStart = deltaStart,
+          sigma      = 1,
+          reactants  = Scheme$reactants,
+          eps        = eps,
+          uniS       = FALSE,
+          nonnegS    = TRUE,
+          smooth     = 0
+        )
+      
+      # Generate hard-coded prior PDF
+      logPri <<- genPriorPDF(parOpt) 
+      
+      startp = 
+        startpInit(
+          map=(
+            if (exists("opt0")) 
+              opt0$map 
+            else 
+              NULL
+          ),
+          parOpt=parOpt
+        )
+      
+      mc=FALSE
+      niter  = 15
+      global = 0 # 30*length(startp)
+        
+      opt0 = bmc_hyb(parOpt,
+                     parms=kinParms,
+                     global=global, 
+                     niter=niter,
+                     mc=FALSE,
+                     startp=startp)
+      
+      map = parExpand(opt0$map,parOpt)
+      mod = model(map,kinParms)
+      C   = kinet(map,kinParms)
+      Ca  = C[,kinParms$active]  
+      S   = spectra(Ca,map,kinParms)
+      
+      lof = signif(100*(sum((Inputs$mat-mod)^2)/sum(Inputs$mat^2))^0.5,4)
+      
+      return(
+        list(map = opt0$map, hessian = opt0$hessian, 
+             parms=kinParms, paropt=parOpt,
+             xC = Inputs$delay, xS = Inputs$wavl,
+             C = C, S = S, 
+             lof = lof
+        )
+      )
+      })
     }
   )
-  observeEvent(input$runKin,{doKin()})
+  # observeEvent(input$runKin,{doKin()})
+
+  output$kinOpt <- renderUI({
+    if (input$runKin == 0) {
+      h5('Select Kin options and press "Run"\n')
+      
+    } else {
+      
+      opt <- doKin()
+      paropt = opt$paropt
+      
+      h5('Kin done')
+      
+      map = parExpand(opt$map,paropt)
+      
+      print("")
+      print("MAP:")
+      print(t(map))
+      
+      # ndf  = length(z) - np - sum(parms$active)*length(y)
+      # chi2 = wchisq(bestp,x,y,z,parms)
+      # ndig = 3
+      # print("*** Chi2 Analysis ***")
+      # print(paste("chi2_obs=",format(chi2,digits=ndig)))
+      # print(paste("ndf=",ndf))
+      # print(paste("chi2_r=",format(chi2/ndf,digits=ndig+1)))
+      # print(paste("P(chi2>chi2_obs)=",format(pchisq(chi2,df=ndf,
+      #                                               lower.tail=FALSE),digits=ndig)))
+      # print(paste("Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
+      #             "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)))
+      
+      Sigma=try(solve(opt$hessian), silent = TRUE)
+      if (class(Sigma) != "try-error") {
+        EV=Re(eigen(Sigma)$values)
+        if(sum(EV<0) >0 ) print("Non-positive definite Covariance matrix")
+        Sd = diag(Sigma)^0.5
+        names(Sd) =names(paropt)
+        names(map)=names(paropt)
+        Corr=cov2cor(Sigma)
+      } else {
+        Sd=rep(NA,length(paropt))
+        names(Sd)=names(paropt)
+      }
+      lSd = sdExpand(Sd,paropt)
+
+      cat("Best fit:\n")
+
+      for (item in names(map)) {
+        if(grepl('log',item))
+          print(paste(sub('log','',item),'=',signif(exp(map[[item]]),digits=2),
+                      "/*",signif(exp(Sd[[item]]),digits=3)))
+        else
+          print(paste(item,'=',signif(map[[item]],digits=2),
+                      "+/-",signif(lSd[[item]],digits=3)))
+      }
+    }
+
+  })
+
+  output$kinResid1 <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    
+    CS = reshapeCS(opt$C,opt$S,ncol(opt$C))    
+    
+    if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
+      s <- doSVD()
+      CS1 = reshapeCS(s$u,s$v,input$nSV)
+      mat = matrix(0,nrow=length(Inputs$delay),
+                   ncol=length(Inputs$wavl))
+      for (ic in 1:input$nSV) 
+        mat = mat + CS1$C[,ic] %o% CS1$S[,ic] * s$d[ic]
+      
+      main = "SVD-filtered data"
+      
+    } else {
+      mat = Inputs$mat
+      main = 'Raw data'
+    }
+    plotResid(Inputs$delay,Inputs$wavl,mat,
+              CS$C,CS$S,main=main)
+    
+  },height = 450)
   
+  output$kinResid2 <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
     
+    CS = reshapeCS(opt$C,opt$S,ncol(opt$C))    
     
+    if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
+      s <- doSVD()
+      CS1 = reshapeCS(s$u,s$v,input$nSV)
+      mat = matrix(0,nrow=length(Inputs$delay),
+                   ncol=length(Inputs$wavl))
+      for (ic in 1:input$nSV) 
+        mat = mat + CS1$C[,ic] %o% CS1$S[,ic] * s$d[ic]
+      
+      main = "SVD-filtered data"
+      
+    } else {
+      mat = Inputs$mat
+      main = 'Raw data'
+    }
+    plotResidAna(Inputs$delay,Inputs$wavl,mat,
+                 CS$C,CS$S,main=main)
+    
+  },height = 450)
+  
+  rangesKinKin <- reactiveValues(x = NULL, y = NULL)
+  
+  output$kinKinVectors <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    plotAlsVec(opt,
+               type = "Kin",
+               xlim = rangesKinKin$x,
+               ylim = rangesKinKin$y)
+  },height = 400)
+  
+  observeEvent(input$kinKin_dblclick, {
+    brush <- input$kinKin_brush
+    if (!is.null(brush)) {
+      rangesKinKin$x <- c(brush$xmin, brush$xmax)
+      rangesKinKin$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesKinKin$x <- NULL
+      rangesKinKin$y <- NULL
+    }
+  })
+  
+  rangesKinSp <- reactiveValues(x = NULL, y = NULL)
+  
+  output$kinSpVectors <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    plotAlsVec(opt,
+               type = "Sp",
+               xlim = rangesKinSp$x,
+               ylim = rangesKinSp$y)
+  },height = 400)
+  
+  observeEvent(input$kinSp_dblclick, {
+    brush <- input$kinSp_brush
+    if (!is.null(brush)) {
+      rangesKinSp$x <- c(brush$xmin, brush$xmax)
+      rangesKinSp$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesKinSp$x <- NULL
+      rangesKinSp$y <- NULL
+    }
+  })
+
+  output$kinContribs <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    CS = reshapeCS(opt$C,opt$S,ncol(opt$C))    
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
+                  CS$C,CS$S)
+  },height = 450)
+  
+  
   # Report ####
 
   observe(updateTextInput(
