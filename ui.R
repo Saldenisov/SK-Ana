@@ -504,6 +504,15 @@ navbarPage(
                 plotOutput("svdContribs", height=550),
                 type=4
               )
+            ),
+            tabPanel(
+              value="statSVD",
+              title=h4("Statistiques"),
+              br(),
+              withSpinner(
+                DT::dataTableOutput('svdStat',width = "50%"),
+                type=4
+              )
             )
           ),
           id="svdTabset"
@@ -821,36 +830,76 @@ navbarPage(
     title="Kinet",
     sidebarPanel(
       width = sideWidth,
-      wellPanel(
-        h4("Load model"),
-        hr( style="border-color: #666;"),
-        fileInput(
-          inputId = 'schemeFile',
-          label   = 'Select scheme file',
-          multiple= FALSE,
-          accept  = '.txt'
-        )
-      ),
-      wellPanel(
-        h4("Run model"),
-        hr( style="border-color: #666;"),        
-        fluidRow(
-          column(8,
-                 sliderInput("kinThresh", 
-                             "Log convergence threshold",
-                             min   =  -10, 
-                             max   =   -2, 
-                             value =   -6,
-                             sep   =   ""
-                 )
-          ),
-          column(4,
-                 actionButton("runKin",
-                              strong("Run"),
-                              icon=icon('gear')
-                 ),
-                 tags$style(type='text/css', 
-                            "#runKin { width:100%; margin-top: 25px;}")
+      tabsetPanel(
+        tabPanel(
+          h4("Model"),
+          wellPanel(
+            h4("Load model"),
+            hr( style="border-color: #666;"),
+            fileInput(
+              inputId = 'schemeFile',
+              label   = 'Select scheme file',
+              multiple= FALSE,
+              accept  = '.txt'
+            ),
+            tabsetPanel(
+              tabPanel(
+                h4("Scheme"),
+                verbatimTextOutput('scheme')
+              ),
+              tabPanel(
+                h4("Rates"),
+                uiOutput('rates')
+              ),
+              tabPanel(
+                h4("Conc."),
+                uiOutput('species')
+              ),
+              tabPanel(
+                h4("Eps."),
+                uiOutput('epsilon')
+              )
+            )
+          )
+        ),
+        tabPanel(
+          h4("Run"),
+          
+          wellPanel(
+            fluidRow(
+              column(8,
+                     sliderInput("kinGlobNit", 
+                                 "Global Optimization Iterations",
+                                 min   =   0, 
+                                 max   =  50, 
+                                 value =   0,
+                                 step  =  10
+                     ),
+                     sliderInput("kinGlobFac", 
+                                 "Global Population Factor",
+                                 min   =   10, 
+                                 max   =  100, 
+                                 value =   30,
+                                 step  =   10
+                     ),
+                     sliderInput("kinThresh", 
+                                 "Log Convergence Threshold",
+                                 min   =  -10, 
+                                 max   =   -2, 
+                                 value =   -4
+                     )
+                     
+                     
+              ),
+              column(4,
+                     actionButton("runKin",
+                                  strong("Run"),
+                                  icon=icon('gear')
+                     ),
+                     tags$style(type='text/css', 
+                                "#runKin { width:100%; margin-top: 25px;}")
+              )
+            )
           )
         )
       )
@@ -860,22 +909,23 @@ navbarPage(
       wellPanel(
         tabsetPanel(
           tabPanel(
-            h4("Scheme"),
-            verbatimTextOutput('scheme')
-          ),
-          tabPanel(
-            h4("Species"),
-            uiOutput('species')
-          ),
-          tabPanel(
-            h4("Reac. rates"),
-            uiOutput('rates')
-          ),
-          tabPanel(
             h4("Optimization"),
-            withSpinner(
-              uiOutput('kinOpt'),
-              type = 4
+            wellPanel(
+              verbatimTextOutput('kinGlPrint'),
+              verbatimTextOutput('kinOptPrint'),
+              withSpinner(
+                uiOutput('kinOpt'),
+                type = 4
+              )
+            )
+          ),
+          tabPanel(
+            h4("Identifiability"),
+            wellPanel(
+              withSpinner(
+                plotOutput("kinParams1", height=550) ,
+                type=4
+              )
             )
           ),
           tabPanel(
@@ -896,6 +946,14 @@ navbarPage(
                 title=h5("SVD of Residuals"), br(),
                 withSpinner(
                   plotOutput("kinResid2", height=550),
+                  type=4
+                )
+              ),
+              tabPanel(
+                value="kinResid1_3",
+                title=h5("Integ. kinet."), br(),
+                withSpinner(
+                  plotOutput("kinResid3", height=550),
                   type=4
                 )
               ),
@@ -931,9 +989,18 @@ navbarPage(
               )
             ),
             wellPanel(
-              h5('Save ALS spectra and kinetics'),
-              actionButton("kinSpKinSave","Save",
-                           icon     = icon('save'))
+              fluidRow(
+                column(6,
+                       h5('Save Kinet spectra and kinetics'),
+                       actionButton("kinSpKinSave","Save",
+                                    icon     = icon('save'))
+                ),
+                column(6,
+                       checkboxInput("plotCSUQ",
+                                     label = " Plot confidence bands",
+                                     value = FALSE)
+                )
+              )
             )
           ),
           tabPanel(

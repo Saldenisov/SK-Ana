@@ -1676,7 +1676,7 @@ function(input, output, session) {
           Inputs$delayGlitch[-length(Inputs$delayGlitch)] 
     }
   )
-  
+ 
   output$svdSV <- renderPlot({
     if (is.null(s <- doSVD()))
       return(NULL)
@@ -1699,7 +1699,7 @@ function(input, output, session) {
     grid();box()
     
     #L.o.F
-    lof=c()
+    lof = c()
     mat  = Inputs$mat
     # Suppress masked areas
     mat = mat[!is.na(Inputs$delayMask),]
@@ -1913,6 +1913,44 @@ function(input, output, session) {
                   CS$C,CS$S,d = s$d, type ='svd')
   },height = 450)
   
+  output$svdStat <- DT::renderDataTable({
+    if (is.null(s <- doSVD()))
+      return(NULL)
+    
+    nsvMax = min(10,
+                 length(Inputs$delay),
+                 length(Inputs$wavl)
+    )
+    
+    mat  = Inputs$mat
+    # Suppress masked areas
+    mat = mat[!is.na(Inputs$delayMask),]
+    mat = mat[,!is.na(Inputs$wavlMask) ]
+    sMat = sum(mat^2)
+    mat1 = rep(0,nrow=nrow(s$u),ncol=ncol(s$v))
+    sv = lof = sig = c()
+    for (i in 1:nsvMax) {
+      mat1  = mat1 + s$u[,i] %o% s$v[,i] * s$d[i]
+      resid = mat - mat1
+      sig[i] = sd(resid)
+      lof[i] = 100*(sum(resid^2)/sMat)^0.5
+      sv[i]  = s$d[i]
+    }
+    
+    data = cbind(id=1:nsvMax,signif(sv,3),signif(lof,3),signif(sig,3))
+    colnames(data) = c('Rank','S.V.','Lack of fit (%)','Std. dev. resid.')
+    DT::datatable(
+      data,
+      class = 'compact',
+      fillContainer = FALSE,
+      options = list(paging    = FALSE,
+                     ordering  = FALSE,
+                     searching = FALSE,
+                     dom       = 't'   ),
+      escape    = FALSE
+    )
+  })
+  
 # ALS ####
   getS0 <- eventReactive(
     input$S0File, {
@@ -2068,165 +2106,182 @@ function(input, output, session) {
     })
   })
   
-
-  doALS <- eventReactive(
-    input$runALS, 
-    {
-      isolate({
-        if (!checkInputsSanity())
-          return(NULL)
-        
-        nAls = input$nALS
-        updateCheckboxGroupInput(
-          session,
-          inputId = "vecsToRotate",
-          selected = c(1,2)
-        )
-        
-        # Suppress masked areas
-        delay   = Inputs$delay[!is.na(Inputs$delayMask)]
-        delayId = Inputs$delayId[!is.na(Inputs$delayMask)]
-        wavl    = Inputs$wavl[!is.na(Inputs$wavlMask)]
-        
-        if(input$useFiltered) { # Choose SVD filtered matrix  
-          s <- doSVD()
-          mat = matrix(0,nrow=length(delay),ncol=length(wavl))
-          for (ic in 1:input$nSV) 
-            mat = mat + s$u[,ic] %o% s$v[,ic] * s$d[ic]
-          
-        } else {
-          mat = Inputs$mat 
-          mat = mat[!is.na(Inputs$delayMask),]
-          mat = mat[,!is.na(Inputs$wavlMask) ]
-        }
-        
-        # External spectrum shapes      
-        S0 = NULL
-        if(input$shapeS) {
-          if(is.null(S0_in))
-            S0_in <- getS0()
-          ii = 0; S0 = c()
-          for (i in 1:length(S0_in)) {
-            tmp = S0_in[[i]]
-            for (k in 2:ncol(tmp))
-              S0 = cbind(S0,spline(tmp[,1],tmp[,k],xout=wavl)$y)
-          }
-        }
-        
-        # Null C constraints
-        nullC = NA
-        if(!anyNA(Inputs$maskSpExp)) {
-          nullC = matrix(1, nrow=length(delayId),ncol=nAls)
-          for(i in 1:nAls) {
-            for (j in 1:nrow(Inputs$maskSpExp)) {
-              if(Inputs$maskSpExp[j,i] == 0) {
-                sel = which(delayId == j)
-                nullC[sel,i] = 0
-              } 
-            }
-          }
-        } 
-        
-        progress <- shiny::Progress$new()
-        on.exit(progress$close())
-        updateProgress <- function(value = NULL, detail = NULL) {
-          progress$set(value = value, detail = detail)
-        }
-        msg = list()
-        
-        if (input$initALS == 'seq') 
-          nStart = 2
-        else
-          nStart = nAls
-        
-        if (input$initALS == 'SVD' || input$initALS == 'seq') {
-          # initialize with abs(SVD)
-          if (is.null(s <- doSVD()))
-            return(NULL)
-          
-          S = matrix(abs(s$v[,1:nStart]),ncol=nStart)
-          C = matrix(abs(s$u[,1:nStart]),ncol=nStart)
-          
-        } else if (input$initALS == 'NMF') {
-          # initialize with SVD + NMF
-          if (is.null(s <- doSVD()))
-            return(NULL)
-          
-          progress$set(message = "Running NMF ", value = 0)
-          
-          # 1/ filter matrix to avoid negative values (noise)
-          fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
-          for (i in 1:nStart)
-            fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
-          # 2/ NMF
-          res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
-          C = NMF::basis(res)
-          S = t(NMF::coef(res))
-          
-        } else {
-          # restart from existing solution
-          if (!exists('RES'))
-            return(NULL)
-          S = RES$S[,1:nStart]
-          C = RES$C[,1:nStart]
-        }
-        # Progress bar
-        progress$set(message = "Running ALS ", value = 0)
-        
-        #Run
-        for (n in nStart:nAls) {
-          progress$set(message = paste0("Running ALS ",n), value = 0)
-          res = myals(
-            C = C, Psi = mat, S = S, xC = delay, xS = wavl,
-            maxiter = input$maxiter,
-            uniS    = input$uniS,
-            nonnegS = input$nonnegS,
-            nonnegC = input$nonnegC,
-            thresh  = 10^input$alsThresh,
-            normS   = input$normS,
-            S0      = S0,
-            hardS0  = !input$softS0,
-            wHardS0 = 10^input$wSoftS0,
-            optS1st = input$optS1st,
-            smooth  = input$smooth,
-            SumS    = input$SumS,
-            updateProgress = updateProgress,
-            nullC   = nullC,
-            closeC  = input$closeC,
-            wCloseC = 10^input$wCloseC
-          )
-          if(n < nAls) {
-            # Prepare next iteration
-            S = res$S
-            C = res$C
-            S = cbind(S,1)
-            C = cbind(C,1)
-          }
-          RES <<- res
-          msg = list(msg,
-                     h4(n,' species'),
-                     h5('Terminated in ',res$iter,' iterations'),
-                     res$msg,br()
-          )
-        }
-        
-        colnames(res$S) = paste0('S_',1:nAls)
-        colnames(res$C) = paste0('C_',1:nAls)
-        
-        # Update Reporting
-        updateCheckboxGroupInput(session,
-                                 inputId = 'inReport',
-                                 selected = c('SVD','ALS'))
-        
-        output[[paste0('iter', 1)]] <- renderUI({
-          msg
-        })
-        
-        res$nullC = nullC
-        
-        return(res)
-        
+  als = function() {        
+    nAls = input$nALS
+    
+    # (Re)-init output
+    lapply(1:10, function(n){
+      output[[paste0('iter', n)]] <<- renderUI({
+        list()
       })
+    })
+    
+    # Reinit ambRot vector selection
+    updateCheckboxGroupInput(
+      session,
+      inputId = "vecsToRotate",
+      selected = c(1,2)
+    )
+    
+    # Suppress masked areas from coordinates
+    delay   = Inputs$delay[!is.na(Inputs$delayMask)]
+    delayId = Inputs$delayId[!is.na(Inputs$delayMask)]
+    wavl    = Inputs$wavl[!is.na(Inputs$wavlMask)]
+    
+
+    
+    if(input$useFiltered) { 
+      # Choose SVD filtered matrix  
+      s <- doSVD()
+      mat = matrix(0,nrow=length(delay),ncol=length(wavl))
+      for (ic in 1:input$nSV) 
+        mat = mat + s$u[,ic] %o% s$v[,ic] * s$d[ic]
+      
+    } else {
+      mat = Inputs$mat 
+      mat = mat[!is.na(Inputs$delayMask),]
+      mat = mat[,!is.na(Inputs$wavlMask) ]
+    }
+    
+    # External spectrum shapes      
+    S0 = NULL
+    if(input$shapeS) {
+      if(is.null(S0_in))
+        S0_in <- getS0()
+      ii = 0; S0 = c()
+      for (i in 1:length(S0_in)) {
+        tmp = S0_in[[i]]
+        for (k in 2:ncol(tmp))
+          S0 = cbind(S0,spline(tmp[,1],tmp[,k],xout=wavl)$y)
+      }
+    }
+    
+    # Null C constraints
+    nullC = NA
+    if(!anyNA(Inputs$maskSpExp)) {
+      nullC = matrix(1, nrow=length(delayId),ncol=nAls)
+      for(i in 1:nAls) {
+        for (j in 1:nrow(Inputs$maskSpExp)) {
+          if(Inputs$maskSpExp[j,i] == 0) {
+            sel = which(delayId == j)
+            nullC[sel,i] = 0
+          } 
+        }
+      }
+    } 
+    
+    progress <- shiny::Progress$new()
+    on.exit(progress$close())
+    updateProgress <- function(value = NULL, detail = NULL) {
+      progress$set(value = value, detail = detail)
+    }
+    
+    if (input$initALS == 'seq') 
+      nStart = 2
+    else
+      nStart = nAls
+    
+    if (input$initALS == 'SVD' || input$initALS == 'seq') {
+      # initialize with abs(SVD)
+      if (is.null(s <- doSVD()))
+        return(NULL)
+      
+      S = matrix(abs(s$v[,1:nStart]),ncol=nStart)
+      C = matrix(abs(s$u[,1:nStart]),ncol=nStart)
+      
+    } else if (input$initALS == 'NMF') {
+      # initialize with SVD + NMF
+      if (is.null(s <- doSVD()))
+        return(NULL)
+      
+      progress$set(message = "Running NMF ", value = 0)
+      
+      # 1/ filter matrix to avoid negative values (noise)
+      fMat = rep(0,nrow=nrow(data),ncol=ncol(data))
+      for (i in 1:nStart)
+        fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
+      # 2/ NMF
+      res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
+      C = NMF::basis(res)
+      S = t(NMF::coef(res))
+      
+    } else {
+      # restart from existing solution
+      if (!exists('RES'))
+        return(NULL)
+      S = RES$S[,1:nStart]
+      C = RES$C[,1:nStart]
+    }
+    
+    # Progress bar
+    progress$set(message = "Running ALS ", value = 0)
+    
+    #Run
+    res=list()
+    for (n in nStart:nAls) {
+      progress$set(message = paste0("Running ALS ",n), value = 0)
+      res[[n]] = myals(
+        C = C, Psi = mat, S = S, xC = delay, xS = wavl,
+        maxiter = input$maxiter,
+        uniS    = input$uniS,
+        nonnegS = input$nonnegS,
+        nonnegC = input$nonnegC,
+        thresh  = 10^input$alsThresh,
+        normS   = input$normS,
+        S0      = S0,
+        hardS0  = !input$softS0,
+        wHardS0 = 10^input$wSoftS0,
+        optS1st = input$optS1st,
+        smooth  = input$smooth,
+        SumS    = input$SumS,
+        updateProgress = updateProgress,
+        nullC   = nullC,
+        closeC  = input$closeC,
+        wCloseC = 10^input$wCloseC
+      )
+      res[[n]]$hessian = NA # Compatibility with Kinet
+      
+      if(n < nAls) {
+        # Prepare next iteration
+        S = res[[n]]$S
+        C = res[[n]]$C
+        S = cbind(S,1)
+        C = cbind(C,1)
+      }
+      RES <<- res[[n]]
+      
+    }
+    
+    lapply(nStart:nAls, function(n){
+      output[[paste0('iter', n)]] <<- renderUI({
+        list(
+          h4(n,' species'),
+          h5('Terminated in ',res[[n]]$iter,' iterations'),
+          res[[n]]$msg,
+          br()
+        )
+      })
+    })
+    
+    colnames(res[[nAls]]$S) = paste0('S_',1:nAls)
+    colnames(res[[nAls]]$C) = paste0('C_',1:nAls)
+    
+    # Update Reporting
+    updateCheckboxGroupInput(session,
+                             inputId = 'inReport',
+                             selected = c('SVD','ALS'))
+    
+    res[[nAls]]$nullC = nullC
+    
+    return(res[[nAls]])
+    
+  }
+  
+  doALS <- eventReactive(
+    input$runALS, {
+      if (isolate(!checkInputsSanity()))
+        return(NULL)
+      return(als())
     })
   
   output$alsOpt <- renderUI({
@@ -2341,43 +2396,100 @@ function(input, output, session) {
     
   },height = 450)
 
-  plotAlsVec <- function (alsOut,type="Kin",xlim=NULL,ylim=NULL,...) {
+  plotAlsVec <- function (alsOut,type="Kin",
+                          xlim=NULL,ylim=NULL,
+                          plotUQ = FALSE, nMC = 100,...) {
     par(cex = cex,cex.main=cex, mar = mar, 
         mgp = mgp, tcl = tcl, pty=pty)
+
+    nvec = ncol(alsOut$S)
+    
+    plotBands = FALSE
+    if(is.finite(alsOut$hessian) && plotUQ) {
+      # Generate sample of curves
+      Sigma=try(solve(alsOut$hessian), silent = TRUE)
+      if (class(Sigma) != "try-error") {
+        plotBands = TRUE
+        eps = 0.0
+        S = alsOut$S
+        Smax = matrix( eps,nrow=nrow(S),ncol=nvec)
+        Smin = matrix(1e30,nrow=nrow(S),ncol=nvec)
+        C = alsOut$C
+        Cmax = matrix( eps,nrow=nrow(C),ncol=nvec)
+        Cmin = matrix(1e30,nrow=nrow(C),ncol=nvec)
+        for (iMC in 1:nMC) {
+          pmc = mvtnorm::rmvnorm(n     = 1, 
+                                 mean  = alsOut$map, 
+                                 sigma = Sigma)
+          map = parExpand(pmc,alsOut$paropt)
+          sel = alsOut$parms[['active']]
+          C   = kinet(map,alsOut$parms)[,sel]
+          S   = spectra(C,map,alsOut$parms)
+          for(j in 1:nvec) {
+            for(k in 1:nrow(C)){
+              Cmin[k,j] = min(Cmin[k,j],C[k,j],na.rm=TRUE)
+              Cmax[k,j] = max(Cmax[k,j],C[k,j],na.rm=TRUE)
+            }
+            for(k in 1:nrow(S)){
+              Smin[k,j] = min(Smin[k,j],S[k,j],na.rm=TRUE)
+              Smax[k,j] = max(Smax[k,j],S[k,j],na.rm=TRUE)
+            }
+          }
+        }
+      }
+    }
+    
+    colF  = 1:nvec
+    colR  = col2tr(colF,120)
     
     if(type == "Kin") {
       if(is.null(ylim))
-        ylim = range(alsOut$C)
+        ylim = c(0,1.1*max(alsOut$C))
+      x = alsOut$xC
       matplot(
-        alsOut$xC,alsOut$C,
-        type = ifelse(length(alsOut$xC)>20,'p','b'),
+        x,alsOut$C,
+        type = ifelse(length(x)>20,'p','b'),
         pch = 19, cex = 0.5, lwd=2, lty=3,
+        col = colF,
         xlab = 'Delay', ylab = 'C',
         xlim = xlim,
         ylim = ylim,
         main = paste0('Kinetics'),
         xaxs = 'i', yaxs='i'
       )
-      n=ncol(alsOut$C)
-      legend('topright',legend=1:n,lty=3,lwd=3,col=1:n)
+      grid()
+      if(plotBands) {
+        for (j in 1:nvec)
+          polygon(c(x,rev(x)),c(Cmin[,j],rev(Cmax[,j])),
+                  col= colR[j],border = colF[j])
+      }
+      legend('topright',legend=1:nvec,lty=3,lwd=3,col=colF)
       colorizeMask1D(axis="delay",ylim=ylim)
-      grid();box()
+      box()
       
     } else {
       if(is.null(ylim))
-        ylim = range(alsOut$S)
+        ylim = c(0,1.1*max(alsOut$S))
+      x = alsOut$xS
       matplot(
-        alsOut$xS,alsOut$S,
-        type = ifelse(length(alsOut$xC)>20,'p','b'),
+        x,alsOut$S,
+        type = ifelse(length(x)>20,'p','b'),
         pch = 19, cex = 0.5, lwd=2, lty=3,
+        col = colF,
         xlab = 'Wavelength',ylab = 'S',
         xlim = xlim,
         ylim = ylim,
         main = paste0('Spectra; L.o.f. =',alsOut$lof,'%'), 
         xaxs = 'i', yaxs='i'
       )
+      grid()
+      if(plotBands) {
+        for (j in 1:nvec)
+          polygon(c(x,rev(x)),c(Smin[,j],rev(Smax[,j])),
+                  col= colR[j],border = colF[j])
+      }
       colorizeMask1D(axis="wavl",ylim=ylim)
-      grid();box()
+      box()
       
     }
   }
@@ -2975,7 +3087,10 @@ function(input, output, session) {
     }
   })
   
-  # Kinet ####
+
+# Kinet ####
+  
+  kinPrint = reactiveValues(glOut=NULL,optOut=NULL)
   
   # Hypercube transfo of NLopt parameters #############################
   parExpand = function (popt,params) {
@@ -3234,10 +3349,11 @@ function(input, output, session) {
         }
       }
       for (iReac in 1:length(kReac)) {
-        pName=paste("logk_",iReac,sep="")
-        if(pName %in% names(pars)) kReac[iReac]=exp(pars[[pName]])
+        pName=paste0("logk_",iReac)
+        if(pName %in% names(pars)) kReac[iReac] = exp(pars[[pName]])
       } 
       
+      ## Ionic force correction
       # A = 0.509 
       # # A = 2^0.5*Faraday^2*elec / (8*pi*(eps*R*Temp)^1.5)
       # B = 3.28 # for radius en nm 
@@ -3415,27 +3531,29 @@ function(input, output, session) {
   wresid = function (pars,parms)
     (parms$mat - model(pars,parms))/parms$sigma
   bmc_hyb = function (paropt, parms, 
-                      mc=FALSE, global=0, startp=NULL, 
-                      niter=50, tune=0.8) {   
+                      mc=FALSE, global=30, startp=NULL, 
+                      niter=0, tune=0.8) {   
     
     pars=parContract(paropt)
     np=length(pars$p0) 
     
-    if (global != 0) {
-      xopt=rgenoud::genoud(mlogP, 
-                           parms = parms, 
-                           paropt = paropt,
-                           starting.values = startp,
-                           nvars = np,
-                           BFGS=FALSE,
-                           print.level=1,
-                           max.generations=niter, 
-                           wait.generations=5,
-                           gradient.check=FALSE,
-                           pop.size = global,
-                           Domains=cbind(pars$LB,pars$UB),
-                           boundary.enforcement=2
-      )  
+    if (niter != 0) {
+      kinPrint$glOut <<- capture.output(
+        xopt <- rgenoud::genoud(mlogP, 
+                             parms = parms, 
+                             paropt = paropt,
+                             starting.values = startp,
+                             nvars = np,
+                             BFGS=FALSE,
+                             print.level=1,
+                             max.generations=niter, 
+                             wait.generations=5,
+                             gradient.check=FALSE,
+                             pop.size = global,
+                             Domains=cbind(pars$LB,pars$UB),
+                             boundary.enforcement=2
+        )
+      )
       best1 = xopt$par    
     } else {
       if(!is.null(startp))
@@ -3444,19 +3562,26 @@ function(input, output, session) {
         best1 = pars$p0
     } 
     
-    best = Rsolnp::solnp(best1, fun = mlogP, LB=pars$LB, UB=pars$UB, 
-                         control=list(tol=1e-12,trace=2), 
-                         parms=parms,paropt=paropt)
+    best = NA
+    kinPrint$optOut <<- capture.output(
+      best <- Rsolnp::solnp(best1, fun = mlogP, 
+                            LB=pars$LB, UB=pars$UB, 
+                            control=list(tol=1e-8,trace=1), 
+                            parms=parms,paropt=paropt)
+    )
     p1=best$pars
     names(p1) = names(paropt)
     
-    out=list(map=p1,hessian=best$hessian)
+    out = list(
+      map     = p1, 
+      hessian = best$hessian,
+      values  = best$values
+    )
     
     return( out )
   }
   
-  
-  # Interactive ####
+  # Kinet Interactive ####
   Scheme = reactiveValues(
     gotData        = FALSE
   )
@@ -3506,74 +3631,6 @@ function(input, output, session) {
     # reactiveValuesToList(Scheme)
   })
   outputOptions(output, "scheme",suspendWhenHidden = FALSE)
-  output$species  = renderUI({
-    if (is.null(Scheme$gotData))
-      return(NULL)
-    species = Scheme$species
-    ui = list( br(),
-               fluidRow(
-                 column(
-                   1,
-                   h4("Species")
-                 ),
-                 column(
-                   2,
-                   h4("Init. conc.")
-                 ),
-                 column(
-                   2,
-                   h4("F uncert.")
-                 ),
-                 column(
-                   2,
-                   h4("Epsilon")
-                 )
-               ),
-               hr( style="border-color: #666;")
-    )
-    for (sp in species) {
-      ui[[sp]] = 
-        fluidRow(
-          column(
-            1,
-            h5(sp)
-          ),
-          column(
-            2,
-            numericInput(
-              paste0('c0_',sp),
-              label=NULL,
-              value=0
-            )
-          ),
-          column(
-            2,
-            numericInput(
-              paste0('c0F_',sp),
-              label = NULL,
-              min   = 1,
-              max   = 5,
-              value = 1,
-              step  = 0.1
-            )
-          ),
-          column(
-            4,
-            sliderInput(
-              paste0('eps_',sp),
-              label =NULL,
-              min   =       0,
-              max   =   10000,
-              step  =     100,
-              value = c(0,10000)
-            )
-          )
-        )
-    }
-    ui
-    
-  })
-  outputOptions(output, "species",suspendWhenHidden = FALSE)
   output$rates    = renderUI({
     if (is.null(Scheme$gotData))
       return(NULL)
@@ -3585,15 +3642,15 @@ function(input, output, session) {
     ui = list( br(),
                fluidRow(
                  column(
-                   1,
+                   3,
                    h4("Reaction")
                  ),
                  column(
-                   2,
+                   4,
                    h4("Rate ct.")
                  ),
                  column(
-                   2,
+                   4,
                    h4("F uncert.")
                  )
                ),
@@ -3603,11 +3660,11 @@ function(input, output, session) {
       ui[[i+3]] = 
         fluidRow(
           column(
-            1,
+            3,
             h5(tags[i])
           ),
           column(
-            2,
+            4,
             numericInput(
               paste0('k_',i),
               label = NULL,
@@ -3615,7 +3672,7 @@ function(input, output, session) {
             )
           ),
           column(
-            2,
+            4,
             numericInput(
               paste0('kF_',i),
               label = NULL,
@@ -3631,15 +3688,116 @@ function(input, output, session) {
     
   })
   outputOptions(output, "rates",suspendWhenHidden = FALSE)
+  output$species  = renderUI({
+    if (is.null(Scheme$gotData))
+      return(NULL)
+    species = Scheme$species
+    ui = list( br(),
+               fluidRow(
+                 column(
+                   3,
+                   h4("Species")
+                 ),
+                 column(
+                   4,
+                   h4("Init. conc.")
+                 ),
+                 column(
+                   4,
+                   h4("F uncert.")
+                 )
+               ),
+               hr( style="border-color: #666;")
+    )
+    for (sp in species) {
+      ui[[sp]] = 
+        fluidRow(
+          column(
+            3,
+            h5(sp)
+          ),
+          column(
+            4,
+            numericInput(
+              paste0('c0_',sp),
+              label=NULL,
+              value=0
+            )
+          ),
+          column(
+            4,
+            numericInput(
+              paste0('c0F_',sp),
+              label = NULL,
+              min   = 1,
+              max   = 5,
+              value = 1,
+              step  = 0.1
+            )
+          )
+        )
+    }
+    
+    ui
+    
+  })
+  outputOptions(output, "species",suspendWhenHidden = FALSE)
+  
+  output$epsilon  = renderUI({
+    if (is.null(Scheme$gotData))
+      return(NULL)
+    species = Scheme$species
+    ui = list( br(),
+               fluidRow(
+                 column(
+                   2,
+                   h4("Species")
+                 ),
+                 column(
+                   9,
+                   h4("Epsilon")
+                 )
+               ),
+               hr( style="border-color: #666;")
+    )
+    for (sp in species) {
+      ui[[sp]] = 
+        fluidRow(
+          column(
+            2,
+            h5(sp)
+          ),
+          column(
+            9,
+            sliderInput(
+              paste0('eps_',sp),
+              label =NULL,
+              min   =       0,
+              max   =   10000,
+              step  =     100,
+              value = c(0,10000)
+            )
+          )
+        )
+    }
+    
+    ui
+    
+  })
+  outputOptions(output, "epsilon",suspendWhenHidden = FALSE)
+
   
   doKin <- eventReactive(
     input$runKin, 
     {
       isolate({
         
+        kinPrint$glOut  <<- NULL
+        kinPrint$optOut <<- NULL
+        
         nExp=1
         deltaStart=c(0)
-        startd = length(Inputs$delay)
+        startd = c(length(Inputs$delay))
         
         parOpt = list()
         eps    = list()
@@ -3707,7 +3865,7 @@ function(input, output, session) {
           active     = active,
           startd     = startd,
           deltaStart = deltaStart,
-          sigma      = 1,
+          sigma      = 2e-4,
           reactants  = Scheme$reactants,
           eps        = eps,
           uniS       = FALSE,
@@ -3730,8 +3888,8 @@ function(input, output, session) {
         )
       
       mc=FALSE
-      niter  = 15
-      global = 0 # 30*length(startp)
+      niter  = input$kinGlobNit
+      global = input$kinGlobFac*length(startp)
         
       opt0 = bmc_hyb(parOpt,
                      parms=kinParms,
@@ -3748,36 +3906,52 @@ function(input, output, session) {
       
       lof = signif(100*(sum((Inputs$mat-mod)^2)/sum(Inputs$mat^2))^0.5,4)
       
+      
       return(
         list(map = opt0$map, hessian = opt0$hessian, 
              parms=kinParms, paropt=parOpt,
              xC = Inputs$delay, xS = Inputs$wavl,
              C = C, S = S, 
-             lof = lof
+             lof    = lof,
+             glOut  = opt0$glOut,
+             optOut = opt0$optOut,
+             values = opt0$values
         )
       )
       })
     }
   )
-  # observeEvent(input$runKin,{doKin()})
 
+  output$kinGlPrint <- renderPrint({
+    cat('### GLOBAL OPTIMIZATION ###\n')
+    gsub('\t',' ',kinPrint$glOut)
+    })
+  
+  output$kinOptPrint <- renderPrint({
+    cat('### LOCAL OPTIMIZATION ###\n')
+    gsub('\t',' ',kinPrint$optOut)
+    })
+  
   output$kinOpt <- renderUI({
     if (input$runKin == 0) {
-      h5('Select Kin options and press "Run"\n')
+      h5('Select options and press "Run"\n')
       
     } else {
+      
+      out = list()
       
       opt <- doKin()
       paropt = opt$paropt
       
-      h5('Kin done')
+      out = list(out, h4('Kinet Optimization done!'))
+      
+      out = list(out, strong('L.o.f.:'), opt$lof,' %',br())
       
       map = parExpand(opt$map,paropt)
+      names(map)=names(paropt)
       
-      print("")
-      print("MAP:")
-      print(t(map))
-      
+      # out = list(out, strong('MAP:'), map)
+
       # ndf  = length(z) - np - sum(parms$active)*length(y)
       # chi2 = wchisq(bestp,x,y,z,parms)
       # ndig = 3
@@ -3796,28 +3970,94 @@ function(input, output, session) {
         if(sum(EV<0) >0 ) print("Non-positive definite Covariance matrix")
         Sd = diag(Sigma)^0.5
         names(Sd) =names(paropt)
-        names(map)=names(paropt)
-        Corr=cov2cor(Sigma)
+        # Corr=cov2cor(Sigma)
       } else {
+        showModal(modalDialog(
+          title = ">>>> Numerical problem <<<< ",
+          paste0("Singular Hessian: could not compute uncertainties..."),
+          easyClose = TRUE, 
+          footer = modalButton("Close"),
+          size = 's'
+        ))
         Sd=rep(NA,length(paropt))
         names(Sd)=names(paropt)
       }
       lSd = sdExpand(Sd,paropt)
 
-      cat("Best fit:\n")
-
+      out = list(out, strong("Best fit:"),br())
       for (item in names(map)) {
         if(grepl('log',item))
-          print(paste(sub('log','',item),'=',signif(exp(map[[item]]),digits=2),
-                      "/*",signif(exp(Sd[[item]]),digits=3)))
+          out = list(out,
+                     paste(sub('log','',item),'=',signif(exp(map[[item]]),digits=2),
+                           ifelse(
+                             is.na(Sd[[item]]),
+                             "",
+                             paste("/*",signif(exp(Sd[[item]]),digits=3))  
+                           )),
+                     br()
+          )
         else
-          print(paste(item,'=',signif(map[[item]],digits=2),
-                      "+/-",signif(lSd[[item]],digits=3)))
+          out = list(out,
+                     paste(item,'=',signif(map[[item]],digits=2),
+                           ifelse(
+                             is.na(lSd[[item]]),
+                             "",
+                             paste("+/-",signif(lSd[[item]],digits=3))  
+                           )),
+                           br()
+          )
       }
+      
+      # out = list(out,paste(signif(opt$values,3),collapse=","))
+      
+      return(out)
     }
 
   })
 
+  output$kinParams1 <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    
+    map = parExpand(opt$map,opt$paropt)
+    
+    ncol = ceiling(sqrt(length(map)))
+    nrow = floor(length(map)/ncol)
+    if(nrow*ncol != length(map)) nrow = nrow +1
+    
+    par(mfrow=c(nrow,ncol),
+        cex = cex, cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty='s')
+    
+    Sd = rep(NA,length(map))
+    Sigma=try(solve(opt$hessian), silent = TRUE)
+    if (class(Sigma) != "try-error")
+      Sd = diag(Sigma)^0.5
+    lSd = unlist(sdExpand(Sd,opt$paropt))
+    names(Sd) = names(lSd) = names(map)
+ 
+    for (p in names(opt$paropt)) {
+      plot(priorDensity(p,opt$paropt), ylim=c(0,1.1),
+           type="l",col="blue",xlab=p,ylab="PDF",yaxs='i')
+      
+      m = map[[p]]
+      if( grepl('log',p) )
+        s = Sd[p]
+      else
+        s = lSd[p]
+ 
+      if( is.finite(s) )
+        curve(exp(-0.5*(x-m)^2/s^2),
+              from = m-6*s, to= m+6*s, n=500, 
+              add=TRUE, col=2)
+      else
+        abline(v=m,col="red")
+      
+      grid(); box()
+    }
+    
+  },height = 550)
+  
   output$kinResid1 <- renderPlot({
     if (is.null(opt <- doKin()))
       return(NULL)
@@ -3841,7 +4081,7 @@ function(input, output, session) {
     plotResid(Inputs$delay,Inputs$wavl,mat,
               CS$C,CS$S,main=main)
     
-  },height = 450)
+  },height = 550)
   
   output$kinResid2 <- renderPlot({
     if (is.null(opt <- doKin()))
@@ -3866,7 +4106,68 @@ function(input, output, session) {
     plotResidAna(Inputs$delay,Inputs$wavl,mat,
                  CS$C,CS$S,main=main)
     
-  },height = 450)
+  },height = 550)
+  
+  output$kinResid3 <- renderPlot({
+    #Integrated kinetics
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    
+    CS = reshapeCS(opt$C,opt$S,ncol(opt$C))  
+    mod = Inputs$mat * 0.0
+    for (i in 1:ncol(opt$C)) {
+      mod = mod + CS$C[,i] %o% CS$S[,i]
+    }
+    
+    Nexp = length(input$rawData_rows_selected)
+    
+    ncol = ceiling(sqrt(Nexp))
+    nrow = floor(Nexp/ncol)
+    if(nrow*ncol != Nexp) nrow = nrow +1
+
+    par(mfrow=c(nrow,ncol),
+        cex = cex, cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty='s')
+    
+    startd = opt$parms[['startd']]
+    i0=0
+    for (iExp in 1:Nexp) {
+      sel = (i0+1):startd[iExp]
+      tinteg = opt$xC[sel]
+      # tinteg = tinteg-tinteg[1]+deltaStart[iExp]
+      i0 = startd[iExp]
+      dd = rowSums(Inputs$mat[sel,])
+      plot(tinteg,dd,
+           xlim=c(0,max(tinteg)/1),ylim=c(0,max(dd)*1.1),
+           pch=19,col='blue')
+      lines(tinteg,rowSums(mod[sel,]),col='red',lwd=2)
+      grid(); box()
+    }
+    
+  },height = 550)
+
+  rangesKinSp <- reactiveValues(x = NULL, y = NULL)
+  
+  output$kinSpVectors <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    plotAlsVec(opt,
+               type = "Sp",
+               xlim = rangesKinSp$x,
+               ylim = rangesKinSp$y,
+               plotUQ = input$plotCSUQ)
+  },height = 400)
+  
+  observeEvent(input$kinSp_dblclick, {
+    brush <- input$kinSp_brush
+    if (!is.null(brush)) {
+      rangesKinSp$x <- c(brush$xmin, brush$xmax)
+      rangesKinSp$y <- c(brush$ymin, brush$ymax)
+    } else {
+      rangesKinSp$x <- NULL
+      rangesKinSp$y <- NULL
+    }
+  })
   
   rangesKinKin <- reactiveValues(x = NULL, y = NULL)
   
@@ -3876,7 +4177,8 @@ function(input, output, session) {
     plotAlsVec(opt,
                type = "Kin",
                xlim = rangesKinKin$x,
-               ylim = rangesKinKin$y)
+               ylim = rangesKinKin$y,
+               plotUQ = input$plotCSUQ)
   },height = 400)
   
   observeEvent(input$kinKin_dblclick, {
@@ -3890,28 +4192,6 @@ function(input, output, session) {
     }
   })
   
-  rangesKinSp <- reactiveValues(x = NULL, y = NULL)
-  
-  output$kinSpVectors <- renderPlot({
-    if (is.null(opt <- doKin()))
-      return(NULL)
-    plotAlsVec(opt,
-               type = "Sp",
-               xlim = rangesKinSp$x,
-               ylim = rangesKinSp$y)
-  },height = 400)
-  
-  observeEvent(input$kinSp_dblclick, {
-    brush <- input$kinSp_brush
-    if (!is.null(brush)) {
-      rangesKinSp$x <- c(brush$xmin, brush$xmax)
-      rangesKinSp$y <- c(brush$ymin, brush$ymax)
-    } else {
-      rangesKinSp$x <- NULL
-      rangesKinSp$y <- NULL
-    }
-  })
-
   output$kinContribs <- renderPlot({
     if (is.null(opt <- doKin()))
       return(NULL)
