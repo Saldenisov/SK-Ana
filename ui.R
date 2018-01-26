@@ -834,18 +834,47 @@ navbarPage(
         tabPanel(
           h4("Model"),
           wellPanel(
-            h4("Load model"),
-            hr( style="border-color: #666;"),
-            fileInput(
-              inputId = 'schemeFile',
-              label   = 'Select scheme file',
-              multiple= FALSE,
-              accept  = '.txt'
+            tabsetPanel(
+              tabPanel(
+                h4("Write"),
+                hr( style="border-color: #666;"),
+                textAreaInput(
+                  inputId = 'schemeScript', 
+                  label   = ' Enter scheme', 
+                  value   = "", 
+                  width   = '100%', 
+                  height  = '200px',
+                  cols    = NULL, rows = NULL, 
+                  placeholder = NULL, 
+                  resize = "none"
+                ),
+                fixedRow(
+                  column(12,offset=0,
+                         actionButton("clear_tS" ,
+                                      "Reset",
+                                      icon=icon("eraser")),
+                         actionButton("update_tS",
+                                      "Done",
+                                      icon=icon("check"))
+                  )
+                )
+              ),
+              tabPanel(
+                h4("Load"),
+                hr( style="border-color: #666;"),
+                fileInput(
+                  inputId = 'schemeFile',
+                  label   = 'Select scheme file',
+                  multiple= FALSE,
+                  accept  = c('.txt','.in')
+                )
+              )
             ),
+            hr( style="border-color: #666;"),
             tabsetPanel(
               tabPanel(
                 h4("Scheme"),
-                verbatimTextOutput('scheme')
+                DT::dataTableOutput('scheme')
               ),
               tabPanel(
                 h4("Rates"),

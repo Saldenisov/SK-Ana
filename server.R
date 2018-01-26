@@ -3274,25 +3274,18 @@ function(input, output, session) {
   }
   
   # Kinetic Parser ####################################################
-  kinParse = function(filename) {
-    
-    scheme = scan(file=filename, what="character", sep="%",
-                  comment.char="#",
-                  blank.lines.skip = TRUE, quiet=TRUE)
-    nbReac=length(scheme)
-    print("Reaction scheme:")
-    for (i in 1:length(scheme))
-      cat('R',i,': ',scheme[[i]],'\n')
-    # lapply(scheme,print)
-    
+  kinParse = function(scheme) {
+
     # Extract relevant parts
     parts=c()
     for (reac in scheme) {
-      m = regexec("(.+?)\\s*->\\s*(.+?)\\s*(?:;\\s*(.*))?$",reac)    
-      parts = rbind(parts,unlist(regmatches(reac,m))[2:5])
+      m = regexec("(.+?)\\s*->\\s*(.+?)\\s*(?:;\\s*(.*))?$",reac)
+      if(m[[1]][1] != -1)
+        parts = rbind(parts,unlist(regmatches(reac,m))[2:5])
     }
     parts=data.frame(parts,stringsAsFactors=FALSE)
     names(parts)=c("reactants","products","rateConstant")
+    nbReac = nrow(parts)
     
     reactants = products = list()
     kReac = kReacF = tag = c()
@@ -3312,9 +3305,7 @@ function(input, output, session) {
     
     species=levels(as.factor(unlist(c(reactants,products))))
     nbSpecies=length(species)
-    # print("Species List:")
-    # print(species)
-    
+
     # R, L, D matrices 
     L = R = matrix(0,ncol=nbSpecies,nrow=nbReac)
     for (m in 1:nbReac) {
@@ -3329,6 +3320,68 @@ function(input, output, session) {
     return(list(nbSpecies=nbSpecies,nbReac=nbReac,species=species,
                 D=D,L=L,kReac=kReac,kReacF=kReacF,reactants=reactants,
                 products=products, tags = tag))  
+  }
+  c0Parse  = function(scheme) {
+    # Extract relevant parts
+    parts=c()
+    for (line in scheme) {
+      m = regexec("c0_(.*?)_+(.*?)?\\s*=\\s*(.*)?$",line)
+      if(m[[1]][1] != -1)
+        parts = rbind(parts,unlist(regmatches(line,m))[2:4])
+    }
+    parts=data.frame(parts,stringsAsFactors=FALSE)
+
+    if(nrow(parts)==0) 
+      return(list(c0=NULL,c0F=NULL))
+    
+    names(parts)=c("spec","exp","conc")
+    
+    species = unique(parts[,"spec"])
+    nSpec   = length(species)
+    exps    = unique(parts[,"exp"])
+    nExp    = length(exps)
+    state = stateF = matrix(NA,nrow=nSpec,ncol=nExp)
+    rownames(state)=rownames(stateF)=species
+    for (i in 1:nrow(parts)) {
+      conc=as.numeric(unlist(strsplit(parts[i,"conc"],split="/")))
+      c0 =conc[1]
+      if (length(conc)>1)
+        c0F=conc[2]
+      else
+        c0F=1.0
+      
+      state[parts[i,"spec"],as.numeric(parts[i,"exp"])] = c0 
+      stateF[parts[i,"spec"],as.numeric(parts[i,"exp"])] = c0F
+    }
+    return(list(c0=state,c0F=stateF))  
+  }
+  epsParse  = function(scheme) {
+    # Extract relevant parts
+    parts=c()
+    for (line in scheme) {
+      m = regexec("eps_(.*?)\\s*=\\s*(.*)?$",line) 
+      if(m[[1]][1] != -1)
+        parts = rbind(parts,unlist(regmatches(line,m))[2:3])
+    }
+    parts=data.frame(parts,stringsAsFactors=FALSE)
+    names(parts)=c("spec","eps")
+    
+    nSpec = length(unique(parts[,"spec"]))
+    eps = epsF = matrix(NA,
+                        nrow=nSpec,
+                        ncol=2)
+    for (i in 1:nrow(parts)) {
+      conc=as.numeric(unlist(strsplit(parts[i,"eps"],split="/")))
+      c0 =conc[1]
+      if (length(conc)>1)
+        c0F=conc[2]
+      else
+        c0F=1.0
+      
+      eps[parts[i,"spec"]]  = c0 
+      epsF[parts[i,"spec"]] = c0F
+    }
+    return(list(eps,epsF))  
   }
   
   # Spectrokinetic model ##############################################
@@ -3388,16 +3441,15 @@ function(input, output, session) {
         # Time grid for current experiment
         tExp = parms$times[(i0+1):startd[iExp]]
         i0 = startd[iExp]
-        # tExp = tExp - tExp[1] + parms$deltaStart[iExp] + 10e-12
-        # tc=c(0.01*tExp[1],tExp)
-        
-        conc = deSolve::ode(y=state[,iExp], times=tExp, 
+        # tExp = tExp - tExp[1] + 10e-12 #+ parms$deltaStart[iExp] 
+        tc=c(0.0,tExp)
+        conc = deSolve::ode(y=state[,iExp], times=tc, 
                             func=C.model, parms=parms,
                             method="lsoda",
                             rtol=1e-6,atol=1e-8,
                             verbose=FALSE)
         
-        C=rbind(C,conc[,-1])
+        C=rbind(C,conc[-1,-1])
       }  
       
       return(C)
@@ -3585,17 +3637,11 @@ function(input, output, session) {
   Scheme = reactiveValues(
     gotData        = FALSE
   )
-  getScheme       = function (fileName) {
+  parseScheme       = function (scheme) {
+    # Parse Scheme
     
-    # (Re)initialize data tables
-    # Inputs$gotData  <<- FALSE
-    # Inputs$validData<<- TRUE    # Data type assumed correct
-    # RawData         <<- list()  # Init list in upper environment
-    # Inputs$fileOrig <<- NULL    # Invalidate earlier data
-    # Inputs$process  <<- FALSE   # Invalidate earlier processing
-    
-    # Load data files
-    kinList   = kinParse(fileName)
+    kinList = kinParse(scheme)
+    Scheme[['scheme']]    <<- scheme
     Scheme[['nbReac']]    <<- kinList$nbReac
     Scheme[['nbSpecies']] <<- kinList$nbSpecies
     Scheme[['D']]         <<- kinList$D
@@ -3605,34 +3651,76 @@ function(input, output, session) {
     Scheme[['species']]   <<- kinList$species
     Scheme[['reactants']] <<- kinList$reactants
     Scheme[['products']]  <<- kinList$products
-    Scheme[['tags']]      <<- kinList$tags    
-        #   if (!is.null(O)) 
-    #     O$name = fName
-    #   else {
-    #     Inputs$validData <<- FALSE
-    #     showModal(modalDialog(
-    #       title = ">>>> Data problem <<<< ",
-    #       paste0("The chosen data type does not ",
-    #              "correspond to the opened data file(s)!"),
-    #       easyClose = TRUE, 
-    #       footer = modalButton("Close"),
-    #       size = 's'
-    #     ))
-    #   }
-    #   RawData[[i]] <<- O
-    # }
+    Scheme[['tags']]      <<- kinList$tags   
+    
+    c0List = c0Parse(scheme)
+    Scheme[['c0']]     <<- c0List$c0
+    Scheme[['c0F']]    <<- c0List$c0F
+    
     Scheme$gotData <<- TRUE
   }
-  output$scheme   = renderPrint({
-    inFile <- input$schemeFile
-    if (is.null(inFile))
+  observeEvent(
+    input$schemeFile,{
+      inFile <- input$schemeFile
+      if (is.null(inFile))
+        return(NULL)
+      scheme = scan(file = inFile$datapath, 
+                    what = "character", 
+                    sep="%", comment.char="#",
+                    blank.lines.skip = TRUE, 
+                    quiet=TRUE)
+      parseScheme(scheme)
+      updateTextAreaInput(session, 
+                          inputId = 'schemeScript',
+                          value   = paste(scheme,collapse='\n')
+      )
+    }
+  )
+  observeEvent(
+    input$update_tS, 
+    isolate({
+      if(is.null(scheme <- input$schemeScript))
+        return(NULL)
+      else
+        parseScheme(scan(text=scheme,what='character',sep='\n'))
+    })
+  )
+  observeEvent(
+    input$clear_tS,{
+      updateTextAreaInput(session, 
+                          inputId='schemeScript',
+                          value=""
+      )
+      Scheme$gotData <<- FALSE
+    } 
+  )
+  output$scheme   = DT::renderDataTable({
+    if (!Scheme$gotData)
       return(NULL)
-    getScheme(inFile$datapath)
-    # reactiveValuesToList(Scheme)
+    
+    reacString = c()
+    for (i in 1:Scheme$nbReac)
+      reacString[i] = 
+      paste(
+        paste(Scheme$reactants[[i]],collapse = ' + '),
+        ' -> ',
+        paste(Scheme$products[[i]] ,collapse = ' + ')
+      )
+  
+    DT::datatable(
+      data.frame(Reactions = reacString),
+      class = 'compact',
+      fillContainer = FALSE,
+      options = list(paging    = FALSE,
+                     ordering  = FALSE,
+                     searching = FALSE,
+                     dom       = 't'   ),
+      escape    = FALSE
+    )
   })
   outputOptions(output, "scheme",suspendWhenHidden = FALSE)
   output$rates    = renderUI({
-    if (is.null(Scheme$gotData))
+    if (!Scheme$gotData)
       return(NULL)
     
     kReac  = Scheme[['kReac']]
@@ -3689,9 +3777,16 @@ function(input, output, session) {
   })
   outputOptions(output, "rates",suspendWhenHidden = FALSE)
   output$species  = renderUI({
-    if (is.null(Scheme$gotData))
+    if (!Scheme$gotData)
       return(NULL)
+    
+    iExp=1
     species = Scheme$species
+
+    c0  = Scheme[['c0']]  #; print(c0)
+    c0F = Scheme[['c0F']] #; print(c0F)
+    sp0 = rownames(c0)
+    
     ui = list( br(),
                fluidRow(
                  column(
@@ -3709,7 +3804,15 @@ function(input, output, session) {
                ),
                hr( style="border-color: #666;")
     )
+    
     for (sp in species) {
+      if(sp %in% sp0) {
+        c0_sp  = ifelse(is.na(c0[sp,iExp]),0,c0[sp,iExp])
+        c0F_sp = ifelse(is.na(c0F[sp,iExp]),1,c0F[sp,iExp])
+      } else {
+        c0_sp = 0
+        coF_sp = 1
+      }
       ui[[sp]] = 
         fluidRow(
           column(
@@ -3721,7 +3824,7 @@ function(input, output, session) {
             numericInput(
               paste0('c0_',sp),
               label=NULL,
-              value=0
+              value= c0_sp
             )
           ),
           column(
@@ -3731,7 +3834,7 @@ function(input, output, session) {
               label = NULL,
               min   = 1,
               max   = 5,
-              value = 1,
+              value = c0F_sp, 
               step  = 0.1
             )
           )
@@ -3742,9 +3845,8 @@ function(input, output, session) {
     
   })
   outputOptions(output, "species",suspendWhenHidden = FALSE)
-  
   output$epsilon  = renderUI({
-    if (is.null(Scheme$gotData))
+    if (!Scheme$gotData)
       return(NULL)
     species = Scheme$species
     ui = list( br(),
@@ -3786,7 +3888,6 @@ function(input, output, session) {
   })
   outputOptions(output, "epsilon",suspendWhenHidden = FALSE)
 
-  
   doKin <- eventReactive(
     input$runKin, 
     {
@@ -3795,9 +3896,17 @@ function(input, output, session) {
         kinPrint$glOut  <<- NULL
         kinPrint$optOut <<- NULL
         
+        # Suppress masked areas
+        mat = Inputs$mat 
+        mat = mat[!is.na(Inputs$delayMask),]
+        mat = mat[,!is.na(Inputs$wavlMask) ]
+        times = Inputs$delaySave[!is.na(Inputs$delayMask)]
+        delay = Inputs$delay[!is.na(Inputs$delayMask)]
+        wavl  = Inputs$wavl[!is.na(Inputs$wavlMask)]
+        
         nExp=1
         deltaStart=c(0)
-        startd = c(length(Inputs$delay))
+        startd = c(length(delay)) # Beware of masks !!!!!!!!!!!!!!!!!
         
         parOpt = list()
         eps    = list()
@@ -3854,10 +3963,10 @@ function(input, output, session) {
       
         # Gather parameters in list
         kinParms = list(
-          times      = Inputs$delaySave,
-          delay      = Inputs$delay,
-          wavl       = Inputs$wavl,
-          mat        = Inputs$mat,
+          times      = times,
+          delay      = delay,
+          wavl       = wavl,
+          mat        = mat,
           kReac      = kReac,
           L          = Scheme$L,
           D          = Scheme$D,
@@ -3904,14 +4013,13 @@ function(input, output, session) {
       Ca  = C[,kinParms$active]  
       S   = spectra(Ca,map,kinParms)
       
-      lof = signif(100*(sum((Inputs$mat-mod)^2)/sum(Inputs$mat^2))^0.5,4)
-      
+      lof = signif(100*(sum((mat-mod)^2)/sum(mat^2))^0.5,4)
       
       return(
         list(map = opt0$map, hessian = opt0$hessian, 
              parms=kinParms, paropt=parOpt,
-             xC = Inputs$delay, xS = Inputs$wavl,
-             C = C, S = S, 
+             xC = delay, xS = wavl,
+             C = Ca, S = S, 
              lof    = lof,
              glOut  = opt0$glOut,
              optOut = opt0$optOut,
@@ -4118,6 +4226,7 @@ function(input, output, session) {
     for (i in 1:ncol(opt$C)) {
       mod = mod + CS$C[,i] %o% CS$S[,i]
     }
+    mod[is.na(mod)] = 0
     
     Nexp = length(input$rawData_rows_selected)
     
@@ -4134,9 +4243,9 @@ function(input, output, session) {
     for (iExp in 1:Nexp) {
       sel = (i0+1):startd[iExp]
       tinteg = opt$xC[sel]
-      # tinteg = tinteg-tinteg[1]+deltaStart[iExp]
+      tinteg = tinteg-tinteg[1] #+deltaStart[iExp]
       i0 = startd[iExp]
-      dd = rowSums(Inputs$mat[sel,])
+      dd = rowSums(Inputs$mat[sel,],na.rm = TRUE)
       plot(tinteg,dd,
            xlim=c(0,max(tinteg)/1),ylim=c(0,max(dd)*1.1),
            pch=19,col='blue')

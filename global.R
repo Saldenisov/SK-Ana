@@ -12,12 +12,11 @@ libs <- c(
   "fields", "NMF", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm"
 )
-for (lib in libs) {
-  if (!require(lib, character.only = TRUE, quietly = TRUE)) {
-    install.packages(lib, dependencies = TRUE)
-  }
-  library(lib, character.only = TRUE, quietly = TRUE)
-}
+for (lib in libs)
+  if (!require(lib, character.only = TRUE, quietly = TRUE))
+    install.packages(lib, dependencies = TRUE,
+                     repos='https://cran.univ-paris1.fr')
+
 
 # Colors ####
 cols <- viridis::viridis(128)
