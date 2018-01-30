@@ -47,7 +47,9 @@ function(input, output, session) {
   reshapeCS <- function(U,V,n) {
     # Expand vectors wrt masks
     C = matrix(NA,nrow=length(Inputs$delay),ncol=n)
+    colnames(C) = colnames(U)
     S = matrix(NA,nrow=length(Inputs$wavl) ,ncol=n)
+    colnames(S) = colnames(V)
     i=0
     for(j in 1:nrow(C)) {
       if(!is.na(Inputs$delayMask[j])) {
@@ -1896,7 +1898,7 @@ function(input, output, session) {
         delay,wavl,matSvd,col = cols, 
         xlim=xlim,ylim=ylim,
         xlab = 'Delay',ylab = 'Wavelength',
-        main = paste0('Sp. ',ic,' / Wgt. (%) = ',
+        main = paste0(colnames(S)[ic],' / Wgt. (%) = ',
                       signif(cont[ic],3))
       )
       colorizeMask1D(axis="delay",ylim=ylim)
@@ -1941,8 +1943,7 @@ function(input, output, session) {
     colnames(data) = c('Rank','S.V.','Lack of fit (%)','Std. dev. resid.')
     DT::datatable(
       data,
-      class = 'compact',
-      fillContainer = FALSE,
+      class = 'cell-border stripe',
       options = list(paging    = FALSE,
                      ordering  = FALSE,
                      searching = FALSE,
@@ -2463,7 +2464,7 @@ function(input, output, session) {
           polygon(c(x,rev(x)),c(Cmin[,j],rev(Cmax[,j])),
                   col= colR[j],border = colF[j])
       }
-      legend('topright',legend=1:nvec,lty=3,lwd=3,col=colF)
+      legend('topright',legend=colnames(alsOut$C),lty=3,lwd=3,col=colF)
       colorizeMask1D(axis="delay",ylim=ylim)
       box()
       
@@ -3098,17 +3099,19 @@ function(input, output, session) {
     iopt=0
     for (item in names(params)) {
       if(is.numeric(params[[item]])) {
-        p[[item]]=params[[item]]
+        p[[item]] = params[[item]]
       } else {
         iopt=iopt+1
-        parts = unlist(strsplit(params[[item]], split="[(,)]" ))
-        priorPDF=parts[1]
-        paramPDF=as.numeric(parts[2:3])
-        p[[item]]=switch(priorPDF,
-                         unif  = paramPDF[1]+popt[iopt]*(paramPDF[2]-paramPDF[1]),
-                         norm  = paramPDF[1]+popt[iopt]*paramPDF[2], 
-                         tnorm = paramPDF[1]+popt[iopt]*paramPDF[2],                        lnorm = exp(paramPDF[1]+popt[iopt]*paramPDF[2])
-        )              
+        parts     = unlist(strsplit(params[[item]], split="[(,)]" ))
+        priorPDF  = parts[1]
+        paramPDF  = as.numeric(parts[2:3])
+        p[[item]] =
+          switch(priorPDF,
+                 unif  = paramPDF[1]+popt[iopt]*(paramPDF[2]-paramPDF[1]),
+                 norm  = paramPDF[1]+popt[iopt]*paramPDF[2], 
+                 tnorm = paramPDF[1]+popt[iopt]*paramPDF[2],
+                 lnorm = exp(paramPDF[1]+popt[iopt]*paramPDF[2])
+          )              
       }  
     }
     return(p)
@@ -3146,13 +3149,13 @@ function(input, output, session) {
         priorPDF[iopt]=parts[1]
         paramPDF[iopt,1:2]=as.numeric(parts[2:3])
         if(priorPDF[iopt]=="unif") {
-          p0[iopt]=0.5
-          LB[iopt]=0
-          UB[iopt]=1       
+          p0[iopt] = 0.5
+          LB[iopt] = 0
+          UB[iopt] = 1       
         } else {
-          p0[iopt]=0
-          LB[iopt]=-5
-          UB[iopt]=5
+          p0[iopt] = 0
+          LB[iopt] =-3
+          UB[iopt] = 3
         }
       } 
     }
@@ -3176,7 +3179,7 @@ function(input, output, session) {
       add = switch(priorPDF[ip],
                    # Special arguments for tnorm...
                    tnorm  = paste0("logpri = logpri + d",priorPDF[ip],
-                                   "(x=x[",ip,"],0,1,lower=-5,upper=5,log=TRUE)\n"),
+                                   "(x=x[",ip,"],0,1,lower=-3,upper=3,log=TRUE)\n"),
                    paste0("logpri = logpri + d",priorPDF[ip],
                           "(x=x[",ip,"],0,1,log=TRUE)\n")
       )  
@@ -3230,7 +3233,7 @@ function(input, output, session) {
       ytab [i] = switch(priorPDF[ip],
                         # Special arguments for tnorm...
                         tnorm  = eval(call(paste("d",priorPDF[ip],sep=""),
-                                           x,0,1,lower=-5,upper=5,log=FALSE)),
+                                           x,0,1,lower=-3,upper=3,log=FALSE)),
                         eval(call(paste("d",priorPDF[ip],sep=""),x,0,1,log=FALSE))
       )
     }
@@ -3247,7 +3250,7 @@ function(input, output, session) {
       samp[ip] = switch(priorPDF[ip],
                         # Special arguments for tnorm...
                         tnorm  = eval(call(paste("r",priorPDF[ip],sep=""),1,0,1,
-                                           lower=-5,upper=5)),
+                                           lower=-3,upper=3)),
                         eval(call(paste("r",priorPDF[ip],sep=""),1,0,1))
       )
     }
@@ -3339,7 +3342,7 @@ function(input, output, session) {
     species = unique(parts[,"spec"])
     nSpec   = length(species)
     exps    = unique(parts[,"exp"])
-    nExp    = length(exps)
+    nExp    = max(as.numeric(exps))
     state = stateF = matrix(NA,nrow=nSpec,ncol=nExp)
     rownames(state)=rownames(stateF)=species
     for (i in 1:nrow(parts)) {
@@ -3366,10 +3369,10 @@ function(input, output, session) {
     parts=data.frame(parts,stringsAsFactors=FALSE)
     names(parts)=c("spec","eps")
     
-    nSpec = length(unique(parts[,"spec"]))
-    eps = epsF = matrix(NA,
-                        nrow=nSpec,
-                        ncol=2)
+    spec = unique(parts[,"spec"])
+    nSpec = length(spec)
+    eps = epsF = rep(NA,nSpec)
+    names(eps) = names(epsF) = spec
     for (i in 1:nrow(parts)) {
       conc=as.numeric(unlist(strsplit(parts[i,"eps"],split="/")))
       c0 =conc[1]
@@ -3381,7 +3384,7 @@ function(input, output, session) {
       eps[parts[i,"spec"]]  = c0 
       epsF[parts[i,"spec"]] = c0F
     }
-    return(list(eps,epsF))  
+    return(list(eps=eps,epsF=epsF))  
   }
   
   # Spectrokinetic model ##############################################
@@ -3397,7 +3400,7 @@ function(input, output, session) {
       # Update parameters with optimized values
       for (iExp in 1:nExp) {  
         for (spec in rownames(state)) {
-          pName=paste0("logc_",spec,iExp)
+          pName=paste0("logc0_",spec,'_',iExp)
           if(pName %in% names(pars)) state[spec,iExp] = exp(pars[[pName]])
         }
       }
@@ -3451,7 +3454,6 @@ function(input, output, session) {
         
         C=rbind(C,conc[-1,-1])
       }  
-      
       return(C)
     })      
   }
@@ -3462,20 +3464,18 @@ function(input, output, session) {
     colnames(C) = colnames(S)
     
     # Constraints
-    freeS=rep(TRUE,ncol(S))
-    names(freeS)=colnames(S)
-    
-    eps=rep(NA,ncol(S))
-    names(eps)=colnames(S)
+    freeS = rep(TRUE,ncol(S))
+    names(freeS) = colnames(S)
+    eps = parms$eps
     
     M = parms$mat
     for (spec in colnames(S)) {
-      pName = paste0("eps_",spec)
+      # Amplitude constraint (soft: applied at end)
+      pName = paste0("logeps_",spec)
       if(pName %in% names(pars)) 
-        eps[spec] = pars[[pName]] # Amplitude constraint for spec
-      if(pName %in% names(parms)) 
-        eps[spec] = parms[[pName]] # Amplitude constraint for spec
+        eps[spec] = exp(pars[[pName]]) 
       
+      # Spectral constraint (hard: remove from data)
       pName=paste0("S_",spec)
       if(pName %in% names(parms)) { 
         if(!is.null(parms[[pName]])) {
@@ -3487,7 +3487,7 @@ function(input, output, session) {
     }
     
     if(sum(freeS)==1){
-      # 1 component: linear regression
+      # 1 free component: analytic expression
       spec=names(freeS)[freeS]
       x=C[,spec]
       xm=mean(x)
@@ -3531,17 +3531,11 @@ function(input, output, session) {
         } 
       }
     } 
-    
-    for (spec in colnames(S)) {
-      pName=paste0("eps_",spec)
-      if(pName %in% names(pars) |
-         pName %in% names(parms)) {
-        y=S[,spec]
-        emax=max(y)
-        S[,spec] = (S[,spec]/emax) * eps[spec]
-      }
-    }
-    
+
+    # Amplitude constraints    
+    for (spec in colnames(S))
+      S[,spec] = (S[,spec]/max(S[,spec])) * eps[spec]
+
     return(S)
   }
   model   = function(pars,parms) {
@@ -3657,6 +3651,10 @@ function(input, output, session) {
     Scheme[['c0']]     <<- c0List$c0
     Scheme[['c0F']]    <<- c0List$c0F
     
+    epsList = epsParse(scheme)
+    Scheme[['eps']]     <<- epsList$eps
+    Scheme[['epsF']]    <<- epsList$epsF
+    
     Scheme$gotData <<- TRUE
   }
   observeEvent(
@@ -3709,7 +3707,7 @@ function(input, output, session) {
   
     DT::datatable(
       data.frame(Reactions = reacString),
-      class = 'compact',
+      class = 'cell-border stripe',
       fillContainer = FALSE,
       options = list(paging    = FALSE,
                      ordering  = FALSE,
@@ -3776,93 +3774,119 @@ function(input, output, session) {
     
   })
   outputOptions(output, "rates",suspendWhenHidden = FALSE)
-  output$species  = renderUI({
+  output$concentrations  = renderUI({
     if (!Scheme$gotData)
       return(NULL)
     
-    iExp=1
+    # Species in scheme
     species = Scheme$species
 
+    # Species with declared concentration
     c0  = Scheme[['c0']]  #; print(c0)
     c0F = Scheme[['c0F']] #; print(c0F)
     sp0 = rownames(c0)
+
+    # Number of experiments
+    nExp = 1
+    if(!is.null(input$procMult) &&
+       input$procMult == 'tileDel')
+      nExp = length(input$rawData_rows_selected)
+    
+    header = 
+      fluidRow(
+        column(
+          3,
+          h5("Species")
+        ),
+        column(
+          4,
+          h5("Init. conc.")
+        ),
+        column(
+          4,
+          h5("F uncert.")
+        )
+      )
+    
+    for (iExp in 1:nExp) {
+      ui = list()
+      for (sp in species) {
+        if(sp %in% sp0) {
+          c0_sp  = ifelse(is.na(c0[sp,iExp] ),0,c0[sp,iExp] )
+          c0F_sp = ifelse(is.na(c0F[sp,iExp]),1,c0F[sp,iExp])
+        } else {
+          c0_sp  = 0
+          c0F_sp = 1
+        }
+        ui[[sp]] =
+          fluidRow(
+            column(
+              3,
+              h5(sp)
+            ),
+            column(
+              4,
+              numericInput(
+                paste0('c0_',sp,'_',iExp),
+                label=NULL,
+                value= c0_sp
+              )
+            ),
+            column(
+              4,
+              numericInput(
+                paste0('c0F_',sp,'_',iExp),
+                label = NULL,
+                min   = 1,
+                max   = 5,
+                value = c0F_sp,
+                step  = 0.1
+              )
+            )
+          )
+      }
+      id = paste0('conc_',iExp)
+      tp = tabPanel(h5(iExp), value=id, list(header,ui))
+      removeTab('all_conc',target = id)
+      appendTab('all_conc',tp,select=TRUE)
+    } 
+  })
+  outputOptions(output, "concentrations",suspendWhenHidden = FALSE)
+  output$epsilon  = renderUI({
+    if (!Scheme$gotData)
+      return(NULL)
+    species = Scheme$species
+    
+    # Species with declared absorption coef
+    eps  = Scheme[['eps']]  
+    epsF = Scheme[['epsF']] 
+    sp0  = names(eps)
     
     ui = list( br(),
                fluidRow(
                  column(
                    3,
-                   h4("Species")
+                   h5("Species")
                  ),
                  column(
                    4,
-                   h4("Init. conc.")
+                   h5("Eps_max.")
                  ),
                  column(
                    4,
-                   h4("F uncert.")
+                   h5("F uncert.")
                  )
                ),
                hr( style="border-color: #666;")
     )
-    
     for (sp in species) {
       if(sp %in% sp0) {
-        c0_sp  = ifelse(is.na(c0[sp,iExp]),0,c0[sp,iExp])
-        c0F_sp = ifelse(is.na(c0F[sp,iExp]),1,c0F[sp,iExp])
+        eps_sp  = ifelse(is.na(eps[sp] ),0,eps[sp] )
+        epsF_sp = ifelse(is.na(epsF[sp]),1,epsF[sp])
       } else {
-        c0_sp = 0
-        coF_sp = 1
+        eps_sp  = 0
+        epsF_sp = 1
       }
-      ui[[sp]] = 
-        fluidRow(
-          column(
-            3,
-            h5(sp)
-          ),
-          column(
-            4,
-            numericInput(
-              paste0('c0_',sp),
-              label=NULL,
-              value= c0_sp
-            )
-          ),
-          column(
-            4,
-            numericInput(
-              paste0('c0F_',sp),
-              label = NULL,
-              min   = 1,
-              max   = 5,
-              value = c0F_sp, 
-              step  = 0.1
-            )
-          )
-        )
-    }
-    
-    ui
-    
-  })
-  outputOptions(output, "species",suspendWhenHidden = FALSE)
-  output$epsilon  = renderUI({
-    if (!Scheme$gotData)
-      return(NULL)
-    species = Scheme$species
-    ui = list( br(),
-               fluidRow(
-                 column(
-                   2,
-                   h4("Species")
-                 ),
-                 column(
-                   9,
-                   h4("Epsilon")
-                 )
-               ),
-               hr( style="border-color: #666;")
-    )
-    for (sp in species) {
       ui[[sp]] = 
         fluidRow(
           column(
@@ -3870,14 +3894,22 @@ function(input, output, session) {
             h5(sp)
           ),
           column(
-            9,
-            sliderInput(
+            4,
+            numericInput(
               paste0('eps_',sp),
-              label =NULL,
-              min   =       0,
-              max   =   10000,
-              step  =     100,
-              value = c(0,10000)
+              label=NULL,
+              value= eps_sp
+            )
+          ),
+          column(
+            4,
+            numericInput(
+              paste0('epsF_',sp),
+              label = NULL,
+              min   = 1,
+              max   = 5,
+              value = epsF_sp,
+              step  = 0.1
             )
           )
         )
@@ -3904,48 +3936,60 @@ function(input, output, session) {
         delay = Inputs$delay[!is.na(Inputs$delayMask)]
         wavl  = Inputs$wavl[!is.na(Inputs$wavlMask)]
         
-        nExp=1
-        deltaStart=c(0)
-        startd = c(length(delay)) # Beware of masks !!!!!!!!!!!!!!!!!
+        # Number of experiments
+        nExp = 1
+        if(!is.null(input$procMult) &&
+           input$procMult == 'tileDel')
+          nExp = length(input$rawData_rows_selected)
+
+        deltaStart=rep(0,nExp)
+        
+        delayId = Inputs$delayId[!is.na(Inputs$delayMask)]
+        startd=rep(NA,nExp)
+        for (iExp in 1:(nExp-1))
+          startd[iExp] = which(delayId == (iExp+1))[1]-1
+        startd[nExp] = length(delay)
         
         parOpt = list()
-        eps    = list()
-        
+
         species   = Scheme$species
         nbSpecies = length(species)
         nbReac    = Scheme$nbReac
         
         # Spectral constraints
-        active=rep(TRUE,nbSpecies)
-        names(active)=species
+        active = rep(TRUE,nbSpecies); names(active) = species
+        eps    = rep(0,nbSpecies)   ; names(eps)    = species
         for (sp in species) {
           param = paste0('eps_',sp)
-          rangeEps = input[[param]]
-          if(max(rangeEps)== 0)
-            active[[sp]] = FALSE
+          eps0  = input[[param]]
+          eps[sp] = eps0 
+          
+          param = paste0('epsF_',sp)
+          epsF  = input[[param]]
+
+          if(eps0 == 0)
+            active[sp] = FALSE
           else
-            if(diff(rangeEps)==0)
-              eps[[sp]] = rangeEps[1]
-            else
-              parOpt[[param]] = 
-                paste0('unif(',rangeEps[1],',',
-                               rangeEps[2],')')
+            if(epsF > 1) 
+              parOpt[[paste0('logeps_',sp)]] = 
+                paste0('tnorm(',log(eps0),',',log(epsF),')')
         }
         
         # Initial concentrations
-        state=matrix(0,ncol=nExp,nrow=nbSpecies)
+        state=matrix(0,nrow=nbSpecies,ncol=nExp)
         rownames(state) = species
-        for (sp in species) {
-          param = paste0('c0_',sp)
-          c0 = input[[param]]
-          # Nominal value
-          state[sp,1] = c0
-          param = paste0('c0F_',sp)
-          c0F = input[[param]]
-          if(c0F > 1)
-            parOpt[[paste0('logc_',sp)]] =
-              paste0('tnorm(',log(c0),',',log(c0F),')')
-        }
+        for (iExp in 1:nExp)
+          for (sp in species) {
+            param = paste0('c0_',sp,'_',iExp)
+            c0 = input[[param]]
+            state[sp,iExp] = c0 # Nominal value
+            
+            param = paste0('c0F_',sp,'_',iExp)
+            c0F = input[[param]]
+            if(c0F > 1)         # Optimize concentration
+              parOpt[[paste0('logc0_',sp,'_',iExp)]] =
+                paste0('tnorm(',log(c0),',',log(c0F),')')
+          }
         
         # Reaction rates
         kReac = c()
@@ -3974,7 +4018,7 @@ function(input, output, session) {
           active     = active,
           startd     = startd,
           deltaStart = deltaStart,
-          sigma      = 2e-4,
+          sigma      = 8e-4,
           reactants  = Scheme$reactants,
           eps        = eps,
           uniS       = FALSE,
@@ -3988,8 +4032,8 @@ function(input, output, session) {
       startp = 
         startpInit(
           map=(
-            if (exists("opt0")) 
-              opt0$map 
+            if (exists("Restart_Kin") && input$kinRestart) 
+              Restart_Kin$map 
             else 
               NULL
           ),
@@ -4015,6 +4059,9 @@ function(input, output, session) {
       
       lof = signif(100*(sum((mat-mod)^2)/sum(mat^2))^0.5,4)
       
+      # Global variable for restart
+      Restart_Kin <<- opt0
+      
       return(
         list(map = opt0$map, hessian = opt0$hessian, 
              parms=kinParms, paropt=parOpt,
@@ -4034,93 +4081,128 @@ function(input, output, session) {
     cat('### GLOBAL OPTIMIZATION ###\n')
     gsub('\t',' ',kinPrint$glOut)
     })
+  outputOptions(output, "kinGlPrint",suspendWhenHidden = FALSE)
   
   output$kinOptPrint <- renderPrint({
     cat('### LOCAL OPTIMIZATION ###\n')
     gsub('\t',' ',kinPrint$optOut)
     })
+  outputOptions(output, "kinOptPrint",suspendWhenHidden = FALSE)
   
-  output$kinOpt <- renderUI({
-    if (input$runKin == 0) {
+  output$kinRes <- renderUI({
+    if (is.null(opt <- doKin())) {
       h5('Select options and press "Run"\n')
-      
-    } else {
-      
-      out = list()
-      
-      opt <- doKin()
-      paropt = opt$paropt
-      
-      out = list(out, h4('Kinet Optimization done!'))
-      
-      out = list(out, strong('L.o.f.:'), opt$lof,' %',br())
-      
-      map = parExpand(opt$map,paropt)
-      names(map)=names(paropt)
-      
-      # out = list(out, strong('MAP:'), map)
-
-      # ndf  = length(z) - np - sum(parms$active)*length(y)
-      # chi2 = wchisq(bestp,x,y,z,parms)
-      # ndig = 3
-      # print("*** Chi2 Analysis ***")
-      # print(paste("chi2_obs=",format(chi2,digits=ndig)))
-      # print(paste("ndf=",ndf))
-      # print(paste("chi2_r=",format(chi2/ndf,digits=ndig+1)))
-      # print(paste("P(chi2>chi2_obs)=",format(pchisq(chi2,df=ndf,
-      #                                               lower.tail=FALSE),digits=ndig)))
-      # print(paste("Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
-      #             "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)))
-      
-      Sigma=try(solve(opt$hessian), silent = TRUE)
-      if (class(Sigma) != "try-error") {
-        EV=Re(eigen(Sigma)$values)
-        if(sum(EV<0) >0 ) print("Non-positive definite Covariance matrix")
-        Sd = diag(Sigma)^0.5
-        names(Sd) =names(paropt)
-        # Corr=cov2cor(Sigma)
-      } else {
-        showModal(modalDialog(
-          title = ">>>> Numerical problem <<<< ",
-          paste0("Singular Hessian: could not compute uncertainties..."),
-          easyClose = TRUE, 
-          footer = modalButton("Close"),
-          size = 's'
-        ))
-        Sd=rep(NA,length(paropt))
-        names(Sd)=names(paropt)
-      }
-      lSd = sdExpand(Sd,paropt)
-
-      out = list(out, strong("Best fit:"),br())
-      for (item in names(map)) {
-        if(grepl('log',item))
-          out = list(out,
-                     paste(sub('log','',item),'=',signif(exp(map[[item]]),digits=2),
-                           ifelse(
-                             is.na(Sd[[item]]),
-                             "",
-                             paste("/*",signif(exp(Sd[[item]]),digits=3))  
-                           )),
-                     br()
-          )
-        else
-          out = list(out,
-                     paste(item,'=',signif(map[[item]],digits=2),
-                           ifelse(
-                             is.na(lSd[[item]]),
-                             "",
-                             paste("+/-",signif(lSd[[item]],digits=3))  
-                           )),
-                           br()
-          )
-      }
-      
-      # out = list(out,paste(signif(opt$values,3),collapse=","))
-      
-      return(out)
+      return(NULL)
     }
+    
+    out = list()
+    
+    opt <- doKin()
+    paropt = opt$paropt
+    
+    out = list(out, h4('Kinet Optimization done!'))
+    out = list(out, strong('L.o.f.:'), opt$lof,' %')
 
+    # out = list(out, strong('MAP:'), map)
+    
+    # ndf  = length(z) - np - sum(parms$active)*length(y)
+    # chi2 = wchisq(bestp,x,y,z,parms)
+    # ndig = 3
+    # print("*** Chi2 Analysis ***")
+    # print(paste("chi2_obs=",format(chi2,digits=ndig)))
+    # print(paste("ndf=",ndf))
+    # print(paste("chi2_r=",format(chi2/ndf,digits=ndig+1)))
+    # print(paste("P(chi2>chi2_obs)=",format(pchisq(chi2,df=ndf,
+    #                                               lower.tail=FALSE),digits=ndig)))
+    # print(paste("Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
+    #             "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)))
+    
+    return(out)
+    
+  })
+  
+  output$kinOpt <- DT::renderDataTable({
+    if (is.null(opt <- doKin())) 
+      return(NULL)
+    
+    paropt = opt$paropt
+    map = parExpand(opt$map,paropt)
+    names(map)=names(paropt)
+    
+    Sigma=try(solve(opt$hessian), silent = TRUE)
+    if (class(Sigma) != "try-error") {
+      EV=Re(eigen(Sigma)$values)
+      if(sum(EV<0) >0 ) print("Non-positive definite Covariance matrix")
+      Sd = diag(Sigma)^0.5
+      names(Sd) =names(paropt)
+      # Corr=cov2cor(Sigma)
+    } else {
+      showModal(modalDialog(
+        title = ">>>> Numerical problem <<<< ",
+        paste0("Singular Hessian: could not compute uncertainties..."),
+        easyClose = TRUE, 
+        footer = modalButton("Close"),
+        size = 's'
+      ))
+      Sd=rep(NA,length(paropt))
+      names(Sd)=names(paropt)
+    }
+    lSd = sdExpand(Sd,paropt)
+    
+    eps = 1e-3
+    parsc = parContract(paropt)
+    LB = parsc$LB; names(LB) = parsc$names
+    UB = parsc$UB; names(UB) = parsc$names
+    nPar = length(names(map))
+    alert= rep('',nPar); names(alert) = names(map)
+    tags = rep('',nPar); names(tags)  = names(map)
+    val  = rep(NA,nPar); names(val )  = names(map)
+    valF = rep(NA,nPar); names(valF)  = names(map)
+    
+    for (item in names(map)) {
+      # Detect params close to priors limits
+      if( abs(opt$map[item]-LB[item]) < eps) 
+        alert[item] = ' *** at min of prior'
+      else 
+        if (abs(opt$map[item]-UB[item]) < eps)
+          alert[item] = ' *** at max of prior'
+        
+        if(grepl('log',item)) {
+          tags[item] = sub('log','',item)
+          val[item]  = signif(exp(map[[item]]),digits=2)
+          valF[item] = ifelse(
+            is.na(Sd[[item]]),
+            "",
+            paste("/*",signif(exp(Sd[[item]]),digits=3))  
+          )
+        } else {
+          tags[item] = item
+          val[item]  = signif(map[[item]],digits=2)
+          valF[item] = ifelse(
+            is.na(lSd[[item]]),
+            "",
+            paste("+/-",signif(lSd[[item]],digits=3))  
+          )
+        }
+    }
+    
+    DT::datatable(
+      data.frame(
+        Name    = tags,
+        Value   = val,
+        Uncert  = valF,
+        Comment = alert
+      ),
+      class = 'cell-border stripe',
+      rownames = FALSE,
+      options = list(paging    = FALSE,
+                     ordering  = FALSE,
+                     searching = FALSE,
+                     dom       = 't'   ),
+      escape    = FALSE,
+      width     = 200
+    )
+    
   })
 
   output$kinParams1 <- renderPlot({
@@ -4129,7 +4211,8 @@ function(input, output, session) {
     
     map = parExpand(opt$map,opt$paropt)
     
-    ncol = ceiling(sqrt(length(map)))
+    # ncol = ceiling(sqrt(length(map)))
+    ncol = min(5, length(map))
     nrow = floor(length(map)/ncol)
     if(nrow*ncol != length(map)) nrow = nrow +1
     
@@ -4220,19 +4303,27 @@ function(input, output, session) {
     #Integrated kinetics
     if (is.null(opt <- doKin()))
       return(NULL)
+
+    mat = Inputs$mat 
+    mat = mat[!is.na(Inputs$delayMask),]
+    mat = mat[,!is.na(Inputs$wavlMask) ]
+    times = Inputs$delaySave[!is.na(Inputs$delayMask)]
     
-    CS = reshapeCS(opt$C,opt$S,ncol(opt$C))  
-    mod = Inputs$mat * 0.0
+    mod = mat * 0.0
     for (i in 1:ncol(opt$C)) {
-      mod = mod + CS$C[,i] %o% CS$S[,i]
+      mod = mod + opt$C[,i] %o% opt$S[,i]
     }
     mod[is.na(mod)] = 0
+
     
-    Nexp = length(input$rawData_rows_selected)
+    nExp = 1
+    if(!is.null(input$procMult) &&
+       input$procMult == 'tileDel')
+      nExp = length(input$rawData_rows_selected)
     
-    ncol = ceiling(sqrt(Nexp))
-    nrow = floor(Nexp/ncol)
-    if(nrow*ncol != Nexp) nrow = nrow +1
+    ncol = ceiling(sqrt(nExp))
+    nrow = floor(nExp/ncol)
+    if(nrow*ncol != nExp) nrow = nrow +1
 
     par(mfrow=c(nrow,ncol),
         cex = cex, cex.main=cex, mar = mar, 
@@ -4240,12 +4331,12 @@ function(input, output, session) {
     
     startd = opt$parms[['startd']]
     i0=0
-    for (iExp in 1:Nexp) {
+    for (iExp in 1:nExp) {
       sel = (i0+1):startd[iExp]
-      tinteg = opt$xC[sel]
-      tinteg = tinteg-tinteg[1] #+deltaStart[iExp]
+      tinteg = times[sel]
+      # tinteg = tinteg-tinteg[1] #+deltaStart[iExp]
       i0 = startd[iExp]
-      dd = rowSums(Inputs$mat[sel,],na.rm = TRUE)
+      dd = rowSums(mat[sel,],na.rm = TRUE)
       plot(tinteg,dd,
            xlim=c(0,max(tinteg)/1),ylim=c(0,max(dd)*1.1),
            pch=19,col='blue')

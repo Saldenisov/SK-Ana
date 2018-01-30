@@ -1,6 +1,8 @@
 # enableBookmarking(store = "server")
 
-options(shiny.maxRequestSize = 20 * 1024 ^ 2)
+options(shiny.maxRequestSize = 20 * 1024 ^ 2,
+        width = 60,
+        warn  =  0)
 
 # options(shiny.json.digits=32)
 
@@ -10,7 +12,7 @@ libs <- c(
   "outliers", "nnls", "Iso", "viridis", "httpuv",
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMF", "tools", "shinycssloaders",
-  "rgenoud", "mvtnorm", "deSolve", "msm"
+  "rgenoud", "mvtnorm", "deSolve", "msm","xtable"
 )
 for (lib in libs)
   if (!require(lib, character.only = TRUE, quietly = TRUE))

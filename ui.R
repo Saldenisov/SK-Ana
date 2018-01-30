@@ -836,7 +836,7 @@ navbarPage(
           wellPanel(
             tabsetPanel(
               tabPanel(
-                h4("Write"),
+                h4("Type"),
                 hr( style="border-color: #666;"),
                 textAreaInput(
                   inputId = 'schemeScript', 
@@ -882,7 +882,8 @@ navbarPage(
               ),
               tabPanel(
                 h4("Conc."),
-                uiOutput('species')
+                tabsetPanel(id='all_conc'),
+                uiOutput('concentrations')
               ),
               tabPanel(
                 h4("Eps."),
@@ -926,7 +927,11 @@ navbarPage(
                                   icon=icon('gear')
                      ),
                      tags$style(type='text/css', 
-                                "#runKin { width:100%; margin-top: 25px;}")
+                                "#runKin { width:100%; margin-top: 25px;}"
+                     ),
+                     checkboxInput("kinRestart",
+                                   label=strong("Restart"),
+                                   value=FALSE)
               )
             )
           )
@@ -938,14 +943,25 @@ navbarPage(
       wellPanel(
         tabsetPanel(
           tabPanel(
-            h4("Optimization"),
+            h4("Best params"),
+            wellPanel(
+              fluidRow(
+                column(6,
+                       uiOutput('kinRes'),
+                       h4('Best parameters (MAP)'),
+                       withSpinner(
+                         DT::dataTableOutput('kinOpt'),
+                         type = 4
+                       )
+                )
+              )
+            )
+          ),
+          tabPanel(
+            h4("Trace"),
             wellPanel(
               verbatimTextOutput('kinGlPrint'),
-              verbatimTextOutput('kinOptPrint'),
-              withSpinner(
-                uiOutput('kinOpt'),
-                type = 4
-              )
+              verbatimTextOutput('kinOptPrint')
             )
           ),
           tabPanel(
@@ -961,7 +977,16 @@ navbarPage(
             value="kinResid",
             title=h4("Residuals"),
             br(),
+            
             tabsetPanel(
+              tabPanel(
+                value="kinResid1_3",
+                title=h5("Integ. kinet."), br(),
+                withSpinner(
+                  plotOutput("kinResid3", height=550),
+                  type=4
+                )
+              ),
               tabPanel(
                 value="kinResid1_1",
                 title=h5("Residuals"), br(),
@@ -975,14 +1000,6 @@ navbarPage(
                 title=h5("SVD of Residuals"), br(),
                 withSpinner(
                   plotOutput("kinResid2", height=550),
-                  type=4
-                )
-              ),
-              tabPanel(
-                value="kinResid1_3",
-                title=h5("Integ. kinet."), br(),
-                withSpinner(
-                  plotOutput("kinResid3", height=550),
                   type=4
                 )
               ),
@@ -1101,8 +1118,8 @@ navbarPage(
       h5("Author      : P. Pernot"),
       a(href="https://doi.org/10.5281/zenodo.1064370",">>> How to Cite"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 2.5"),
-      h5("Date        : 2017/12/20"),
+      h5("Version     : 3.0beta"),
+      h5("Date        : 2018/01/30"),
       hr( style="border-color: #666;"),
       a(href="https://github.com/ppernot/SK-Ana","Code@GitHub"),
       br(),
