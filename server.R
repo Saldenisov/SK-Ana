@@ -1721,7 +1721,7 @@ function(input, output, session) {
     points(lof,pch=19,cex=1.5,col='orchid')
     grid();box()
   
-  },height = 450)
+  },height = 550)
   outputOptions(output, "svdSV",
                 suspendWhenHidden = FALSE)
 
@@ -1788,13 +1788,14 @@ function(input, output, session) {
       return(NULL)
     CS = reshapeCS(s$u,s$v,ncol(s$u))
     plotSVDVecBloc(CS$C,CS$S,Inputs$delay,Inputs$wavl)    
-  },height = 500)
+  },height = 550)
   outputOptions(output, "svdVec",
                 suspendWhenHidden = FALSE)
   
   plotDatavsMod <- function (delay,wavl,mat,C,S,
                          d = rep(1,ncol(C)),
-                         main = 'Data',...) {
+                         main = 'Data',
+                         cont = FALSE,...) {
     # Build model matrix
     matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
     for (i in 1:ncol(S))
@@ -1813,6 +1814,8 @@ function(input, output, session) {
       xlab = 'Delay',ylab = 'Wavelength',
       main = main, col = cols, zlim = zlim
     )
+    if(cont)
+      contour(delay,wavl,mat,10,col='gold',lwd=2,add=TRUE)
     colorizeMask1D(axis="delay",ylim=ylim)
     colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
     
@@ -1822,6 +1825,8 @@ function(input, output, session) {
       main = paste0('Model ',ncol(S),' species'),
       col = cols,zlim = zlim
     )
+    if(cont)
+      contour(delay,wavl,matAls,10,col='gold',lwd=2,add=TRUE)
     colorizeMask1D(axis="delay",ylim=ylim)
     colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
   }
@@ -1942,9 +1947,17 @@ function(input, output, session) {
     if (is.null(s <- doSVD()))
       return(NULL)
     CS = reshapeCS(s$u,s$v,input$nSV)
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
+    plotDatavsMod(Inputs$delay,Inputs$wavl,Inputs$mat,
               CS$C,CS$S,d = s$d)
-  },height = 450)
+  },height = 550)
+  
+  output$svdResid1 <- renderPlot({
+    if (is.null(s <- doSVD()))
+      return(NULL)
+    CS = reshapeCS(s$u,s$v,input$nSV)
+    plotResidOnly(Inputs$delay,Inputs$wavl,Inputs$mat,
+                  CS$C,CS$S,d = s$d)
+  },height = 550)
   
   plotConbtribs <- function (delay,wavl,mat,C,S,
                              d = rep(1,ncol(C)),
@@ -1990,7 +2003,7 @@ function(input, output, session) {
     CS = reshapeCS(s$u,s$v,input$nSV)
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
                   CS$C,CS$S,d = s$d, type ='svd')
-  },height = 450)
+  },height = 550)
   
   output$svdStat <- DT::renderDataTable({
     if (is.null(s <- doSVD()))
@@ -2395,10 +2408,35 @@ function(input, output, session) {
       mat = Inputs$mat
       main = 'Raw data'
     }
-    plotResid(Inputs$delay,Inputs$wavl,mat,
-              CS$C,CS$S,main=main)
+    plotDatavsMod(Inputs$delay,Inputs$wavl,mat,
+                  CS$C,CS$S,main=main)
     
-  },height = 450)
+  },height = 550)
+  
+  output$alsResid3 <- renderPlot({
+    if (is.null(alsOut <- doALS()))
+      return(NULL)
+    
+    CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C))    
+    
+    if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
+      s <- doSVD()
+      CS1 = reshapeCS(s$u,s$v,input$nSV)
+      mat = matrix(0,nrow=length(Inputs$delay),
+                   ncol=length(Inputs$wavl))
+      for (ic in 1:input$nSV) 
+        mat = mat + CS1$C[,ic] %o% CS1$S[,ic] * s$d[ic]
+      
+      main = "SVD-filtered data"
+      
+    } else {
+      mat = Inputs$mat
+      main = 'Raw data'
+    }
+    plotResidOnly(Inputs$delay,Inputs$wavl,mat,
+                  CS$C,CS$S,main=main)
+    
+  },height = 550)
   
   plotResidAna = function(delay,wavl,mat,C,S,
                           d = rep(1,ncol(C)),
@@ -2472,7 +2510,7 @@ function(input, output, session) {
     plotResidAna(Inputs$delay,Inputs$wavl,mat,
               CS$C,CS$S,main=main)
     
-  },height = 450)
+  },height = 550)
 
   plotAlsVec <- function (alsOut,type="Kin",
                           xlim=NULL,ylim=NULL,
@@ -2486,7 +2524,7 @@ function(input, output, session) {
     if(is.finite(alsOut$hessian) && plotUQ) {
       # Generate sample of curves
       Sigma=try(solve(alsOut$hessian), silent = TRUE)
-      if (class(Sigma) != "try-error") {
+      if (class(Sigma) != "try-error" && alsOut$cnv == 0) {
         plotBands = TRUE
         eps = 0.0
         S = alsOut$S
@@ -2580,7 +2618,7 @@ function(input, output, session) {
     plotAlsVec(alsOut,type = "Kin",
                xlim = rangesAlsKin$x,
                ylim = rangesAlsKin$y)
-  },height = 400)
+  },height = 500)
   
   observeEvent(input$alsKin_dblclick, {
     brush <- input$alsKin_brush
@@ -2601,7 +2639,7 @@ function(input, output, session) {
     plotAlsVec(alsOut,type = "Sp",
                xlim = rangesAlsSp$x,
                ylim = rangesAlsSp$y)
-  },height = 400)
+  },height = 500)
 
   observeEvent(input$alsSp_dblclick, {
     brush <- input$alsSp_brush
@@ -2654,7 +2692,7 @@ function(input, output, session) {
     CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C))    
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
                   CS$C,CS$S)
-  },height = 450)
+  },height = 550)
   
   output$selAmbParams <- renderUI({
     if (is.null(alsOut <- doALS()))
@@ -3126,7 +3164,7 @@ function(input, output, session) {
                  xlim = rangesAmbSp$x,
                  ylim = rangesAmbSp$y)
 
-  },height = 400)
+  },height = 450)
   
   observeEvent(input$ambSp_dblclick, {
     brush <- input$ambSp_brush
@@ -3204,12 +3242,13 @@ function(input, output, session) {
         parts = unlist(strsplit(params[[item]], split="[(,)]" ))
         priorPDF=parts[1]
         paramPDF=as.numeric(parts[2:3])
-        p[[item]]=switch(priorPDF,
-                         unif  = popt[iopt]*(paramPDF[2]-paramPDF[1]),
-                         norm  = popt[iopt]*paramPDF[2], 
-                         tnorm = popt[iopt]*paramPDF[2], 
-                         lnorm = 1
-        )              
+        p[[item]]=
+          switch(priorPDF,
+                 unif  = popt[iopt]*(paramPDF[2]-paramPDF[1]),
+                 norm  = popt[iopt]*paramPDF[2], 
+                 tnorm = popt[iopt]*paramPDF[2], 
+                 lnorm = 1
+          )              
       }  
     }
     return(p)
@@ -3633,36 +3672,54 @@ function(input, output, session) {
   }
   
   # Bayesian inference functions #########################################
-  uresid  = function (pars,parms)
+  uresid  = function (pars,parms) {
     parms$mat - model(pars,parms)
-  uchisq  = function (pars,parms)
+  }
+  uchisq  = function (pars,parms) {
     sum(uresid(pars,parms)^2)
-  ulogL   = function (pars,parms)
+  }
+  ulogL   = function (pars,parms) {
     -length(parms$mat)/2*log(uchisq(pars,parms))
-  logP   = function (pars,paropt,parms) {
+  }
+  ulogP   = function (pars,paropt,parms) {
+    logL =  ulogL(parExpand(pars,paropt),parms)  
+    logP  = logL + logPri(pars)
+    if ( is.nan(logP) || is.infinite(logP) ) logP=-1e30
+    return(logP)
+  } 
+  mulogP  = function (pars,paropt,parms) {
+    -ulogP(pars,paropt,parms)
+  }
+  wresid  = function (pars,parms) {
+    (parms$mat - model(pars,parms))/parms$sigma
+  }
+  wchisq  = function (pars,parms) {
+    sum(wresid(pars,parms)^2)
+  }
+  wlogL   = function (pars,parms) {
+    -0.5*wchisq(pars,parms)
+  }
+  wlogP   = function (pars,paropt,parms) {
     logL =  wlogL(parExpand(pars,paropt),parms)  
     logP  = logL + logPri(pars)
     if ( is.nan(logP) || is.infinite(logP) ) logP=-1e30
     return(logP)
   } 
-  mlogP  = function (pars,paropt,parms) 
-    -logP(pars,paropt,parms)
-  wlogL  = function (pars,parms)
-    -0.5*wchisq(pars,parms)
-  wchisq = function (pars,parms)
-    sum(wresid(pars,parms)^2)
-  wresid = function (pars,parms)
-    (parms$mat - model(pars,parms))/parms$sigma
+  mwlogP  = function (pars,paropt,parms) {
+    -wlogP(pars,paropt,parms)
+  }
   bmc_hyb = function (paropt, parms, 
                       mc=FALSE, global=30, startp=NULL, 
-                      niter=0, tune=0.8, tol=1e-8) {   
+                      niter=0, tune=0.8, tol=1e-8,
+                      weighted = FALSE) {   
     
     pars=parContract(paropt)
     np=length(pars$p0) 
     
     if (niter != 0) {
       kinPrint$glOut <<- capture.output(
-        xopt <- rgenoud::genoud(mlogP, 
+        xopt <- rgenoud::genoud(
+                             fn = ifelse(weighted,mwlogP,mulogP), 
                              parms = parms, 
                              paropt = paropt,
                              starting.values = startp,
@@ -3687,7 +3744,8 @@ function(input, output, session) {
     
     best = NA
     kinPrint$optOut <<- capture.output(
-      best <- Rsolnp::solnp(best1, fun = mlogP, 
+      best <- Rsolnp::solnp(best1, 
+                            fun = ifelse(weighted,mwlogP,mulogP), 
                             LB=pars$LB, UB=pars$UB, 
                             control=list(tol=tol,trace=1), 
                             parms=parms,paropt=paropt)
@@ -4150,12 +4208,13 @@ function(input, output, session) {
       global = input$kinGlobFac*length(startp)
         
       opt0 = bmc_hyb(parOpt,
-                     parms  = kinParms,
-                     global = global, 
-                     niter  = niter,
-                     mc     = FALSE,
-                     startp = startp,
-                     tol    = 10^input$kinThresh)
+                     parms    = kinParms,
+                     global   = global, 
+                     niter    = niter,
+                     mc       = FALSE,
+                     startp   = startp,
+                     tol      = 10^input$kinThresh,
+                     weighted = input$kinWeighted)
       
       map = parExpand(opt0$map,parOpt)
       mod = model(map,kinParms)
@@ -4175,6 +4234,7 @@ function(input, output, session) {
              paropt  = parOpt,
              mat     = mat,
              model   = mod,
+             weighted= input$kinWeighted,
              sigma   = input$kinSigma,
              nExp    = nExp,
              times   = times,
@@ -4223,19 +4283,21 @@ function(input, output, session) {
 
     out = list(out, strong('L.o.f.:'), signif(opt$lof,3),' %',br(),p())
 
-    ndf  = length(opt$mat) - length(opt$map) - length(opt$S)
-    chi2 = sum(((opt$mat - opt$mod)/opt$sigma)^2)
-    ndig = 3
-    out  = list(out,
-                strong("*** Chi2 Analysis ***"),br(),
-                "chi2_obs = ",format(chi2,digits=ndig),br(),
-                "ndf      = ",ndf,br(),
-                "chi2_red =",format(chi2/ndf,digits=ndig+1),br(),
-                "P(chi2>chi2_obs)=",
+    if(opt$weighted) {
+      ndf  = length(opt$mat) - length(opt$map) - length(opt$S)
+      chi2 = sum(((opt$mat - opt$mod)/opt$sigma)^2)
+      ndig = 3
+      out  = list(out,
+                  strong("*** Chi2 Analysis ***"),br(),
+                  "chi2_obs = ",format(chi2,digits=ndig),br(),
+                  "ndf      = ",ndf,br(),
+                  "chi2_red =",format(chi2/ndf,digits=ndig+1),br(),
+                  "P(chi2>chi2_obs)=",
                   format(pchisq(chi2,df=ndf,lower.tail=FALSE),digits=ndig),br(),
-                "Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
-                "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)
-    )
+                  "Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
+                  "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)
+      )
+    }
     
     return(out)
     
@@ -4267,7 +4329,8 @@ function(input, output, session) {
       Sd=rep(NA,length(paropt))
       names(Sd)=names(paropt)
     }
-    lSd = sdExpand(Sd,paropt)
+    lSd = unlist(sdExpand(Sd,paropt))
+    names(lSd) = names(paropt)
     
     eps = 1e-3
     parsc = parContract(paropt)
@@ -4291,15 +4354,15 @@ function(input, output, session) {
           tags[item] = sub('log','',item)
           val[item]  = signif(exp(map[[item]]),digits=2)
           valF[item] = ifelse(
-            is.na(Sd[item]),
+            !is.finite(lSd[item]),
             "",
-            paste("/*",signif(exp(Sd[item]),digits=3))  
+            paste("/*",signif(exp(lSd[item]),digits=3))  
           )
         } else {
           tags[item] = item
           val[item]  = signif(map[item],digits=2)
           valF[item] = ifelse(
-            is.na(lSd[item]),
+            !is.finite(lSd[item]),
             "",
             paste("+/-",signif(lSd[item],digits=3))  
           )
@@ -4325,14 +4388,15 @@ function(input, output, session) {
     
   })
 
-  output$kinParams1 <- renderPlot({
+  output$kinParams <- renderPlot({
     if (is.null(opt <- doKin()))
       return(NULL)
     
     map = parExpand(opt$map,opt$paropt)
     
     # ncol = ceiling(sqrt(length(map)))
-    ncol = min(5, length(map))
+    ncol = min(ceiling(sqrt(length(map))),
+               min(5, length(map)))
     nrow = floor(length(map)/ncol)
     if(nrow*ncol != length(map)) nrow = nrow +1
     
@@ -4352,10 +4416,7 @@ function(input, output, session) {
            type="l",col="blue",xlab=p,ylab="PDF",yaxs='i')
       
       m = map[[p]]
-      if( grepl('log',p) )
-        s = Sd[p]
-      else
-        s = lSd[p]
+      s = lSd[p]
  
       if( is.finite(s) )
         curve(exp(-0.5*(x-m)^2/s^2),
@@ -4430,7 +4491,7 @@ function(input, output, session) {
     nExp  = opt$nExp
 
     # ncol = ceiling(sqrt(nExp))
-    ncol = min(5, nExp)
+    ncol = max(2,min(5, nExp))
     nrow = floor(nExp/ncol)
     if(nrow*ncol != nExp) nrow = nrow +1
 
@@ -4516,8 +4577,12 @@ function(input, output, session) {
       mat = Inputs$mat
       main = 'Raw data'
     }
-    plotDatavsMod(Inputs$delay,Inputs$wavl,mat,
-                  CS$C,CS$S,main=main)
+    plotDatavsMod(Inputs$delay,
+                  Inputs$wavl,
+                  mat,
+                  CS$C,CS$S,
+                  main=main,
+                  cont = input$kinContours)
     
   },height = 550)
 
@@ -4531,7 +4596,7 @@ function(input, output, session) {
                xlim = rangesKinSp$x,
                ylim = rangesKinSp$y,
                plotUQ = input$plotCSUQ)
-  },height = 400)
+  },height = 500)
   
   observeEvent(input$kinSp_dblclick, {
     brush <- input$kinSp_brush
@@ -4554,7 +4619,7 @@ function(input, output, session) {
                xlim = rangesKinKin$x,
                ylim = rangesKinKin$y,
                plotUQ = input$plotCSUQ)
-  },height = 400)
+  },height = 500)
   
   observeEvent(input$kinKin_dblclick, {
     brush <- input$kinKin_brush
@@ -4573,7 +4638,7 @@ function(input, output, session) {
     CS = reshapeCS(opt$C,opt$S,ncol(opt$C))    
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
                   CS$C,CS$S)
-  },height = 450)
+  },height = 550)
   
   
   # Report ####

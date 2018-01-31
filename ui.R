@@ -489,10 +489,19 @@ navbarPage(
             ),
             tabPanel(
               value="residSVD",
-              title=h4("Residuals"),
+              title=h4("Data vs. Model"),
               br(),
               withSpinner(
                 plotOutput("svdResid", height=550),
+                type=4
+              )
+            ),
+            tabPanel(
+              value="residSVD1",
+              title=h4("Residuals"),
+              br(),
+              withSpinner(
+                plotOutput("svdResid1", height=550),
                 type=4
               )
             ),
@@ -507,7 +516,7 @@ navbarPage(
             ),
             tabPanel(
               value="statSVD",
-              title=h4("Statistiques"),
+              title=h4("Statistics"),
               br(),
               withSpinner(
                 DT::dataTableOutput('svdStat',width = "50%"),
@@ -702,14 +711,22 @@ navbarPage(
             
             tabPanel(
               value="alsResid",
-              title=h4("Residuals"),
+              title=h4("Diagnostics"),
               br(),
               tabsetPanel(
                 tabPanel(
                   value="alsResid1_1",
-                  title=h5("Residuals"), br(),
+                  title=h5("Data vs. Model"), br(),
                   withSpinner(
                     plotOutput("alsResid1", height=550) ,
+                    type=4
+                  )
+                ),
+                tabPanel(
+                  value="alsResid1_3",
+                  title=h5("Residuals"), br(),
+                  withSpinner(
+                    plotOutput("alsResid3", height=550) ,
                     type=4
                   )
                 ),
@@ -731,7 +748,7 @@ navbarPage(
               fluidRow(
                 column(6,
                        withSpinner(
-                         plotOutput("alsSpVectors", height=450,
+                         plotOutput("alsSpVectors", height=500,
                                     dblclick = "alsSp_dblclick",
                                     brush = brushOpts(
                                       id = "alsSp_brush",
@@ -742,7 +759,7 @@ navbarPage(
                 ),
                 column(6,
                        withSpinner(
-                         plotOutput("alsKinVectors", height=450,
+                         plotOutput("alsKinVectors", height=500,
                                     dblclick = "alsKin_dblclick",
                                     brush = brushOpts(
                                       id = "alsKin_brush",
@@ -898,6 +915,7 @@ navbarPage(
           wellPanel(
             fluidRow(
               column(8,
+                     
                      sliderInput("kinGlobNit", 
                                  "Global Optimization Iterations",
                                  min   =   0, 
@@ -924,21 +942,30 @@ navbarPage(
                                   min   =    0, 
                                   max   =    1, 
                                   step  =  0.1,
-                                  width = '120px'),
-                     fluidRow(
-                       column(6,
-                              numericInput("kinSigma", 
-                                           label = "Sigma", 
-                                           value =       1,
-                                           width = '120px')
-                       ),
-                       column(6,
-                              sliderInput("kinSigmaIndex", 
-                                           label = "SVD Level",
-                                           min   = 0,
-                                           max   = 6,
-                                           step  = 1,
-                                           value = 0)
+                                  width = '120px'
+                     ),
+                     checkboxInput("kinWeighted", 
+                                   label= "Weigted data",
+                                   value = FALSE),
+                     # shinyBS::bsTooltip("closeC", 
+                     #                    title = "Ensures that sum(C)=1 at each delay"),
+                     conditionalPanel(
+                       condition = "input.kinWeighted",
+                       fluidRow(
+                         column(6,
+                                numericInput("kinSigma", 
+                                             label = "Sigma", 
+                                             value =       1,
+                                             width = '120px')
+                         ),
+                         column(6,
+                                sliderInput("kinSigmaIndex", 
+                                            label = "SVD Level",
+                                            min   = 0,
+                                            max   = 6,
+                                            step  = 1,
+                                            value = 0)
+                         )
                        )
                      )
               ),
@@ -951,7 +978,7 @@ navbarPage(
                                 "#runKin { width:100%; margin-top: 25px;}"
                      ),
                      checkboxInput("kinRestart",
-                                   label=strong("Restart"),
+                                   label=strong(" Restart"),
                                    value=FALSE)
               )
             )
@@ -991,7 +1018,7 @@ navbarPage(
             h4("Identifiability"),
             wellPanel(
               withSpinner(
-                plotOutput("kinParams1", height=550) ,
+                plotOutput("kinParams", height=550) ,
                 type=4
               )
             )
@@ -1024,6 +1051,16 @@ navbarPage(
                 withSpinner(
                   plotOutput("kinResid5", height=550) ,
                   type=4
+                ),
+                wellPanel(
+                  fluidRow(
+                    column(4,
+                           checkboxInput("kinContours",
+                                         label = "Add contours",
+                                         value = FALSE),
+                           offset = 8
+                    )
+                  )
                 )
               ),
               tabPanel(
@@ -1052,7 +1089,7 @@ navbarPage(
             fluidRow(
               column(6,
                      withSpinner(
-                       plotOutput("kinSpVectors", height=450,
+                       plotOutput("kinSpVectors", height=500,
                                   dblclick = "kinSp_dblclick",
                                   brush = brushOpts(
                                     id = "kinSp_brush",
@@ -1063,7 +1100,7 @@ navbarPage(
               ),
               column(6,
                      withSpinner(
-                       plotOutput("kinKinVectors", height=450,
+                       plotOutput("kinKinVectors", height=500,
                                   dblclick = "kinKin_dblclick",
                                   brush = brushOpts(
                                     id = "kinKin_brush",
