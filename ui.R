@@ -916,10 +916,31 @@ navbarPage(
                                  "Log Convergence Threshold",
                                  min   =  -10, 
                                  max   =   -2, 
-                                 value =   -4
+                                 value =   -8
+                     ),
+                     numericInput("kinSmooth", 
+                                  label = "Smooth", 
+                                  value =    0, 
+                                  min   =    0, 
+                                  max   =    1, 
+                                  step  =  0.1,
+                                  width = '120px'),
+                     fluidRow(
+                       column(6,
+                              numericInput("kinSigma", 
+                                           label = "Sigma", 
+                                           value =       1,
+                                           width = '120px')
+                       ),
+                       column(6,
+                              sliderInput("kinSigmaIndex", 
+                                           label = "SVD Level",
+                                           min   = 0,
+                                           max   = 6,
+                                           step  = 1,
+                                           value = 0)
+                       )
                      )
-                     
-                     
               ),
               column(4,
                      actionButton("runKin",
@@ -946,8 +967,10 @@ navbarPage(
             h4("Best params"),
             wellPanel(
               fluidRow(
+                column(4,
+                       uiOutput('kinRes')
+                       ),
                 column(6,
-                       uiOutput('kinRes'),
                        h4('Best parameters (MAP)'),
                        withSpinner(
                          DT::dataTableOutput('kinOpt'),
@@ -975,15 +998,31 @@ navbarPage(
           ),
           tabPanel(
             value="kinResid",
-            title=h4("Residuals"),
+            title=h4("Diagnostics"),
             br(),
             
             tabsetPanel(
+              tabPanel(
+                value="kinResid1_4",
+                title=h5("L.O.F"), br(),
+                withSpinner(
+                  plotOutput("kinResid4", height=550),
+                  type=4
+                )
+              ),
               tabPanel(
                 value="kinResid1_3",
                 title=h5("Integ. kinet."), br(),
                 withSpinner(
                   plotOutput("kinResid3", height=550),
+                  type=4
+                )
+              ),
+              tabPanel(
+                value="kinResid1_5",
+                title=h5("Data vs. Model"), br(),
+                withSpinner(
+                  plotOutput("kinResid5", height=550) ,
                   type=4
                 )
               ),

@@ -1792,6 +1792,83 @@ function(input, output, session) {
   outputOptions(output, "svdVec",
                 suspendWhenHidden = FALSE)
   
+  plotDatavsMod <- function (delay,wavl,mat,C,S,
+                         d = rep(1,ncol(C)),
+                         main = 'Data',...) {
+    # Build model matrix
+    matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
+    for (i in 1:ncol(S))
+      matAls = matAls + C[,i] %o% S[,i] * d[i]
+    zlim = range(mat,na.rm = TRUE)
+    
+    xlim=range(delay,na.rm=TRUE)
+    ylim=range(wavl,na.rm=TRUE)
+
+    par(mfrow=c(1,2))    
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+
+    image(
+      delay,wavl,mat,xlim=xlim,ylim=ylim,
+      xlab = 'Delay',ylab = 'Wavelength',
+      main = main, col = cols, zlim = zlim
+    )
+    colorizeMask1D(axis="delay",ylim=ylim)
+    colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+    
+    image(
+      delay,wavl,matAls,xlim=xlim,ylim=ylim,
+      xlab = 'Delay',ylab = 'Wavelength',
+      main = paste0('Model ',ncol(S),' species'),
+      col = cols,zlim = zlim
+    )
+    colorizeMask1D(axis="delay",ylim=ylim)
+    colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+  }
+  
+  plotResidOnly <- function (delay,wavl,mat,C,S,
+                         d = rep(1,ncol(C)),
+                         main = 'Data',...) {
+    # Build model matrix
+    matAls = rep(0,nrow=nrow(mat),ncol=ncol(mat))
+    for (i in 1:ncol(S))
+      matAls = matAls + C[,i] %o% S[,i] * d[i]
+    zlim = range(mat,na.rm = TRUE)
+    
+    xlim=range(delay,na.rm=TRUE)
+    ylim=range(wavl,na.rm=TRUE)
+
+    resid = matAls - mat
+    lof = 100*(sum(resid^2,na.rm = TRUE)/
+                 sum(mat^2,na.rm = TRUE)
+    )^0.5
+    
+    par(mfrow=c(1,2))
+    par(cex = cex,cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty=pty)
+
+    image(
+      delay,wavl,resid,xlim=xlim,ylim=ylim,
+      xlab = 'Delay',ylab = 'Wavelength',
+      main = paste0('Residuals; L.o.f.=',signif(lof,3),'%'),
+      col = cols
+    )
+    colorizeMask1D(axis="delay",ylim=ylim)
+    colorizeMask1D(axis="wavl", dir='h', ylim=xlim)
+    
+    res = resid[!is.na(resid)]
+    hist(
+      res,col = cyan_tr, border=NA,
+      xlim = range(c(res,zlim)),
+      xlab = '',main = 'Residuals vs. signal'
+    )
+    hist(mat,col = pink_tr,border=NA,add = TRUE)
+    legend(
+      'topright',c('Signal','Residuals'),
+      pch = 15,col = c(pink_tr,cyan_tr),cex = 0.75
+    )
+  }
+  
   plotResid <- function (delay,wavl,mat,C,S,
                          d = rep(1,ncol(C)),
                          main = 'Data',...) {
@@ -3578,7 +3655,7 @@ function(input, output, session) {
     (parms$mat - model(pars,parms))/parms$sigma
   bmc_hyb = function (paropt, parms, 
                       mc=FALSE, global=30, startp=NULL, 
-                      niter=0, tune=0.8) {   
+                      niter=0, tune=0.8, tol=1e-8) {   
     
     pars=parContract(paropt)
     np=length(pars$p0) 
@@ -3612,16 +3689,17 @@ function(input, output, session) {
     kinPrint$optOut <<- capture.output(
       best <- Rsolnp::solnp(best1, fun = mlogP, 
                             LB=pars$LB, UB=pars$UB, 
-                            control=list(tol=1e-8,trace=1), 
+                            control=list(tol=tol,trace=1), 
                             parms=parms,paropt=paropt)
     )
     p1=best$pars
     names(p1) = names(paropt)
-    
+
     out = list(
       map     = p1, 
       hessian = best$hessian,
-      values  = best$values
+      values  = best$values,
+      cnv     = best$convergence
     )
     
     return( out )
@@ -3690,6 +3768,33 @@ function(input, output, session) {
                           value=""
       )
       Scheme$gotData <<- FALSE
+    } 
+  )
+  observeEvent(
+    input$kinSigmaIndex,{
+      isolate({
+        if(input$kinSigmaIndex == 0) {
+          updateNumericInput(session, 
+                             inputId = 'kinSigma',
+                             value   =  1
+          )
+        } else {
+          if(!is.null(s<-doSVD())) {
+            mat  = Inputs$mat
+            mat = mat[!is.na(Inputs$delayMask),]
+            mat = mat[,!is.na(Inputs$wavlMask) ]
+            mat1 = rep(0,nrow=nrow(s$u),ncol=ncol(s$v))
+            for (i in 1:input$kinSigmaIndex)
+              mat1  = mat1 + s$u[,i] %o% s$v[,i] * s$d[i]
+            resid = mat - mat1
+            val = signif(sd(resid),2)
+            updateNumericInput(session, 
+                               inputId = 'kinSigma',
+                               value   =  val
+            )
+          }
+        }
+      })
     } 
   )
   output$scheme   = DT::renderDataTable({
@@ -4018,12 +4123,12 @@ function(input, output, session) {
           active     = active,
           startd     = startd,
           deltaStart = deltaStart,
-          sigma      = 8e-4,
+          sigma      = input$kinSigma,
           reactants  = Scheme$reactants,
           eps        = eps,
           uniS       = FALSE,
           nonnegS    = TRUE,
-          smooth     = 0
+          smooth     = input$kinSmooth
         )
       
       # Generate hard-coded prior PDF
@@ -4045,11 +4150,12 @@ function(input, output, session) {
       global = input$kinGlobFac*length(startp)
         
       opt0 = bmc_hyb(parOpt,
-                     parms=kinParms,
-                     global=global, 
-                     niter=niter,
-                     mc=FALSE,
-                     startp=startp)
+                     parms  = kinParms,
+                     global = global, 
+                     niter  = niter,
+                     mc     = FALSE,
+                     startp = startp,
+                     tol    = 10^input$kinThresh)
       
       map = parExpand(opt0$map,parOpt)
       mod = model(map,kinParms)
@@ -4063,14 +4169,24 @@ function(input, output, session) {
       Restart_Kin <<- opt0
       
       return(
-        list(map = opt0$map, hessian = opt0$hessian, 
-             parms=kinParms, paropt=parOpt,
-             xC = delay, xS = wavl,
-             C = Ca, S = S, 
-             lof    = lof,
-             glOut  = opt0$glOut,
-             optOut = opt0$optOut,
-             values = opt0$values
+        list(map     = opt0$map, 
+             hessian = opt0$hessian, 
+             parms   = kinParms, 
+             paropt  = parOpt,
+             mat     = mat,
+             model   = mod,
+             sigma   = input$kinSigma,
+             nExp    = nExp,
+             times   = times,
+             xC      = delay, 
+             xS      = wavl,
+             C       = Ca, 
+             S       = S, 
+             lof     = lof,
+             glOut   = opt0$glOut,
+             optOut  = opt0$optOut,
+             values  = opt0$values,
+             cnv     = opt0$cnv
         )
       )
       })
@@ -4100,22 +4216,26 @@ function(input, output, session) {
     opt <- doKin()
     paropt = opt$paropt
     
-    out = list(out, h4('Kinet Optimization done!'))
-    out = list(out, strong('L.o.f.:'), opt$lof,' %')
+    if(opt$cnv == 0)
+      out = list(out, h4('Optimization done!'))
+    else
+      out = list(out, h4('WARNING: Optimization ended badly (see Trace)!'))
 
-    # out = list(out, strong('MAP:'), map)
-    
-    # ndf  = length(z) - np - sum(parms$active)*length(y)
-    # chi2 = wchisq(bestp,x,y,z,parms)
-    # ndig = 3
-    # print("*** Chi2 Analysis ***")
-    # print(paste("chi2_obs=",format(chi2,digits=ndig)))
-    # print(paste("ndf=",ndf))
-    # print(paste("chi2_r=",format(chi2/ndf,digits=ndig+1)))
-    # print(paste("P(chi2>chi2_obs)=",format(pchisq(chi2,df=ndf,
-    #                                               lower.tail=FALSE),digits=ndig)))
-    # print(paste("Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
-    #             "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)))
+    out = list(out, strong('L.o.f.:'), signif(opt$lof,3),' %',br(),p())
+
+    ndf  = length(opt$mat) - length(opt$map) - length(opt$S)
+    chi2 = sum(((opt$mat - opt$mod)/opt$sigma)^2)
+    ndig = 3
+    out  = list(out,
+                strong("*** Chi2 Analysis ***"),br(),
+                "chi2_obs = ",format(chi2,digits=ndig),br(),
+                "ndf      = ",ndf,br(),
+                "chi2_red =",format(chi2/ndf,digits=ndig+1),br(),
+                "P(chi2>chi2_obs)=",
+                  format(pchisq(chi2,df=ndf,lower.tail=FALSE),digits=ndig),br(),
+                "Q05=",format(qchisq(0.05,df=ndf),digits=ndig),", ",
+                "Q95=",format(qchisq(0.95,df=ndf),digits=ndig)
+    )
     
     return(out)
     
@@ -4130,20 +4250,20 @@ function(input, output, session) {
     names(map)=names(paropt)
     
     Sigma=try(solve(opt$hessian), silent = TRUE)
-    if (class(Sigma) != "try-error") {
+    if (class(Sigma) != "try-error" && opt$cnv == 0) {
       EV=Re(eigen(Sigma)$values)
       if(sum(EV<0) >0 ) print("Non-positive definite Covariance matrix")
       Sd = diag(Sigma)^0.5
       names(Sd) =names(paropt)
       # Corr=cov2cor(Sigma)
     } else {
-      showModal(modalDialog(
-        title = ">>>> Numerical problem <<<< ",
-        paste0("Singular Hessian: could not compute uncertainties..."),
-        easyClose = TRUE, 
-        footer = modalButton("Close"),
-        size = 's'
-      ))
+      # showModal(modalDialog(
+      #   title = ">>>> Numerical problem <<<< ",
+      #   paste0("Singular Hessian: could not compute uncertainties..."),
+      #   easyClose = TRUE, 
+      #   footer = modalButton("Close"),
+      #   size = 's'
+      # ))
       Sd=rep(NA,length(paropt))
       names(Sd)=names(paropt)
     }
@@ -4171,17 +4291,17 @@ function(input, output, session) {
           tags[item] = sub('log','',item)
           val[item]  = signif(exp(map[[item]]),digits=2)
           valF[item] = ifelse(
-            is.na(Sd[[item]]),
+            is.na(Sd[item]),
             "",
-            paste("/*",signif(exp(Sd[[item]]),digits=3))  
+            paste("/*",signif(exp(Sd[item]),digits=3))  
           )
         } else {
           tags[item] = item
-          val[item]  = signif(map[[item]],digits=2)
+          val[item]  = signif(map[item],digits=2)
           valF[item] = ifelse(
-            is.na(lSd[[item]]),
+            is.na(lSd[item]),
             "",
-            paste("+/-",signif(lSd[[item]],digits=3))  
+            paste("+/-",signif(lSd[item],digits=3))  
           )
         }
     }
@@ -4222,7 +4342,7 @@ function(input, output, session) {
     
     Sd = rep(NA,length(map))
     Sigma=try(solve(opt$hessian), silent = TRUE)
-    if (class(Sigma) != "try-error")
+    if (class(Sigma) != "try-error" && opt$cnv == 0)
       Sd = diag(Sigma)^0.5
     lSd = unlist(sdExpand(Sd,opt$paropt))
     names(Sd) = names(lSd) = names(map)
@@ -4269,7 +4389,7 @@ function(input, output, session) {
       mat = Inputs$mat
       main = 'Raw data'
     }
-    plotResid(Inputs$delay,Inputs$wavl,mat,
+    plotResidOnly(Inputs$delay,Inputs$wavl,mat,
               CS$C,CS$S,main=main)
     
   },height = 550)
@@ -4304,24 +4424,13 @@ function(input, output, session) {
     if (is.null(opt <- doKin()))
       return(NULL)
 
-    mat = Inputs$mat 
-    mat = mat[!is.na(Inputs$delayMask),]
-    mat = mat[,!is.na(Inputs$wavlMask) ]
-    times = Inputs$delaySave[!is.na(Inputs$delayMask)]
-    
-    mod = mat * 0.0
-    for (i in 1:ncol(opt$C)) {
-      mod = mod + opt$C[,i] %o% opt$S[,i]
-    }
-    mod[is.na(mod)] = 0
+    times = opt$times
+    mat   = opt$mat
+    mod   = opt$mod
+    nExp  = opt$nExp
 
-    
-    nExp = 1
-    if(!is.null(input$procMult) &&
-       input$procMult == 'tileDel')
-      nExp = length(input$rawData_rows_selected)
-    
-    ncol = ceiling(sqrt(nExp))
+    # ncol = ceiling(sqrt(nExp))
+    ncol = min(5, nExp)
     nrow = floor(nExp/ncol)
     if(nrow*ncol != nExp) nrow = nrow +1
 
@@ -4343,6 +4452,72 @@ function(input, output, session) {
       lines(tinteg,rowSums(mod[sel,]),col='red',lwd=2)
       grid(); box()
     }
+    
+  },height = 550)
+  
+  output$kinResid4 <- renderPlot({
+    #L.o.F comparison with SVD
+    if (is.null(opt <- doKin()) || is.null(s<-doSVD()))
+      return(NULL)
+
+    par(mfrow=c(1,2),
+        cex = cex, cex.main=cex, mar = mar, 
+        mgp = mgp, tcl = tcl, pty='s')
+    
+    lof = c()
+    lmax= 10
+    mat  = opt$mat
+    sMat = sum(mat^2)
+    mat1 = rep(0,nrow=nrow(s$u),ncol=ncol(s$v))
+    for (i in 1:lmax) {
+      mat1  = mat1 + s$u[,i] %o% s$v[,i] * s$d[i]
+      resid = mat - mat1
+      lof[i] = 100*(sum(resid^2)/sMat)^0.5
+    }
+    lof0 = opt$lof
+    lmin = max(1, which(lof < lof0)[1] - 1)
+    lof  = lof[lmin:lmax]
+    
+    
+    plot(lmin:lmax, lof,
+         xlab = "Nb. species",
+         ylab = "SVD Lack of Fit (%)", log = "y",
+         ylim = c(min(lof),1.02*max(c(lof,opt$lof))),
+         pch=19,cex=1.5,col='orchid')
+    grid()
+    lines(lmin:lmax,lof,col = "darkgreen",lwd=3,lty=3)
+    text(lmin:lmax,lof,labels = signif(lof,3),col=2,pos=3)
+    points(lmin:lmax,lof,pch=19,cex=1.5,col='orchid')
+    abline(h=lof0,col='blue',lwd=2)
+    text(lmax-1,lof0,
+         labels=paste0('l.o.f = ',signif(lof0,3),'%'),
+         col='blue',pos=3)
+    box()
+    
+  },height = 550)
+  
+  output$kinResid5 <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    
+    CS = reshapeCS(opt$C,opt$S,ncol(opt$C))    
+    
+    if(isolate(input$useFiltered)) { # Choose SVD filtered matrix  
+      s <- doSVD()
+      CS1 = reshapeCS(s$u,s$v,input$nSV)
+      mat = matrix(0,nrow=length(Inputs$delay),
+                   ncol=length(Inputs$wavl))
+      for (ic in 1:input$nSV) 
+        mat = mat + CS1$C[,ic] %o% CS1$S[,ic] * s$d[ic]
+      
+      main = "SVD-filtered data"
+      
+    } else {
+      mat = Inputs$mat
+      main = 'Raw data'
+    }
+    plotDatavsMod(Inputs$delay,Inputs$wavl,mat,
+                  CS$C,CS$S,main=main)
     
   },height = 550)
 
