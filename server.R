@@ -3810,6 +3810,58 @@ function(input, output, session) {
       )
     }
   )
+  output$schemeFileSave = downloadHandler(
+    filename = function() {
+      paste0(input$schemeFileName, '.in')
+    },
+    content = function(file) {
+      if (!Scheme$gotData)
+        return(NULL)
+      
+      sink(file)
+      
+      # Reaction scheme
+      for (i in 1:Scheme$nbReac)
+        cat(
+          paste(Scheme$reactants[[i]],collapse = ' + '),
+          ' -> ',
+          paste(Scheme$products[[i]] ,collapse = ' + '),
+          ' ; ',Scheme$kReac[i], ' / ',Scheme$kReacF[i],
+          '\n')
+      cat('\n')
+      
+      # Absorbances
+      species = Scheme$species
+      for (sp in species) {
+        param  = paste0('eps_',sp)
+        eps    = input[[param]]
+        paramF = paste0('epsF_',sp)
+        epsF   = input[[paramF]]
+        if(eps != 0)
+          cat(param,' = ',eps,' / ',epsF,'\n')
+      }
+      
+      # Initial concentrations
+      nExp = 1
+      if(!is.null(input$procMult) &&
+         input$procMult == 'tileDel')
+        nExp = length(input$rawData_rows_selected)
+      
+      for (iExp in 1:nExp) {
+        cat('\n')
+        for (sp in species) {
+          param  = paste0('c0_',sp,'_',iExp)
+          c0     = input[[param]]
+          paramF = paste0('c0F_',sp,'_',iExp)
+          c0F    = input[[param]]
+          if(c0 != 1)
+            cat(param,' = ',c0,' / ',c0F,'\n')
+        }
+      }
+      
+      sink()      
+    }
+  )
   observeEvent(
     input$update_tS, 
     isolate({

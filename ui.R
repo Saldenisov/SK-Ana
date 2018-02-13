@@ -885,6 +885,21 @@ navbarPage(
                   multiple= FALSE,
                   accept  = c('.txt','.in')
                 )
+              ),
+              tabPanel(
+                h4("Save"),
+                hr( style="border-color: #666;"),
+                verticalLayout(
+                  textInput(
+                    inputId = 'schemeFileName', 
+                    label   = 'Model Name', 
+                    value   = "model1"
+                  ),
+                  downloadButton(
+                    outputId = 'schemeFileSave',
+                    label    = 'Save (Ctrl+Click)'
+                  )
+                )
               )
             ),
             hr( style="border-color: #666;"),
