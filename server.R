@@ -3391,6 +3391,46 @@ function(input, output, session) {
     
     return(startp)
   }
+  SAPlot = function(X,cex=1) {
+    sdX=apply(X,2,sd) 
+    par(cex=cex,cex.axis=1.5*cex)
+    pairs(X[,sdX != 0], gap=0,
+          upper.panel=panel.cor,
+          diag.panel =panel.hist,
+          lower.panel=panel.smooth )
+  }
+  panel.hist <- function(x,...) {
+    usr <- par("usr"); on.exit(par(usr))     
+    par(usr = c(usr[1:2], 0, 1.5))     
+    h <- hist(x, plot = FALSE)     
+    breaks <- h$breaks;
+    nB <- length(breaks)   
+    y <- h$counts; y <- y/max(y)
+    grid(col='brown',ny=0)
+    rect(breaks[-nB],0,breaks[-1],y,col="orange",...)
+  }   
+  panel.cor <- function(x,y,digits=2,prefix="",cex.cor) {
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- cor(x, y,method="spearman")
+    ra = abs(r)
+    txt <- format(c(r,0.123456789), digits=digits)[1]
+    txt <- paste(prefix, txt, sep="")
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)*ra
+    text(0.5,0.5,txt,cex = cex.cor,col=ifelse(r>=0,4,2))
+  }
+  panel.smooth <- function (x, y, cex = 1.5, col.smooth = "red", 
+                            span = 2/3, iter = 3, ...) {
+    maxPoints=500
+    nP=min(maxPoints,length(x))
+    iSamp = seq.int(1,length(x),length.out=nP)
+    x1=x[iSamp]
+    y1=y[iSamp]
+    green_tr=rgb(unlist(t(col2rgb("darkgreen"))),
+                 alpha=30,maxColorValue = 255)
+    grid(col='brown')
+    points(x1, y1, pch = 19, col = green_tr, lwd=0, cex = cex)
+  }
   
   # Kinetic Parser ####################################################
   kinParse = function(scheme) {
@@ -4464,21 +4504,49 @@ function(input, output, session) {
     names(Sd) = names(lSd) = names(map)
  
     for (p in names(opt$paropt)) {
-      plot(priorDensity(p,opt$paropt), ylim=c(0,1.1),
+      # Marginal prior density
+      C = priorDensity(p,opt$paropt)
+      plot(C, ylim=c(0,1.1),
            type="l",col="blue",xlab=p,ylab="PDF",yaxs='i')
+      x.poly <- c(C[,1], C[nrow(C),1], C[1,1])
+      y.poly <- c(C[,2], 0, 0)    
+      polygon(x.poly,y.poly,col=cyan_tr,border=NA)
       
+      # Marginal posterior
       m = map[[p]]
       s = lSd[p]
- 
-      if( is.finite(s) )
-        curve(exp(-0.5*(x-m)^2/s^2),
-              from = m-6*s, to= m+6*s, n=500, 
-              add=TRUE, col=2)
-      else
+      if( is.finite(s) ) {
+        C = curve(exp(-0.5*(x-m)^2/s^2),
+                  from = m-6*s, to= m+6*s, n=500, 
+                  add=TRUE, col=2)
+        x.poly <- c(C$x, C$x[length(C$x)], C$x[1])         
+        y.poly <- c(C$y, 0, 0)    
+
+      } else {
         abline(v=m,col="red")
-      
+        x.poly = c(C[1,1],C[nrow(C),1],C[nrow(C),1],C[1,1])
+        y.poly = c(m,m,0,0)
+      }
+      polygon(x.poly,y.poly,col=pink_tr,border=NA)
       grid(); box()
     }
+    
+  },height = 550)
+  
+  output$kinParamsSamp <- renderPlot({
+    if (is.null(opt <- doKin()))
+      return(NULL)
+    
+    Sigma=try(solve(opt$hessian), silent = TRUE)
+    if (class(Sigma) == "try-error" || opt$cnv != 0)
+      return(NULL)
+
+    sample = mvtnorm::rmvnorm(500,opt$map,Sigma)
+    sample = t(apply(sample,1,function(x) unlist(parExpand(x,opt$paropt))))
+    colnames(sample) = names(opt$map)
+
+    SAPlot(sample,cex=cex)
+    
     
   },height = 550)
   

@@ -893,7 +893,8 @@ navbarPage(
                   textInput(
                     inputId = 'schemeFileName', 
                     label   = 'Model Name', 
-                    value   = "model1"
+                    value   = 'model1',
+                    placeholder = 'model1'
                   ),
                   downloadButton(
                     outputId = 'schemeFileSave',
@@ -1031,10 +1032,23 @@ navbarPage(
           ),
           tabPanel(
             h4("Identifiability"),
-            wellPanel(
-              withSpinner(
-                plotOutput("kinParams", height=550) ,
-                type=4
+            br(),
+            tabsetPanel(
+              tabPanel(
+                value="kinPriPost",
+                title=h5("Densities"), br(),
+                withSpinner(
+                  plotOutput("kinParams", height=550) ,
+                  type=4
+                )
+              ),
+              tabPanel(
+                value="kinPriPostSample",
+                title=h5("Sample"), br(),
+                withSpinner(
+                  plotOutput("kinParamsSamp", width = "550px", height="550px"),
+                  type=4
+                )
               )
             )
           ),
