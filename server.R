@@ -3853,8 +3853,8 @@ function(input, output, session) {
           param  = paste0('c0_',sp,'_',iExp)
           c0     = input[[param]]
           paramF = paste0('c0F_',sp,'_',iExp)
-          c0F    = input[[param]]
-          if(c0 != 1)
+          c0F    = input[[paramF]]
+          if(c0 != 0)
             cat(param,' = ',c0,' / ',c0F,'\n')
         }
       }
