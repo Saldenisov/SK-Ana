@@ -11,8 +11,8 @@ options(shiny.maxRequestSize = 20 * 1024 ^ 2,
 libs <- c(
   "outliers", "nnls", "Iso", "viridis", "httpuv",
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
-  "fields", "NMF", "tools", "shinycssloaders",
-  "rgenoud", "mvtnorm", "deSolve", "msm","xtable"
+  "fields", "NMFN", "tools", "shinycssloaders",
+  "rgenoud", "mvtnorm", "deSolve", "msm", "xtable"
 )
 for (lib in libs)
   if (!require(lib, character.only = TRUE, quietly = TRUE))

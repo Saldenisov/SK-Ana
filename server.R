@@ -1,10 +1,12 @@
 function(input, output, session) {
-  
+ 
   # Attempt at bookmarking: failed !!!
   # setBookmarkExclude("bookmark") 
   # observeEvent(input$bookmark, {
   #   session$doBookmark()
   # })
+
+  session$onSessionEnded(stopApp)
   
 # Initialize ####
   if(!dir.exists("outputDir"))
@@ -2292,9 +2294,12 @@ function(input, output, session) {
       for (i in 1:nStart)
         fMat = fMat + s$u[,i] %o% s$v[,i] * s$d[i]
       # 2/ NMF
-      res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
-      C = NMF::basis(res)
-      S = t(NMF::coef(res))
+      # res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
+      # C = NMF::basis(res)
+      # S = t(NMF::coef(res))
+      res  = NMFN::nnmf(abs(fMat), k=nStart, method = 'nnmf_als', eps=1e-8)
+      C = res$W
+      S = t(res$H)
       
     } else {
       # restart from existing solution
@@ -4673,6 +4678,11 @@ function(input, output, session) {
     text(lmax-1,lof0,
          labels=paste0('l.o.f = ',signif(lof0,3),'%'),
          col='blue',pos=3)
+    nsp = ncol(opt$C)
+    abline(h=lof[nsp-lmin+1],col='red',lty=2,lwd=2)
+    text(lmin+1,lof[nsp-lmin+1],
+         labels='Target',
+         col='red',pos=3)
     box()
     
   },height = 550)
