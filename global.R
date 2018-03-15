@@ -1,5 +1,7 @@
 # enableBookmarking(store = "server")
 
+Sys.setlocale(category = "LC_NUMERIC", locale="C")
+
 options(shiny.maxRequestSize = 20 * 1024 ^ 2,
         width = 60,
         warn  =  0)
