@@ -17,9 +17,11 @@ libs <- c(
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable"
 )
 for (lib in libs)
-  if (!require(lib, character.only = TRUE, quietly = TRUE))
+  if (!require(lib, character.only = TRUE, quietly = TRUE)) {
     install.packages(lib, dependencies = TRUE,
                      repos='https://cran.univ-paris1.fr')
+    library(lib, quietly = TRUE)    
+  }
 
 
 # Colors ####
