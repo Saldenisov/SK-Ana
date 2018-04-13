@@ -44,6 +44,12 @@ the code will install a set of packages, if they are not installed already:
 `shinycssloaders`, `tools`, and `viridis`. 
 Depending on your OS, you might have to install them manually.
 
+**How to cite SK-Ana**
+
+If you use SK-Ana in one of your publications, do not forget to cite it and include the version you used for reproducibility:
+
+> Pernot, P. (2018) SK-Ana: Analysis of Spectro-Kinetic Data (Version X.X).    
+> https://doi.org/10.5281/zenodo.1064370
 
 **References**
 
