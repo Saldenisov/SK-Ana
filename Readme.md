@@ -40,8 +40,9 @@ For other options and more detailed information see [here](https://shiny.rstudio
 
 In both cases, a web interface should open in your favorite browser. At the first launch,
 the code will install a set of packages, if they are not installed already: 
-`changepoint`, `DT`, `fields`, `Iso`, `NMF`, `nnls`, `outliers`, `shiny`, `shinyBS`, 
-`shinycssloaders`, `tools`, and `viridis`. 
+`outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, 
+`Rsolnp`, `fields", `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, 
+`msm`, and `xtable`. 
 Depending on your OS, you might have to install them manually.
 
 **How to cite SK-Ana**
