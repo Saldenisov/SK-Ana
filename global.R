@@ -52,6 +52,7 @@ mar <- c(4, 4, 2, 1)
 mgp <- c(2, .75, 0)
 pty <- "m"
 tcl <- -0.5
+plotHeight = 550 # px
 
 # Proportions of Side/Main Panels ####
 sideWidth <- 4

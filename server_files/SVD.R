@@ -1,15 +1,125 @@
 # Functione ####
+lof <- function(model, data) {
+  100 * (
+    sum((data - model)^2, na.rm = TRUE) /
+      sum(data^2, na.rm = TRUE)
+  )^0.5
+}
+getGlitch <- function(delayMask, wavlMask, mat, level) {
+  # Detect points with largest amplitude in  SVD vector (#level)
+
+  ## Replace masks/NAs by 0 (do not eliminate to facilitate indexing)
+  mat0 <- mat
+  mat0[is.na(delayMask), ] <- 0
+  mat0[, is.na(wavlMask)] <- 0
+
+  ## SVD
+  s <- svd(mat0, nu = level, nv = level)
+
+  ## Detect max.
+  out <- which.max(abs(s$u[, level]))
+
+  return(out)
+}
+plotImage <- function(x, y, z, main = "Data", col= imgColors,
+                      xlim = NULL, ylim = NULL, zlim = NULL,
+                      colorBar = FALSE, cont = FALSE) {
+  # Plot image with masks
+
+  if (is.null(xlim)) {
+    xlim <- range(x, na.rm = TRUE)
+  }
+  if (is.null(ylim)) {
+    ylim <- range(y, na.rm = TRUE)
+  }
+  if (is.null(zlim)) {
+    zlim <- range(z, na.rm = TRUE)
+  }
+
+  image(
+    x, y, z,
+    xlim = xlim, ylim = ylim, zlim = zlim,
+    xlab = "Delay", ylab = "Wavelength",
+    main = main,
+    col  = col
+  )
+  if (cont) {
+    contour(x, y, z,
+      nlevels = 10,
+      col = lineColors[3],
+      lwd = 1, add = TRUE
+    )
+  }
+  colorizeMask1D(axis = "delay", ylim = ylim)
+  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
+  box()
+  
+  # Not robust...
+  if(colorBar)
+    image.plot(
+      x, y, z,
+      zlim = zlim,
+      col = col,
+      add = TRUE,
+      legend.mar = 5,
+      legend.shrink = 0.8,
+      xlab = "Delay",
+      ylab = "Wavelength"
+    )
+  
+}
+plotResid <- function(delay, wavl, mat, C, S,
+                      d = rep(1, ncol(C)),
+                      main = "", ...) {
+  # Build model matrix
+  matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
+  for (i in 1:ncol(S))
+    matAls <- matAls + C[, i] %o% S[, i] * d[i]
+  resid <- matAls - mat
+  vlof <- lof(model = matAls, data = mat)
+
+  par(
+    mfrow = c(1,2),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = pty
+  )
+
+  plotImage(
+    delay, wavl, resid,
+    main = paste0(
+      "Residuals / Lack-of-fit (%) : ",
+      signif(vlof, 3)
+    )
+  )
+
+  hist(
+    resid[!is.na(resid)],
+    col = cyan_tr, border = NA,
+    xlim = range(c(resid, mat), na.rm=TRUE),
+    xlab = "O.D.", main = "Residuals vs. data"
+  )
+  hist(
+    mat,
+    col = pink_tr, border = NA,
+    add = TRUE
+  )
+  legend(
+    "topright",
+    bty = "n",
+    c("Data", "Residuals"),
+    pch = 15,
+    col = c(pink_tr2, cyan_tr2)
+  )
+}
 plotConbtribs <- function(delay, wavl, mat, C, S,
                           d = rep(1, ncol(C)),
                           type = "als", ...) {
-  xlim <- range(delay, na.rm = TRUE)
-  ylim <- range(wavl, na.rm = TRUE)
+  # Plot image contribution of indivudual vectors
 
   # Estimate weight of species
   cont <- c()
   for (ic in 1:min(6, ncol(S))) {
     matSvd <- C[, ic] %o% S[, ic] * d[ic]
-
     if (type == "als") {
       cont[ic] <- sum(abs(matSvd), na.rm = TRUE)
     } else {
@@ -18,28 +128,110 @@ plotConbtribs <- function(delay, wavl, mat, C, S,
   }
   cont <- cont / sum(cont) * 100
 
-  dummy <- split.screen(c(2, 3))
+  par(
+    mfrow = c(2, 3),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = pty
+  )
+
   for (ic in 1:min(6, ncol(S))) {
-    screen(ic)
-    par(
-      cex = cex, cex.main = cex, mar = mar,
-      mgp = mgp, tcl = tcl, pty = pty
-    )
     matSvd <- C[, ic] %o% S[, ic] * d[ic]
-    image(
+    plotImage(
       delay, wavl, matSvd,
-      col = imgColors,
-      xlim = xlim, ylim = ylim,
-      xlab = "Delay", ylab = "Wavelength",
       main = paste0(
         colnames(S)[ic], " / wgt. (%) = ",
         signif(cont[ic], 3)
       )
     )
-    colorizeMask1D(axis = "delay", ylim = ylim)
-    colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
   }
-  dummy <- close.screen(all.screens = TRUE)
+}
+plotDatavsMod <- function(delay, wavl, mat, C, S,
+                          d = rep(1, ncol(C)),
+                          main = "Data",
+                          cont = FALSE, ...) {
+  # Build model matrix
+  matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
+  for (i in 1:ncol(S))
+    matAls <- matAls + C[, i] %o% S[, i] * d[i]
+
+  par(
+    mfrow = c(1, 2),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = pty
+  )
+
+  # Data
+  plotImage(
+    delay, wavl, mat,
+    main = "Data",
+    cont = cont
+  )
+
+  # Model
+  plotImage(
+    delay, wavl, matAls,
+    main = paste0("Model ", ncol(S), " species"),
+    cont = cont
+  )
+}
+
+
+plotSvdLof <- function(s, mat, ...) {
+  par(
+    mfrow = c(1, 2),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = pty
+  )
+
+  # S.V.
+  plot(s$d[1:ncol(s$u)],
+    type = "n",
+    ylab = " ", log = "y",
+    xlab = "Nb. of vectors", xlim = c(1, 10),
+    main = "Singular Values"
+  )
+  grid()
+
+  # Trend line for noise
+  x <- 10:20
+  y <- s$d[x]
+  reg <- lm(y ~ x)
+  xpred <- 1:20
+  ypred <- predict(reg, newdata = data.frame(x = xpred))
+  lines(xpred, ypred, lwd = 3, lty = 2, col = lineColors[7])
+
+  # Singular values
+  lines(s$d, col = lineColors[6], lwd = 3, lty = 3)
+  points(s$d[1:ncol(s$u)], pch = 16, cex = 1.5, col = lineColors[3])
+  text(1:ncol(s$u), s$d[1:ncol(s$u)],
+    labels = 1:ncol(s$u),
+    col = lineColors[5], pos = 3, offset = 0.5
+  )
+  box()
+
+  # Lack_of-fit
+  loft <- c()
+  mat1 <- rep(0, nrow = nrow(s$u), ncol = ncol(s$v))
+  for (i in 1:10) {
+    mat1 <- mat1 + s$u[, i] %o% s$v[, i] * s$d[i]
+    loft[i] <- lof(model = mat1, data = mat)
+  }
+
+  plot(
+    loft,
+    type = "n",
+    xlab = "Nb. of vectors",
+    ylab = " ", log = "y",
+    main = "Lack-of-fit (%)"
+  )
+  grid()
+  lines(loft, col = lineColors[6], lwd = 3, lty = 3)
+  points(loft, pch = 16, cex = 1.5, col = lineColors[3])
+  text(1:length(loft), loft,
+    labels = signif(loft, 3),
+    col = lineColors[5], pos = 3, offset = 0.5
+  )
+  box()
 }
 plotSVDVecBloc <- function(C, S, axisC, axisS, ...) {
   par(cex = cex, cex.main = cex)
@@ -111,187 +303,10 @@ plotSVDVecBloc <- function(C, S, axisC, axisS, ...) {
     }
   }
 }
-plotDatavsMod <- function(delay, wavl, mat, C, S,
-                          d = rep(1, ncol(C)),
-                          main = "Data",
-                          cont = FALSE, ...) {
-  # Build model matrix
-  matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
-  for (i in 1:ncol(S))
-    matAls <- matAls + C[, i] %o% S[, i] * d[i]
-  zlim <- range(mat, na.rm = TRUE)
-
-  xlim <- range(delay, na.rm = TRUE)
-  ylim <- range(wavl, na.rm = TRUE)
-
-  par(mfrow = c(1, 2))
-  par(
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-
-  image(
-    delay, wavl, mat,
-    xlim = xlim, ylim = ylim,
-    xlab = "Delay", ylab = "Wavelength",
-    main = main, col = imgColors, zlim = zlim
-  )
-  if (cont) {
-    contour(delay, wavl, mat, 10, col = "gold", lwd = 2, add = TRUE)
-  }
-  colorizeMask1D(axis = "delay", ylim = ylim)
-  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
-
-  image(
-    delay, wavl, matAls,
-    xlim = xlim, ylim = ylim,
-    xlab = "Delay", ylab = "Wavelength",
-    main = paste0("Model ", ncol(S), " species"),
-    col = imgColors, zlim = zlim
-  )
-  if (cont) {
-    contour(delay, wavl, matAls, 10, col = "gold", lwd = 2, add = TRUE)
-  }
-  colorizeMask1D(axis = "delay", ylim = ylim)
-  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
-}
-
-plotResidOnly <- function(delay, wavl, mat, C, S,
-                          d = rep(1, ncol(C)),
-                          main = "Data", ...) {
-  # Build model matrix
-  matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
-  for (i in 1:ncol(S))
-    matAls <- matAls + C[, i] %o% S[, i] * d[i]
-  zlim <- range(mat, na.rm = TRUE)
-
-  xlim <- range(delay, na.rm = TRUE)
-  ylim <- range(wavl, na.rm = TRUE)
-
-  resid <- matAls - mat
-  lof <- 100 * (sum(resid^2, na.rm = TRUE) /
-    sum(mat^2, na.rm = TRUE)
-  )^0.5
-
-  par(mfrow = c(1, 2))
-  par(
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-
-  image(
-    delay, wavl, resid,
-    xlim = xlim, ylim = ylim,
-    xlab = "Delay", ylab = "Wavelength",
-    main = paste0("Residuals; Lack-of-fit = ", signif(lof, 3), "%"),
-    col = imgColors
-  )
-  colorizeMask1D(axis = "delay", ylim = ylim)
-  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
-
-  res <- resid[!is.na(resid)]
-  hist(
-    res,
-    col = cyan_tr, border = NA,
-    xlim = range(c(res, zlim)),
-    xlab = "O.D.", main = "Residuals vs. signal"
-  )
-  hist(mat, col = pink_tr, border = NA, add = TRUE)
-  legend(
-    "topright",
-    bty = "n",
-    c("Signal", "Residuals"),
-    pch = 15,
-    col = c(pink_tr2, cyan_tr2)
-  )
-}
-
-plotResid <- function(delay, wavl, mat, C, S,
-                      d = rep(1, ncol(C)),
-                      main = "Data", ...) {
-  # Build model matrix
-  matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
-  for (i in 1:ncol(S))
-    matAls <- matAls + C[, i] %o% S[, i] * d[i]
-  zlim <- range(mat, na.rm = TRUE)
-
-  xlim <- range(delay, na.rm = TRUE)
-  ylim <- range(wavl, na.rm = TRUE)
-
-  dummy <- split.screen(c(2, 3))
-  screen(1)
-  par(
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-  image(
-    delay, wavl, mat,
-    xlim = xlim, ylim = ylim,
-    xlab = "Delay", ylab = "Wavelength",
-    main = main, col = imgColors, zlim = zlim
-  )
-  colorizeMask1D(axis = "delay", ylim = ylim)
-  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
-
-  screen(2)
-  par(
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-  image(
-    delay, wavl, matAls,
-    xlim = xlim, ylim = ylim,
-    xlab = "Delay", ylab = "Wavelength",
-    main = paste0("Model ", ncol(S), " species"),
-    col = imgColors, zlim = zlim
-  )
-  colorizeMask1D(axis = "delay", ylim = ylim)
-  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
-
-  screen(4)
-  par(
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-  resid <- matAls - mat
-  lof <- 100 * (sum(resid^2, na.rm = TRUE) /
-    sum(mat^2, na.rm = TRUE)
-  )^0.5
-  image(
-    delay, wavl, resid,
-    xlim = xlim, ylim = ylim,
-    xlab = "Delay", ylab = "Wavelength",
-    main = paste0("Residuals; Lack-of-fit = ", signif(lof, 3), "%"),
-    col = imgColors
-  )
-  colorizeMask1D(axis = "delay", ylim = ylim)
-  colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
-
-  screen(5)
-  par(
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-  res <- resid[!is.na(resid)]
-  hist(
-    res,
-    col = cyan_tr, border = NA,
-    xlim = range(c(res, zlim)),
-    xlab = "O.D.", main = "Residuals vs. signal"
-  )
-  hist(mat, col = pink_tr, border = NA, add = TRUE)
-  legend(
-    "topright",
-    bty = "n",
-    c("Signal", "Residuals"),
-    pch = 15,
-    col = c(pink_tr2, cyan_tr2)
-  )
-  dummy <- close.screen(all.screens = TRUE)
-}
 
 # Interactive ####
 doSVD <- reactive({
+  # Perform SVD
   if (!checkInputsSanity()) {
     return(NULL)
   }
@@ -301,17 +316,17 @@ doSVD <- reactive({
   mat <- mat[!is.na(Inputs$delayMask), ]
   mat <- mat[, !is.na(Inputs$wavlMask) ]
 
-  nsvMax <- min(
-    10,
-    length(Inputs$delay),
-    length(Inputs$wavl)
-  )
+  # Set max. nb. of SVD vectors
+  nsvMax <- min(10, length(Inputs$delay), length(Inputs$wavl))
+
   svd(mat, nu = nsvMax, nv = nsvMax)
 })
 
+
 observeEvent(
   input$clean, {
-    gl <- cleanUp(
+    # Build vector of glitches
+    gl <- getGlitch(
       Inputs$delayMask,
       Inputs$wavlMask,
       Inputs$mat,
@@ -327,6 +342,7 @@ observeEvent(
 )
 observeEvent(
   input$cleanCancel, {
+    # Remove last glitch
     if (!anyNA(Inputs$delayGlitch)) {
       Inputs$delayGlitch <<-
         Inputs$delayGlitch[-length(Inputs$delayGlitch)]
@@ -339,70 +355,14 @@ output$svdSV <- renderPlot({
     return(NULL)
   }
 
-  par(
-    mfrow = c(1, 2),
-    cex = cex, cex.main = cex, mar = mar,
-    mgp = mgp, tcl = tcl, pty = pty
-  )
-
-  # S.V.
-  plot(s$d[1:ncol(s$u)],
-    type = "n",
-    ylab = " ", log = "y",
-    xlab = "Nb. of vectors", xlim = c(1, 10),
-    main = "Singular Values"
-  )
-  grid()
-
-  # Trend line for noise
-  x <- 10:20
-  y <- s$d[x]
-  reg <- lm(y ~ x)
-  xpred <- 1:20
-  ypred <- predict(reg, newdata = data.frame(x = xpred))
-  lines(xpred, ypred, lwd = 3, lty = 2, col = lineColors[7])
-
-  # Singular values
-  lines(s$d, col = lineColors[6], lwd = 3, lty = 3)
-  points(s$d[1:ncol(s$u)], pch = 19, cex = 1.5, col = lineColors[3])
-  text(1:ncol(s$u), s$d[1:ncol(s$u)],
-    labels = 1:ncol(s$u),
-    col = lineColors[5], pos = 3, offset = 0.5
-  )
-  box()
-
-  # Lack_of-fit
-  lof <- c()
   mat <- Inputs$mat
   # Suppress masked areas
   mat <- mat[!is.na(Inputs$delayMask), ]
   mat <- mat[, !is.na(Inputs$wavlMask) ]
-  sMat <- sum(mat^2)
-  mat1 <- rep(0, nrow = nrow(s$u), ncol = ncol(s$v))
-  for (i in 1:10) {
-    mat1 <- mat1 + s$u[, i] %o% s$v[, i] * s$d[i]
-    resid <- mat - mat1
-    lof[i] <- 100 * (sum(resid^2) / sMat)^0.5
-  }
 
-  plot(
-    lof,
-    type = "n",
-    xlab = "Nb. of vectors",
-    ylab = " ", log = "y",
-    main = "Lack-of-fit (%)"
-  )
-  grid()
-  lines(lof, col = lineColors[6], lwd = 3, lty = 3)
-  points(lof, pch = 19, cex = 1.5, col = lineColors[3])
-  text(1:length(lof), lof,
-    labels = signif(lof, 3),
-    col = lineColors[5], pos = 3, offset = 0.5
-  )
-  box()
-}, height = 550)
-outputOptions(output, "svdSV",
-  suspendWhenHidden = FALSE
+  plotSvdLof(s, mat)
+},
+height = plotHeight
 )
 
 output$svdVec <- renderPlot({
@@ -411,9 +371,8 @@ output$svdVec <- renderPlot({
   }
   CS <- reshapeCS(s$u, s$v, ncol(s$u))
   plotSVDVecBloc(CS$C, CS$S, Inputs$delay, Inputs$wavl)
-}, height = 550)
-outputOptions(output, "svdVec",
-  suspendWhenHidden = FALSE
+},
+height = plotHeight
 )
 
 output$svdResid <- renderPlot({
@@ -425,19 +384,23 @@ output$svdResid <- renderPlot({
     CS$C, CS$S,
     d = s$d
   )
-}, height = 550)
+},
+height = plotHeight
+)
 
 output$svdResid1 <- renderPlot({
   if (is.null(s <- doSVD())) {
     return(NULL)
   }
   CS <- reshapeCS(s$u, s$v, input$nSV)
-  plotResidOnly(Inputs$delay, Inputs$wavl, Inputs$mat,
+  plotResid(
+    Inputs$delay, Inputs$wavl, Inputs$mat,
     CS$C, CS$S,
     d = s$d
   )
-}, height = 550)
-
+},
+height = plotHeight
+)
 
 output$svdContribs <- renderPlot({
   if (is.null(s <- doSVD())) {
@@ -445,49 +408,53 @@ output$svdContribs <- renderPlot({
   }
   CS <- reshapeCS(s$u, s$v, input$nSV)
   colnames(CS$S) <- paste0("Vector ", 1:ncol(CS$S))
-  plotConbtribs(Inputs$delay, Inputs$wavl, Inputs$mat,
+  plotConbtribs(
+    Inputs$delay, Inputs$wavl, Inputs$mat,
     CS$C, CS$S,
     d = s$d, type = "svd"
   )
-}, height = 550)
+},
+height = plotHeight
+)
 
 output$svdStat <- DT::renderDataTable({
+  # Build table of SVD indicators (S.V., Lack-of-fit, Sd(resid))
   if (is.null(s <- doSVD())) {
     return(NULL)
   }
 
+  # Max number of lines in table
   nsvMax <- min(
     10,
     length(Inputs$delay),
     length(Inputs$wavl)
   )
 
+  # Suppress masked areas to conform with SVD results
   mat <- Inputs$mat
-  # Suppress masked areas
   mat <- mat[!is.na(Inputs$delayMask), ]
-  mat <- mat[, !is.na(Inputs$wavlMask) ]
-  sMat <- sum(mat^2)
+  mat <- mat[, !is.na(Inputs$wavlMask)]
+
   mat1 <- rep(0, nrow = nrow(s$u), ncol = ncol(s$v))
-  sv <- lof <- sig <- c()
+  sv <- loft <- sig <- c()
   for (i in 1:nsvMax) {
     mat1 <- mat1 + s$u[, i] %o% s$v[, i] * s$d[i]
-    resid <- mat - mat1
-    sig[i] <- sd(resid)
-    lof[i] <- 100 * (sum(resid^2) / sMat)^0.5
+    sig[i] <- sd(mat - mat1)
+    loft[i] <- lof(model = mat1, data = mat)
     sv[i] <- s$d[i]
   }
 
   data <- cbind(
     id = 1:nsvMax,
     signif(sv, 3),
-    signif(lof, 3),
+    signif(loft, 3),
     signif(sig, 3)
   )
   colnames(data) <- c(
     "Rank",
-    "S.V.",
+    "Sing. Val.",
     "Lack-of-fit (%)",
-    "Std. dev. resid."
+    "Sd(resid)"
   )
   DT::datatable(
     data,
@@ -501,3 +468,7 @@ output$svdStat <- DT::renderDataTable({
     escape = FALSE
   )
 })
+
+
+outputOptions(output, "svdSV", suspendWhenHidden = FALSE)
+outputOptions(output, "svdVec", suspendWhenHidden = FALSE)

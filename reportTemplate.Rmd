@@ -46,10 +46,11 @@ __Wavelength range__ : `r signif(range(Inputs$wavl),3)`
 __Delay range__ : `r signif(range(Inputs$delay),3)`
 
 ```{r echo=FALSE}
-par(cex=cex, mar=mar)
+par(mfrow=c(1,2),cex=cex, mar=mar,mgp=mgp,pty=pty,tcl=tcl)
 image(Inputs$delay,Inputs$wavl,Inputs$mat,
       xlab='Delay',ylab='Wavelength',
-      col=cols, zlim=input$keepDoRange)
+      col = imgColors, zlim=input$keepDoRange)
+frame()
 ```
 
 
@@ -65,10 +66,11 @@ if('SVD' %in% input$inReport){
 ```{r echo=FALSE}
 if('SVD' %in% input$inReport) {
   if (!is.null(s)){
-    par(cex=cex, mar=mar,mgp=mgp,pty=pty,tcl=tcl)
-    plot(s$d[1:ncol(s$u)],ylab="S. V.",log="y")
-    lines(s$d,col="blue")
-    grid()
+  mat <- Inputs$mat
+  # Suppress masked areas
+  mat <- mat[!is.na(Inputs$delayMask), ]
+  mat <- mat[, !is.na(Inputs$wavlMask) ]
+  plotSvdLof(s,mat,cex=scale)
   }
 }
 ```
@@ -81,13 +83,14 @@ if('SVD' %in% input$inReport) {
 ```
 
 ```{r results='asis', echo=FALSE}
-if('ALS' %in% input$inReport){
-  cat ('# ALS Decomposition\n\n')
-  alsOut<-doALS()
-  cat('__Number of components__ : ',input$nALS,'\n\n')
-  cat('__Results__ after ',alsOut$iter,' iterations\n\n')
-  cat(alsOut$msg)
-  CS = reshapeCS(alsOut$C,alsOut$S,ncol(alsOut$C)) 
+if ("ALS" %in% input$inReport) {
+  cat("# ALS Decomposition\n\n")
+  if (!is.null(alsOut <- doALS())) {
+    cat("__Number of components__ : ", input$nALS, "\n\n")
+    cat("__Results__ after ", alsOut$iter, " iterations\n\n")
+    cat(alsOut$msg)
+    CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
+  }
 }
 ```
 
@@ -101,8 +104,8 @@ if('ALS' %in% input$inReport){
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
     par(mfrow=c(1,2))
-    plotAlsVec(alsOut,type="Kin",cex=scale)
     plotAlsVec(alsOut,type="Sp" ,cex=scale)
+    plotAlsVec(alsOut,type="Kin",cex=scale)
   }
 }
 ```
@@ -114,7 +117,7 @@ if('ALS' %in% input$inReport){
 ```
 
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.height=7}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
     plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
@@ -129,7 +132,7 @@ if('ALS' %in% input$inReport){
 }
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.height=7}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
@@ -148,10 +151,14 @@ if('ALS' %in% input$inReport){
 ```{r amb, echo=FALSE}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)) {
-    if (!is.list(solutions <- doAmbRot())) 
+    if (!is.list(solutions <- doAmbRot())) {
       cat(paste0("No solutions found \n"))
-    else 
-      plotRotAmb(alsOut,solutions)
+    } 
+    else {
+      par(mfrow=c(1,2))
+      plotAmbVec(alsOut,solutions,type = "Sp",cex=scale)
+      plotAmbVec(alsOut,solutions,type = "Kin",cex=scale)
+    }
   }
 }
 ```
