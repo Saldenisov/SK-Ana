@@ -46,11 +46,11 @@ __Wavelength range__ : `r signif(range(Inputs$wavl),3)`
 __Delay range__ : `r signif(range(Inputs$delay),3)`
 
 ```{r echo=FALSE}
-par(mfrow=c(1,2),cex=cex, mar=mar,mgp=mgp,pty=pty,tcl=tcl)
-image(Inputs$delay,Inputs$wavl,Inputs$mat,
-      xlab='Delay',ylab='Wavelength',
-      col = imgColors, zlim=input$keepDoRange)
-frame()
+par(
+  cex = cex, cex.main = cex, mar = mar,
+  mgp = mgp, tcl = tcl, pty = pty
+)
+plotImage(Inputs$delay,Inputs$wavl,Inputs$mat)
 ```
 
 
