@@ -255,6 +255,7 @@ observeEvent(
 
 selectArea <- reactive({
   if (!checkInputsSanity()) {
+    print('Bad data...')
     return(NULL)
   }
 

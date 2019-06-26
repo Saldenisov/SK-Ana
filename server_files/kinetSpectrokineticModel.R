@@ -25,7 +25,7 @@ kinet   = function(pars,parms) {
     # # A = 2^0.5*Faraday^2*elec / (8*pi*(eps*R*Temp)^1.5)
     # B = 3.28 # for radius en nm 
     # # B = (2*Faraday^2/(eps*R*Temp))^0.5
-    # 
+    # kReacFI = c()
     # for (iExp in 1:nExp) {     
     #   # Ionic strength
     #   I = 0.5*sum(state[,iExp]*charge^2)
@@ -44,10 +44,10 @@ kinet   = function(pars,parms) {
     #         )
     #       }
     #     } 
-    #     kReac[iReac] = kReac[iReac] * 10^gamma
+    #     kReacFI[iReac] = kReac[iReac] * 10^gamma
     #   }
     
-    parms$kReac = parms$D * kReac
+    parms$kReac = parms$D * kReacFI
     
     C=c()
     i0=0

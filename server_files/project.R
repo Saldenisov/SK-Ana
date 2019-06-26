@@ -1,3 +1,167 @@
+# Functions ####
+downsizeMatrix <- function(delay, wavl, mat, fwD = 1, fwW = fwD) {
+  # Downsize matrix by factors fwD (delay) and fwW (wavl)
+  
+  # Pad matrix with Nas
+  newNrow <- ceiling(nrow(mat) / fwD) * fwD
+  newNcol <- ceiling(ncol(mat) / fwW) * fwW
+  lmat <- matrix(NA, nrow = newNrow, ncol = newNcol)
+  lmat[1:nrow(mat), 1:ncol(mat)] <- mat
+  
+  # Block average
+  nRowBloc <- newNrow / fwD
+  nColBloc <- newNcol / fwW
+  
+  amat <- matrix(NA, nrow = nRowBloc, ncol = nColBloc)
+  for (i in 1:nRowBloc)
+    for (j in 1:nColBloc)
+      amat[i, j] <- mean(
+        lmat[
+          ((i - 1) * fwD + 1):(i * fwD),
+          ((j - 1) * fwW + 1):(j * fwW)
+          ],
+        na.rm = TRUE
+      )
+  
+  ldelay <- rep(NA, newNrow)
+  ldelay[1:length(delay)] <- delay
+  adelay <- c()
+  for (i in 1:nRowBloc)
+    adelay[i] <- mean(
+      ldelay[((i - 1) * fwD + 1):(i * fwD)],
+      na.rm = TRUE
+    )
+  
+  lwavl <- rep(NA, newNcol)
+  lwavl[1:length(wavl)] <- wavl
+  awavl <- c()
+  for (i in 1:nColBloc)
+    awavl[i] <- mean(
+      lwavl[((i - 1) * fwW + 1):(i * fwW)],
+      na.rm = TRUE
+    )
+  
+  return(
+    list(
+      mat = amat,
+      delay = adelay,
+      wavl = awavl
+    )
+  )
+}
+getOneMatrix  <- function(dataFile) {
+  wavl = try(
+    as.numeric(
+      as.vector(
+        read.table(
+          dataFile, 
+          nrows = 1,
+          header = input$header, 
+          sep = input$sep,
+          stringsAsFactors = FALSE,
+          dec = input$dec,
+          fileEncoding = "ISO-8859-1",
+          quote=""
+        )
+      )
+    )[-1],
+    silent = TRUE
+  )
+  if(class(wavl) == 'try-error' | length(wavl) == 0) 
+    return(NULL) 
+  
+  mat = try(
+    read.table(
+      dataFile, 
+      header = input$header, 
+      skip = 1,
+      dec = input$dec, 
+      sep = input$sep,
+      colClasses= 'numeric',
+      stringsAsFactors = FALSE
+    ),
+    silent = TRUE
+  )
+  if(class(mat) == 'try-error') 
+    return(NULL) 
+  
+  mat = as.matrix(mat)
+  delay = as.numeric(mat[,1])
+  if(length(delay) == 0)
+    return(NULL) 
+  
+  u = !duplicated(delay)
+  delay = delay[u]
+  mat   = mat[u,-1]
+  mat[!is.finite(mat)] = 0
+  
+  # Ensure increasing coordinates
+  iord = order(wavl,decreasing=FALSE)
+  wavl=wavl[iord]
+  mat = mat[,iord] 
+  iord = order(delay,decreasing=FALSE)
+  delay=delay[iord]
+  mat = mat[iord,] 
+  
+  # Downsize
+  if(input$compFacD >= 2 | input$compFacW >= 2) {
+    dsm = downsizeMatrix(delay,wavl,mat,
+                         fwD=input$compFacD, 
+                         fwW=input$compFacW)
+    mat   = dsm$mat
+    delay = dsm$delay
+    wavl  = dsm$wavl
+    rm(dsm)
+  }
+  
+  # Transpose if necessary
+  if(input$datStr != 'dxw') {
+    # print('Permute')
+    mat   = t(mat)
+    tmp   = delay
+    delay = wavl
+    wavl  = tmp
+  }
+  
+  return(list(mat=mat, wavl=wavl, delay=delay, 
+              delaySave=delay, delayId= rep(1,length(delay))))
+  
+}
+getRawData    <- function (fileNames) {
+  initInputs()  # (Re)initialize data tables
+  RawData <<- list()  # Init list in upper environment
+  
+  # Init progress bar
+  progress <- shiny::Progress$new()
+  on.exit(progress$close())
+  updateProgress <- function(value = NULL, detail = NULL) {
+    progress$set(value = value, detail = detail)
+  }
+  progress$set(message = "Reading data file(s) ", value = 0)
+  
+  # Load data files
+  for(i in 1:nrow(fileNames)) {
+    fName = fileNames[i,'name']
+    updateProgress(value  = i / nrow(fileNames),detail = fName)
+    O = getOneMatrix(fileNames[i,'datapath'])
+    if (!is.null(O)) 
+      O$name = fName
+    else {
+      Inputs$validData <<- FALSE
+      showModal(modalDialog(
+        title = ">>>> Data problem <<<< ",
+        paste0("The chosen data type does not ",
+               "correspond to the opened data file(s)!"),
+        easyClose = TRUE, 
+        footer = modalButton("Close"),
+        size = 's'
+      ))
+    }
+    RawData[[i]] <<- O
+  }
+  Inputs$gotData <<- TRUE
+}
+
 # Predefined input styles
 observeEvent(
   input$style, isolate({
@@ -64,7 +228,6 @@ output$loadMsg <- renderUI({
     h4('No data loaded'),
     h5('Please select data file(s)...')
   )
-  
   if(Inputs$gotData & Inputs$validData) 
     ll = list(
       h4('Data loaded !')
@@ -73,7 +236,7 @@ output$loadMsg <- renderUI({
   return(ll)
 })
 output$rawData = DT::renderDataTable({
-  if( !(Inputs$gotData && Inputs$validData) )
+  if( !(Inputs$gotData & Inputs$validData) )
     return(NULL)
   
   ndelay  = nwavl = name = size = c()
@@ -96,7 +259,7 @@ output$rawData = DT::renderDataTable({
   
 })
 output$sel     = renderPrint({
-  if( !(Inputs$gotData && Inputs$validData) )
+  if( !(Inputs$gotData & Inputs$validData) )
     return(NULL)
   
   cat(
@@ -108,14 +271,15 @@ output$sel     = renderPrint({
            )
     )
   )
+  Inputs$process <<- FALSE
+  Inputs$finish <<- FALSE
 })
 output$showsel = reactive({
-  Inputs$gotData && 
-    Inputs$validData 
+  Inputs$gotData & Inputs$validData 
 })
 outputOptions(output, "showsel", suspendWhenHidden = FALSE)
 output$ui      = renderUI({
-  if( !(Inputs$gotData && Inputs$validData) )
+  if( !(Inputs$gotData & Inputs$validData) )
     return(NULL)
   if(length(input$rawData_rows_selected) == 0)
     return(NULL)
@@ -123,6 +287,7 @@ output$ui      = renderUI({
   if(length(input$rawData_rows_selected) == 1) {
     # Single matrix : no processing options
     Inputs$process <<- TRUE
+    Inputs$finish  <<- FALSE
     finishMatrix()
     return(NULL)
     
@@ -188,10 +353,10 @@ output$ui      = renderUI({
   
 })
 
-observeEvent(
-  input$process,
+observeEvent(input$process,
   isolate({
     Inputs$process <<- TRUE
+    Inputs$finish <<- FALSE
     finishMatrix()
   })
 )
@@ -213,7 +378,7 @@ output$projectInfoNew <- renderUI({
   )
 })
 output$showPIN = reactive({
-  Inputs$process &&
+  Inputs$process &
     length(input$rawData_rows_selected) != 0
 })
 outputOptions(output, "showPIN", suspendWhenHidden = FALSE)
@@ -225,8 +390,8 @@ output$vignette <- renderPlot({
   wavl  = Inputs$wavl
   delay = Inputs$delay
   
-  if(!is.finite(diff(range(wavl)))  ||
-     !is.finite(diff(range(delay))) ||
+  if(!is.finite(diff(range(wavl ))) |
+     !is.finite(diff(range(delay))) |
      !is.finite(diff(range(mat,na.rm=TRUE)))   ) {
     plot(1:10,1:10,type='n')
     text(x=5,y=5,labels='Data not ready...',col=2)

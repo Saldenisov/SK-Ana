@@ -16,7 +16,7 @@ libs <- c(
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
-  "inlmisc"
+  "inlmisc","shinythemes"
 )
 for (lib in libs) {
   if (!require(lib, character.only = TRUE, quietly = TRUE)) {
@@ -52,7 +52,7 @@ mar <- c(4, 4, 2, 1)
 mgp <- c(2, .75, 0)
 pty <- "m"
 tcl <- -0.5
-plotHeight = 550 # px
+plotHeight = 500 # px
 
 # Proportions of Side/Main Panels ####
 sideWidth <- 4

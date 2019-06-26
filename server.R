@@ -18,31 +18,35 @@ function(input, output, session) {
   RawData <- NULL
   masksDl <- c()
   masksWl <- c()
-
-  Inputs <- reactiveValues(
-    gotData = FALSE,
-    process = FALSE,
-    finish = FALSE,
-    validData = TRUE,
-    fileOrig = NULL,
-    matOrig = NULL,
-    wavlOrig = NULL,
-    delayOrig = NULL,
-    dlScaleFacOrig = NULL,
-    delayMask = NA,
-    wavlMask = NA,
-    maskSpExp = NA,
-    mat = NULL,
-    wavl = NULL,
-    delay = NULL,
-    delaySave = NULL, # True delays used in saved kinetics
-    delayId = NA, # Reference to original matrices when tiled
-    delayGlitch = NA # List of glitches to mask
-  )
-
+  Inputs <- reactiveValues()
+  
+  initInputs = function() {
+    Inputs$gotData = FALSE
+    Inputs$process = FALSE
+    Inputs$finish = FALSE
+    Inputs$validData = TRUE
+    Inputs$fileOrig = NULL
+    Inputs$matOrig = NULL
+    Inputs$wavlOrig = NULL
+    Inputs$delayOrig = NULL
+    Inputs$dlScaleFacOrig = NULL
+    Inputs$delayMask = NA
+    Inputs$wavlMask = NA
+    Inputs$maskSpExp = NA
+    Inputs$mat = NULL
+    Inputs$wavl = NULL
+    Inputs$delay = NULL
+    Inputs$delaySave = NULL # True delays used in saved kinetics
+    Inputs$delayId = NA # Reference to original matrices when tiled
+    Inputs$delayGlitch = NA # List of glitches to mask
+  }
+  
+  initInputs()
+  
   checkInputsSanity <- function() {
     listIn <- reactiveValuesToList(Inputs)
     nulVec <- unlist(lapply(listIn, is.null))
+    # print(listIn)
     noNull <- !any(nulVec)
     return(noNull)
   }
@@ -50,23 +54,16 @@ function(input, output, session) {
   # Load Server files ####
   files <- c(
     "getData.R",
-
     "sliders.R",
-
     "project.R",
-
     "selectAreaAndMasks.R",
-
     "SVD.R",
-
     "ALS.R",
-
     "kinetHypercubeTransfo.R",
     "kinetParsers.R",
     "kinetSpectrokineticModel.R",
     "kinetBayesian.R",
     "kinetInterface.R",
-
     "report.R"
   )
 

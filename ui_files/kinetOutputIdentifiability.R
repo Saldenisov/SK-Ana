@@ -3,7 +3,7 @@ tabsetPanel(
     value="kinPriPost",
     title=h5("Densities"), br(),
     withSpinner(
-      plotOutput("kinParams", height=550) ,
+      plotOutput("kinPriPost", height=550) ,
       type=4
     )
   ),

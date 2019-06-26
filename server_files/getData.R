@@ -1,172 +1,4 @@
 # Functions ####
-downsizeMatrix <- function(delay, wavl, mat, fwD = 1, fwW = fwD) {
-  # Downsize matrix by factors fwD (delay) and fwW (wavl)
-  
-  # Pad matrix with Nas
-  newNrow <- ceiling(nrow(mat) / fwD) * fwD
-  newNcol <- ceiling(ncol(mat) / fwW) * fwW
-  lmat <- matrix(NA, nrow = newNrow, ncol = newNcol)
-  lmat[1:nrow(mat), 1:ncol(mat)] <- mat
-  
-  # Block average
-  nRowBloc <- newNrow / fwD
-  nColBloc <- newNcol / fwW
-  
-  amat <- matrix(NA, nrow = nRowBloc, ncol = nColBloc)
-  for (i in 1:nRowBloc)
-    for (j in 1:nColBloc)
-      amat[i, j] <- mean(
-        lmat[
-          ((i - 1) * fwD + 1):(i * fwD),
-          ((j - 1) * fwW + 1):(j * fwW)
-          ],
-        na.rm = TRUE
-      )
-  
-  ldelay <- rep(NA, newNrow)
-  ldelay[1:length(delay)] <- delay
-  adelay <- c()
-  for (i in 1:nRowBloc)
-    adelay[i] <- mean(
-      ldelay[((i - 1) * fwD + 1):(i * fwD)],
-      na.rm = TRUE
-    )
-  
-  lwavl <- rep(NA, newNcol)
-  lwavl[1:length(wavl)] <- wavl
-  awavl <- c()
-  for (i in 1:nColBloc)
-    awavl[i] <- mean(
-      lwavl[((i - 1) * fwW + 1):(i * fwW)],
-      na.rm = TRUE
-    )
-  
-  return(
-    list(
-      mat = amat,
-      delay = adelay,
-      wavl = awavl
-    )
-  )
-}
-
-getOneMatrix <- function(dataFile) {
-  wavl = try(
-    as.numeric(
-      as.vector(
-        read.table(
-          dataFile, 
-          nrows = 1,
-          header = input$header, 
-          sep = input$sep,
-          stringsAsFactors = FALSE,
-          dec = input$dec,
-          fileEncoding = "ISO-8859-1",
-          quote=""
-        )
-      )
-    )[-1],
-    silent = TRUE
-  )
-  if(class(wavl) == 'try-error' || length(wavl) == 0) 
-    return(NULL) 
-  
-  mat = try(
-    read.table(
-      dataFile, 
-      header = input$header, 
-      skip = 1,
-      dec = input$dec, 
-      sep = input$sep,
-      colClasses= 'numeric',
-      stringsAsFactors = FALSE
-    ),
-    silent = TRUE
-  )
-  if(class(mat) == 'try-error') 
-    return(NULL) 
-  
-  mat = as.matrix(mat)
-  delay = as.numeric(mat[,1])
-  if(length(delay) == 0)
-    return(NULL) 
-  
-  u = !duplicated(delay)
-  delay = delay[u]
-  mat   = mat[u,-1]
-  mat[!is.finite(mat)] = 0
-  
-  # Ensure increasing coordinates
-  iord = order(wavl,decreasing=FALSE)
-  wavl=wavl[iord]
-  mat = mat[,iord] 
-  iord = order(delay,decreasing=FALSE)
-  delay=delay[iord]
-  mat = mat[iord,] 
-  
-  # Downsize
-  if(input$compFacD >= 2 | input$compFacW >= 2) {
-    dsm = downsizeMatrix(delay,wavl,mat,
-                         fwD=input$compFacD, 
-                         fwW=input$compFacW)
-    mat   = dsm$mat
-    delay = dsm$delay
-    wavl  = dsm$wavl
-    rm(dsm)
-  }
-  
-  # Transpose if necessary
-  if(input$datStr != 'dxw') {
-    print('Permute')
-    mat   = t(mat)
-    tmp   = delay
-    delay = wavl
-    wavl  = tmp
-  }
-  
-  return(list(mat=mat, wavl=wavl, delay=delay, 
-              delaySave=delay, delayId= rep(1,length(delay))))
-  
-}
-getRawData <- function (fileNames) {
-  
-  # (Re)initialize data tables
-  Inputs$gotData  <<- FALSE
-  Inputs$validData<<- TRUE    # Data type assumed correct
-  RawData         <<- list()  # Init list in upper environment
-  Inputs$fileOrig <<- NULL    # Invalidate earlier data
-  Inputs$process  <<- FALSE   # Invalidate earlier processing
-  
-  # Init progress bar
-  progress <- shiny::Progress$new()
-  on.exit(progress$close())
-  updateProgress <- function(value = NULL, detail = NULL) {
-    progress$set(value = value, detail = detail)
-  }
-  progress$set(message = "Reading data file(s) ", value = 0)
-  
-  # Load data files
-  for(i in 1:nrow(fileNames)) {
-    fName = fileNames[i,'name']
-    updateProgress(value  = i / nrow(fileNames),detail = fName)
-    O = getOneMatrix(fileNames[i,'datapath'])
-    if (!is.null(O)) 
-      O$name = fName
-    else {
-      Inputs$validData <<- FALSE
-      showModal(modalDialog(
-        title = ">>>> Data problem <<<< ",
-        paste0("The chosen data type does not ",
-               "correspond to the opened data file(s)!"),
-        easyClose = TRUE, 
-        footer = modalButton("Close"),
-        size = 's'
-      ))
-    }
-    RawData[[i]] <<- O
-  }
-  Inputs$gotData <<- TRUE
-}
 doMeanMatrix  <- function(sel) {
   
   # Assume all matrices are on same grid
@@ -245,7 +77,7 @@ doTileMatrix  <- function(sel, tileDel=TRUE) {
 combineMatrix <- function(sel){
   if(is.null(sel)) 
     return(NULL)
-  
+
   if(length(sel) == 1) {
     if(is.null(RawData[[sel]]))
       return(NULL)
@@ -271,13 +103,12 @@ finishMatrix  <- reactive({
     return(NULL)
   
   Inputs$finish <<- FALSE
-  
   data = combineMatrix(input$rawData_rows_selected)
   validate(need(!is.null(data),"--> Bad data type"))
   
   fwD = input$postCompFacD
   fwW = input$postCompFacW
-  if( fwD >= 2 || fwW >=2 ) {
+  if( fwD >= 2 | fwW >=2 ) {
     dls  = data$delay
     dId  = data$delayId
     data = downsizeMatrix(data$delaySave,data$wavl,data$mat,
@@ -352,18 +183,24 @@ finishMatrix  <- reactive({
                           value   = projName)
         }
         
-        # Install data
-        if(is.null(Inputs$matOrig)) {
+        # (Re)-Install data
+        if(is.null(Inputs$fileOrig) | 
+           is.null(Inputs$matOrig) |
+           length(Inputs$fileOrig) != 
+              length(input$rawData_rows_selected) |
+           any(Inputs$fileOrig != 
+               input$dataFile$name[input$rawData_rows_selected])
+           ) {
           # Scale factor for neater delay selectors
           dlScaleFac = 1 #10^(floor(log10(diff(range(data$delay)))-1))
-          Inputs$fileOrig       <<- input$dataFile$name
+          Inputs$fileOrig       <<- input$dataFile$name[input$rawData_rows_selected]
           Inputs$dlScaleFacOrig <<- dlScaleFac
           Inputs$matOrig        <<- data$mat
           Inputs$wavlOrig       <<- data$wavl
           Inputs$delayOrig      <<- data$delay
           Inputs$delayIdOrig    <<- data$delayId
           Inputs$delaySaveOrig  <<- data$delaySave
-        }
+        } 
         
         # Update
         Inputs$mat            <<- data$mat
@@ -377,6 +214,7 @@ finishMatrix  <- reactive({
         projConfig <<- NULL
       }
     })
+    # browser()
     Inputs$finish <<- TRUE
   }
 })

@@ -1109,7 +1109,10 @@ als <- function() {
     # res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
     # C = NMF::basis(res)
     # S = t(NMF::coef(res))
-    res <- NMFN::nnmf(abs(fMat), k = nStart, method = "nnmf_als", eps = 1e-8)
+    res <- NMFN::nnmf(abs(fMat),
+                      k = nStart,
+                      method = "nnmf_als",
+                      eps = 1e-8)
     C <- res$W
     S <- t(res$H)
   } else {

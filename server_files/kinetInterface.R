@@ -252,6 +252,7 @@ parseScheme <- function(scheme) {
   
   Scheme$gotData <<- TRUE
 }
+
 # Interactive ####
 kinPrint     <- reactiveValues(glOut = NULL, optOut = NULL)
 Scheme       <- reactiveValues(gotData = FALSE)
@@ -344,9 +345,10 @@ doKin                <- eventReactive(input$runKin, {
     mat <- Inputs$mat
     mat <- mat[!is.na(Inputs$delayMask), ]
     mat <- mat[, !is.na(Inputs$wavlMask) ]
-    times <- Inputs$delaySave[!is.na(Inputs$delayMask)]
-    delay <- Inputs$delay[!is.na(Inputs$delayMask)]
-    wavl <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+    times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
+    delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
+    wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+    delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
     
     # Number of experiments
     nExp <- 1
@@ -356,9 +358,7 @@ doKin                <- eventReactive(input$runKin, {
     }
     
     deltaStart <- rep(0, nExp)
-    
-    delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
-    startd <- rep(NA, nExp)
+    startd     <- rep(NA, nExp)
     for (iExp in 1:(nExp - 1))
       startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
     startd[nExp] <- length(delay)
@@ -943,7 +943,7 @@ output$kinOpt        <- DT::renderDataTable({
     width = 200
   )
 })
-output$kinParams     <- renderPlot({
+output$kinPriPost    <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
@@ -968,7 +968,7 @@ output$kinParamsSamp <- renderPlot({
 
   SAPlot(sample, cex = cex)
 }, height = plotHeight)
-output$kinResid1     <- renderPlot({
+output$kinResid      <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
@@ -995,7 +995,7 @@ output$kinResid1     <- renderPlot({
     main = main
   )
 }, height = plotHeight)
-output$kinResid2     <- renderPlot({
+output$kinResidAna   <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
@@ -1022,21 +1022,21 @@ output$kinResid2     <- renderPlot({
     main = main
   )
 }, height = plotHeight)
-output$kinResid3     <- renderPlot({
+output$kinIntKin     <- renderPlot({
   # Integrated kinetics
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
   plotIntKin(opt)
 }, height = plotHeight)
-output$kinResid4     <- renderPlot({
+output$kinLofVsSvd   <- renderPlot({
   # L.o.F comparison with SVD
   if (is.null(opt <- doKin()) || is.null(s <- doSVD())) {
     return(NULL)
   }
   plotLofVsSvd(s, opt)
 }, height = plotHeight)
-output$kinResid5     <- renderPlot({
+output$kinDatavsMod  <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
