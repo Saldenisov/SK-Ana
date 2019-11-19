@@ -1210,21 +1210,20 @@ output$alsOpt <- renderUI({
   }
 })
 
-output$alsResid1 <- renderPlot(
-  {
+output$alsResid1 <- renderPlot({
   if (is.null(alsOut <- doALS())) {
     return(NULL)
   }
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   
-  if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
+  if (isolate(input$useFiltered)) {
+    # Choose SVD filtered matrix
     s <- doSVD()
     CS1 <- reshapeCS(s$u, s$v, input$nSV)
     mat <- matrix(0,
                   nrow = length(Inputs$delay),
-                  ncol = length(Inputs$wavl)
-    )
+                  ncol = length(Inputs$wavl))
     for (ic in 1:input$nSV)
       mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
     
@@ -1235,27 +1234,24 @@ output$alsResid1 <- renderPlot(
   }
   plotDatavsMod(Inputs$delay, Inputs$wavl, mat,
                 CS$C, CS$S,
-                main = main
-  )
+                main = main)
 },
-height = plotHeight
-)
+height = plotHeight)
 
-output$alsResid3 <- renderPlot(
-  {
+output$alsResid3 <- renderPlot({
   if (is.null(alsOut <- doALS())) {
     return(NULL)
   }
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   
-  if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
+  if (isolate(input$useFiltered)) {
+    # Choose SVD filtered matrix
     s <- doSVD()
     CS1 <- reshapeCS(s$u, s$v, input$nSV)
     mat <- matrix(0,
                   nrow = length(Inputs$delay),
-                  ncol = length(Inputs$wavl)
-    )
+                  ncol = length(Inputs$wavl))
     for (ic in 1:input$nSV)
       mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
     
@@ -1266,27 +1262,24 @@ output$alsResid3 <- renderPlot(
   }
   plotResid(Inputs$delay, Inputs$wavl, mat,
             CS$C, CS$S,
-            main = main
-  )
+            main = main)
 },
-height = plotHeight
-)
+height = plotHeight)
 
-output$alsResid2 <- renderPlot(
-  {
+output$alsResid2 <- renderPlot({
   if (is.null(alsOut <- doALS())) {
     return(NULL)
   }
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   
-  if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
+  if (isolate(input$useFiltered)) {
+    # Choose SVD filtered matrix
     s <- doSVD()
     CS1 <- reshapeCS(s$u, s$v, input$nSV)
     mat <- matrix(0,
                   nrow = length(Inputs$delay),
-                  ncol = length(Inputs$wavl)
-    )
+                  ncol = length(Inputs$wavl))
     for (ic in 1:input$nSV)
       mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
     
@@ -1297,11 +1290,9 @@ output$alsResid2 <- renderPlot(
   }
   plotResidAna(Inputs$delay, Inputs$wavl, mat,
                CS$C, CS$S,
-               main = main
-  )
+               main = main)
 },
-height = plotHeight
-)
+height = plotHeight)
 
 rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
 

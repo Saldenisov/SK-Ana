@@ -67,9 +67,15 @@ initSliders <- function(config=NULL) {
                      inputId = "nMasksDl",
                      value   = 0)
   
+  # Baseline masks sliders
+  updateNumericInput(session = session,
+                     inputId = "nMasksBaseline",
+                     value   = 0)
+  
+  
   # Baseline correction slider
-  nsteps = round(diff(cblRange)/10)
-  updateSlider("keepCbl"    , cblRange, cblSel   , nsteps)
+  # nsteps = round(diff(cblRange)/10)
+  # updateSlider("keepCbl"    , cblRange, cblSel   , nsteps)
   
   # Update Reporting
   updateCheckboxGroupInput(session,

@@ -16,6 +16,7 @@ function(input, output, session) {
   projConfig <- NULL
   S0_in <- NULL
   RawData <- NULL
+  masksBaseline <- c()
   masksDl <- c()
   masksWl <- c()
   Inputs <- reactiveValues()
@@ -30,6 +31,7 @@ function(input, output, session) {
     Inputs$wavlOrig = NULL
     Inputs$delayOrig = NULL
     Inputs$dlScaleFacOrig = NULL
+    Inputs$baselineMask = NA
     Inputs$delayMask = NA
     Inputs$wavlMask = NA
     Inputs$maskSpExp = NA

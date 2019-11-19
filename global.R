@@ -25,7 +25,7 @@ for (lib in libs) {
       dependencies = TRUE,
       repos = "https://cran.univ-paris1.fr"
     )
-    library(lib, quietly = TRUE)
+    library(lib, character.only = TRUE, quietly = TRUE)
   }
 }
 
