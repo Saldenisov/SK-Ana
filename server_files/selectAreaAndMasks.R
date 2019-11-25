@@ -1057,6 +1057,7 @@ output$transects <- renderPlot({
   )
   grid()
   abline(h = 0, lty = 2)
+  colorizeBaselineMask(ylim=ylim)
   colorizeMask1D(axis = "delay", ylim = input$keepDoRange)
   box()
   
