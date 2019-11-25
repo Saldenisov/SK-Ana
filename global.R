@@ -45,6 +45,7 @@ mask_tr  <- colo_tr[8]
 colo_tr2 <- rev(inlmisc::GetColors(8, alpha = 0.5))
 cyan_tr2 <- colo_tr2[5]
 pink_tr2 <- colo_tr2[3]
+mask_tr2 <- colo_tr2[8]
 
 # Global graphical params ####
 cex <- 1.25
