@@ -22,25 +22,25 @@ function(input, output, session) {
   Inputs <- reactiveValues()
   
   initInputs = function() {
-    Inputs$gotData = FALSE
-    Inputs$process = FALSE
-    Inputs$finish = FALSE
-    Inputs$validData = TRUE
-    Inputs$fileOrig = NULL
-    Inputs$matOrig = NULL
-    Inputs$wavlOrig = NULL
-    Inputs$delayOrig = NULL
-    Inputs$dlScaleFacOrig = NULL
-    Inputs$baselineMask = NA
-    Inputs$delayMask = NA
-    Inputs$wavlMask = NA
-    Inputs$maskSpExp = NA
-    Inputs$mat = NULL
-    Inputs$wavl = NULL
-    Inputs$delay = NULL
-    Inputs$delaySave = NULL # True delays used in saved kinetics
-    Inputs$delayId = NA # Reference to original matrices when tiled
-    Inputs$delayGlitch = NA # List of glitches to mask
+    Inputs$gotData <<- FALSE
+    Inputs$process <<- FALSE
+    Inputs$finish <<- FALSE
+    Inputs$validData <<- TRUE
+    Inputs$fileOrig <<- NULL
+    Inputs$matOrig <<- NULL
+    Inputs$wavlOrig <<- NULL
+    Inputs$delayOrig <<- NULL
+    Inputs$dlScaleFacOrig <<- NULL
+    Inputs$baselineMask <<- NA
+    Inputs$delayMask <<- NA
+    Inputs$wavlMask <<- NA
+    Inputs$maskSpExp <<- NA
+    Inputs$mat <<- NULL
+    Inputs$wavl <<- NULL
+    Inputs$delay <<- NULL
+    Inputs$delaySave <<- NULL # True delays used in saved kinetics
+    Inputs$delayId <<- NA # Reference to original matrices when tiled
+    Inputs$delayGlitch <<- NA # List of glitches to mask
   }
   
   initInputs()

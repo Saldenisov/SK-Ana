@@ -306,6 +306,10 @@ observeEvent(
   })
 )
 
+# Temper excessive reactivity of sliders
+dlRange = reactive({input$keepDlRange}) %>% debounce(debounceDelay)
+wlRange = reactive({input$keepWlRange}) %>% debounce(debounceDelay)
+
 selectArea <- reactive({
   if (!checkInputsSanity()) {
     print('Bad data...')
@@ -365,8 +369,9 @@ selectArea <- reactive({
   }
 
   # Select work area
-  xlim <- input$keepDlRange * Inputs$dlScaleFacOrig
-  ylim <- input$keepWlRange
+  # xlim <- input$keepDlRange * Inputs$dlScaleFacOrig
+  xlim <- dlRange() * Inputs$dlScaleFacOrig
+  ylim <- wlRange()
 
   subX <- delay >= xlim[1] & delay <= xlim[2]
   subY <- wavl >= ylim[1] & wavl <= ylim[2]
@@ -449,6 +454,7 @@ selectArea <- reactive({
     200
   )
 })
+
 
 reshapeCS <- function(U, V, n) {
   # Expand vectors wrt masks
@@ -876,12 +882,13 @@ colorizeMask1D <- function(axis = "delay", dir = "v",
 rangesImage1 <- reactiveValues(x = NULL, y = NULL)
 
 output$image1 <- renderPlot({
-  if (is.null(selectArea())) {
+  if (is.null(selectArea()) | 
+      is.null(Inputs$mat)) {
     return(NULL)
   }
   
-  mat <- Inputs$mat
-  wavl <- Inputs$wavl
+  mat   <- Inputs$mat
+  wavl  <- Inputs$wavl
   delay <- Inputs$delay
   
   validate(
@@ -915,7 +922,7 @@ output$image1 <- renderPlot({
     delay, wavl, mat,
     xlab = "Delay", 
     ylab = "Wavelength",
-    col = imgColors,
+    col  = imgColors,
     xlim = xlim,
     ylim = ylim,
     zlim = input$keepDoRange,

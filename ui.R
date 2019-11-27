@@ -7,10 +7,7 @@ function(request) {
   }
 
   navbarPage(
-    "SK-Ana",
-    theme = shinythemes::shinytheme(
-      c("cosmo", "cerulean", "spacelab", "yeti")[3]
-    ),
+    title = "SK-Ana",
     tabPanel(
       title = "Project",
       source_ui("project.R")
@@ -38,6 +35,9 @@ function(request) {
     tabPanel(
       title = "About",
       source_ui("about.R")
+    ),
+    theme = shinythemes::shinytheme(
+      c("cosmo", "cerulean", "spacelab", "yeti")[3]
     )
   )
 }

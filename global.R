@@ -10,13 +10,16 @@ options(
 
 # options(shiny.json.digits=32)
 
+# Controle reactivity of sliders
+debounceDelay = 750 # ms
+
 # Libraries ####
 libs <- c(
   "outliers", "nnls", "Iso", "httpuv",
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
-  "inlmisc","shinythemes"
+  "inlmisc","shinythemes","magrittr"
 )
 for (lib in libs) {
   if (!require(lib, character.only = TRUE, quietly = TRUE)) {
