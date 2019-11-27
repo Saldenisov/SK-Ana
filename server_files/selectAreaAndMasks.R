@@ -309,6 +309,9 @@ observeEvent(
 # Temper excessive reactivity of sliders
 dlRange = reactive({input$keepDlRange}) %>% debounce(debounceDelay)
 wlRange = reactive({input$keepWlRange}) %>% debounce(debounceDelay)
+doRange = reactive({input$keepDoRange}) %>% debounce(debounceDelay)
+dlCut = reactive({input$keepDlCut}) %>% debounce(debounceDelay)
+wlCut = reactive({input$keepWlCut}) %>% debounce(debounceDelay)
 
 selectArea <- reactive({
   if (!checkInputsSanity()) {
@@ -321,23 +324,6 @@ selectArea <- reactive({
   mat <- Inputs$matOrig
   delayId <- Inputs$delayIdOrig
   delaySave <- Inputs$delaySaveOrig
-
-  # Correct baseline
-  # if (input$keepCbl > 2) {
-  #   mat <-
-  #     matrix(
-  #       unlist(
-  #         apply(
-  #           mat,
-  #           2,
-  #           function(x) {
-  #             x - mean(x[1:input$keepCbl], na.rm = TRUE)
-  #           }
-  #         )
-  #       ),
-  #       ncol = ncol(mat), byrow = FALSE
-  #     )
-  # }
 
   if (input$nMasksBaseline != 0) {
     for (mask in 1:input$nMasksBaseline) {
@@ -925,16 +911,16 @@ output$image1 <- renderPlot({
     col  = imgColors,
     xlim = xlim,
     ylim = ylim,
-    zlim = input$keepDoRange,
+    zlim = doRange(),
     main = 'Data'
   )
   
   abline(
-    v = input$keepDlCut * Inputs$dlScaleFacOrig,
+    v = dlCut() * Inputs$dlScaleFacOrig,
     lwd = 2, col = lineColors[7], lty = 2
   )
   abline(
-    h = input$keepWlCut,
+    h = wlCut(),
     lwd = 2, col = lineColors[7], lty = 2
   )
 
@@ -1008,7 +994,7 @@ output$transects <- renderPlot({
   )
   
   # Locally Averaged Spectrum
-  dCut <- input$keepDlCut * Inputs$dlScaleFacOrig
+  dCut <- dlCut() * Inputs$dlScaleFacOrig
   iCut <- indxCuts(dCut, delay)
   indx <- iCut$indx
   delta <- iCut$delta
@@ -1023,7 +1009,7 @@ output$transects <- renderPlot({
     type = "l", col = lineColors[6], lwd = 2,
     xlab = "Wavelength", ylab = "O.D.",
     xlim = ylim,
-    ylim = input$keepDoRange, yaxs = "i",
+    ylim = doRange(), yaxs = "i",
     main = paste0(
       "Mean O.D. at delay: ", signif(mean(delay[indx]), 3),
       ifelse(delta == 0,
@@ -1034,11 +1020,11 @@ output$transects <- renderPlot({
   )
   grid()
   abline(h = 0, lty = 2)
-  colorizeMask1D(axis = "wavl", ylim = input$keepDoRange)
+  colorizeMask1D(axis = "wavl", ylim = doRange())
   box()
   
   # Locally Averaged Kinetics
-  dCut <- input$keepWlCut
+  dCut <- wlCut()
   iCut <- indxCuts(dCut, wavl)
   indx <- iCut$indx
   delta <- iCut$delta
@@ -1053,7 +1039,7 @@ output$transects <- renderPlot({
     type = "l", col = lineColors[6], lwd = 2,
     xlab = "Delay", ylab = "O.D.",
     xlim = xlim,
-    ylim = input$keepDoRange, yaxs = "i",
+    ylim = doRange(), yaxs = "i",
     main = paste0(
       "Mean O.D. at wavl: ", signif(mean(wavl[indx]), 3),
       ifelse(delta == 0,
@@ -1065,7 +1051,7 @@ output$transects <- renderPlot({
   grid()
   abline(h = 0, lty = 2)
   colorizeBaselineMask(ylim=ylim)
-  colorizeMask1D(axis = "delay", ylim = input$keepDoRange)
+  colorizeMask1D(axis = "delay", ylim = doRange())
   box()
   
 })
@@ -1089,7 +1075,7 @@ output$cutsDl <- renderPlot({
   )
 
   if (is.null(rangesDl$y)) {
-    ylim <- input$keepDoRange
+    ylim <- doRange()
   } else {
     ylim <- rangesDl$y
   }
@@ -1142,7 +1128,7 @@ output$cutsWl <- renderPlot({
   )
 
   if (is.null(rangesWl$y)) {
-    ylim <- input$keepDoRange
+    ylim <- doRange()
   } else {
     ylim <- rangesWl$y
   }
@@ -1194,7 +1180,7 @@ observeEvent(
     mat <- Inputs$mat
     wavl <- Inputs$wavl
     delay <- Inputs$delay
-    dCut <- input$keepWlCut
+    dCut <- wlCut()
     indx <- indxCuts(dCut, wavl)$indx
     if (length(indx) == 1) {
       cutMean <- mat[, indx]
@@ -1224,7 +1210,7 @@ observeEvent(
     mat <- Inputs$mat
     wavl <- Inputs$wavl
     delay <- Inputs$delay
-    dCut <- input$keepDlCut * Inputs$dlScaleFacOrig
+    dCut <- dlCut() * Inputs$dlScaleFacOrig
     indx <- indxCuts(dCut, delay)$indx
     if (length(indx) == 1) {
       cutMean <- mat[indx, ]
