@@ -306,165 +306,6 @@ observeEvent(
   })
 )
 
-# Temper excessive reactivity of sliders
-dlRange = reactive({input$keepDlRange}) %>% debounce(debounceDelay)
-wlRange = reactive({input$keepWlRange}) %>% debounce(debounceDelay)
-doRange = reactive({input$keepDoRange}) %>% debounce(debounceDelay)
-dlCut = reactive({input$keepDlCut}) %>% debounce(debounceDelay)
-wlCut = reactive({input$keepWlCut}) %>% debounce(debounceDelay)
-
-selectArea <- reactive({
-  if (!checkInputsSanity()) {
-    print('Bad data...')
-    return(NULL)
-  }
-
-  delay <- Inputs$delayOrig
-  wavl <- Inputs$wavlOrig
-  mat <- Inputs$matOrig
-  delayId <- Inputs$delayIdOrig
-  delaySave <- Inputs$delaySaveOrig
-
-  if (input$nMasksBaseline != 0) {
-    for (mask in 1:input$nMasksBaseline) {
-      maskName <- paste0("keepBaselineMask", mask)
-      xlim <- input[[maskName]] * Inputs$dlScaleFacOrig
-      if (length(xlim) != 0) {
-        if (diff(xlim) != 0) {
-          sel <- delay >= xlim[1] & delay <= xlim[2]
-          if (sum(sel) != 0) {
-            # Baseline-mean correction per wavelength
-            blCor = unlist(apply(mat[sel, ], 2, mean, na.rm = TRUE))
-
-            # Apply up to next mask of en of matrix
-            if(mask == input$nMasksBaseline) {
-              selt = delay >= xlim[1]
-            }
-            else {
-              maskNameNext <- paste0("keepBaselineMask", mask+1)
-              xlimNext <- input[[maskNameNext]] * Inputs$dlScaleFacOrig
-              selt = delay >= xlim[1] & delay < xlimNext[1]
-            }
-            mblCor = matrix(blCor,nrow=sum(selt),ncol=ncol(mat),
-                            byrow = TRUE)
-            mat[selt,] = mat[selt,] - mblCor
-          } 
-        }
-      }
-    }
-  }
-
-  # Select work area
-  # xlim <- input$keepDlRange * Inputs$dlScaleFacOrig
-  xlim <- dlRange() * Inputs$dlScaleFacOrig
-  ylim <- wlRange()
-
-  subX <- delay >= xlim[1] & delay <= xlim[2]
-  subY <- wavl >= ylim[1] & wavl <= ylim[2]
-
-  delay <- delay[subX]
-  delayId <- delayId[subX]
-  wavl <- wavl[subY]
-  mat <- mat[subX, subY]
-  delaySave <- delaySave[subX]
-
-  Inputs$delay <<- delay
-  Inputs$delayId <<- delayId
-  Inputs$delaySave <<- delaySave
-  Inputs$wavl <<- wavl
-
-  # Aggregate and apply masks
-  delayMask <- rep(0, length(delay))
-  if (input$nMasksDl != 0) {
-    for (mask in 1:input$nMasksDl) {
-      maskName <- paste0("keepDlMask", mask)
-      xlim <- input[[maskName]] * Inputs$dlScaleFacOrig
-      if (length(xlim) != 0) {
-        if (diff(xlim) != 0) {
-          sel <- delay >= xlim[1] & delay <= xlim[2]
-          if (sum(sel) != 0) delayMask[sel] <- NA
-        }
-      }
-    }
-  }
-  wavlMask <- rep(0, length(wavl))
-  if (input$nMasksWl != 0) {
-    for (mask in 1:input$nMasksWl) {
-      maskName <- paste0("keepWlMask", mask)
-      ylim <- input[[maskName]]
-      if (length(ylim) != 0) {
-        if (diff(ylim) != 0) {
-          sel <- wavl >= ylim[1] & wavl <= ylim[2]
-          if (sum(sel) != 0) wavlMask[sel] <- NA
-        }
-      }
-    }
-  }
-  if (!anyNA(Inputs$delayGlitch)) {
-    for (i in 1:length(Inputs$delayGlitch))
-      delayMask[which(delay == Inputs$delayGlitch[i])] <- NA
-  }
-
-  # Track of baseline masks for plots
-  baselineMask <- rep(0, length(delay))
-  if (input$nMasksBaseline != 0) {
-    for (mask in 1:input$nMasksBaseline) {
-      maskName <- paste0("keepBaselineMask", mask)
-      xlim <- input[[maskName]] * Inputs$dlScaleFacOrig
-      if (length(xlim) != 0) {
-        if (diff(xlim) != 0) {
-          sel <- delay >= xlim[1] & delay <= xlim[2]
-          if (sum(sel) != 0) {
-            baselineMask[sel] <- NA
-          } 
-        }
-      }
-    }
-  }
-  Inputs$baselineMask <<- baselineMask
-  
-  Inputs$delayMask <<- delayMask
-  Inputs$wavlMask  <<- wavlMask
-
-
-  mat[is.na(delayMask), ] <- NA
-  mat[, is.na(wavlMask)]  <- NA
-
-  Inputs$mat <<- mat
-
-  # Automatic ajustment of DO range
-  updateSlider(
-    "keepDoRange",
-    signif(range(Inputs$matOrig, na.rm = TRUE), 3),
-    signif(range(mat, na.rm = TRUE), 3),
-    200
-  )
-})
-
-
-reshapeCS <- function(U, V, n) {
-  # Expand vectors wrt masks
-  C <- matrix(NA, nrow = length(Inputs$delay), ncol = n)
-  colnames(C) <- colnames(U)
-  S <- matrix(NA, nrow = length(Inputs$wavl), ncol = n)
-  colnames(S) <- colnames(V)
-  i <- 0
-  for (j in 1:nrow(C)) {
-    if (!is.na(Inputs$delayMask[j])) {
-      i <- i + 1
-      C[j, ] <- U[i, 1:n]
-    }
-  }
-  i <- 0
-  for (j in 1:nrow(S)) {
-    if (!is.na(Inputs$wavlMask[j])) {
-      i <- i + 1
-      S[j, ] <- V[i, 1:n]
-    }
-  }
-  return(list(C = C, S = S))
-}
-
 ## Manage masksBaseline ####
 observeEvent(
   input$nMasksBaseline,
@@ -512,7 +353,7 @@ observeEvent(
   })
 )
 
-## AutoBaselineMAsk ####
+## AutoBaselineMAsk
 observeEvent(
   input$autoBaselineMask,
   isolate({
@@ -579,6 +420,218 @@ observeEvent(
     }
   })
 )
+
+## selectArea ####
+
+### Temper excessive reactivity of sliders
+
+dlRange = reactive({input$keepDlRange}) %>% debounce(debounceDelay)
+wlRange = reactive({input$keepWlRange}) %>% debounce(debounceDelay)
+doRange = reactive({input$keepDoRange}) %>% debounce(debounceDelay)
+dlCut   = reactive({input$keepDlCut})   %>% debounce(debounceDelay)
+wlCut   = reactive({input$keepWlCut})   %>% debounce(debounceDelay)
+
+Masks <- reactiveValues()
+observeEvent(
+  input$nMasksBaseline,
+    if (input$nMasksBaseline != 0)
+      for (mask in 1:input$nMasksBaseline) {
+        f = function() 
+          NULL
+        body(f) = substitute(
+          input[[mName]],
+          list(
+            mName = paste0("keepBaselineMask", mask)
+          )
+        )
+        Masks[[paste0('blm',mask)]] = debounce(f, debounceDelay)
+      }
+)
+observeEvent(
+  input$nMasksDl,
+  if (input$nMasksDl != 0)
+    for (mask in 1:input$nMasksDl) {
+      f = function() 
+        NULL
+      body(f) = substitute(
+        input[[mName]],
+        list(
+          mName = paste0("keepDlMask", mask)
+        )
+      )
+      Masks[[paste0('dlm',mask)]] = debounce(f, debounceDelay)
+    }
+)
+observeEvent(
+  input$nMasksWl,
+  if (input$nMasksWl != 0)
+    for (mask in 1:input$nMasksWl) {
+      f = function() 
+        NULL
+      body(f) = substitute(
+        input[[mName]],
+        list(
+          mName = paste0("keepWlMask", mask)
+        )
+      )
+      Masks[[paste0('wlm',mask)]] = debounce(f, debounceDelay)
+    }
+)
+
+selectArea <- reactive({
+  if (!checkInputsSanity()) {
+    print('Bad data...')
+    return(NULL)
+  }
+
+  delay <- Inputs$delayOrig
+  wavl <- Inputs$wavlOrig
+  mat <- Inputs$matOrig
+  delayId <- Inputs$delayIdOrig
+  delaySave <- Inputs$delaySaveOrig
+    
+  if (input$nMasksBaseline != 0) {
+    for (mask in 1:input$nMasksBaseline) {
+      xlim <- Masks[[paste0('blm', mask)]]() * Inputs$dlScaleFacOrig
+      if (length(xlim) != 0) {
+        if (diff(xlim) != 0) {
+          sel <- delay >= xlim[1] & delay <= xlim[2]
+          if (sum(sel) != 0) {
+            # Baseline-mean correction per wavelength
+            blCor = unlist(apply(mat[sel, ], 2, mean, na.rm = TRUE))
+            # Apply up to next mask or end of matrix
+            selt = NULL
+            if (mask == input$nMasksBaseline) {
+              selt = delay >= xlim[1]
+            } else {
+              xlimNext = Masks[[paste0('blm', mask + 1)]]() *
+                Inputs$dlScaleFacOrig
+              if (length(xlimNext) != 0)
+                selt = delay >= xlim[1] & delay < xlimNext[1]
+            }
+            if (!is.null(selt))
+              if (sum(selt) > 0) {
+                mblCor = matrix(
+                  blCor,
+                  nrow = sum(selt),
+                  ncol = ncol(mat),
+                  byrow = TRUE
+                )
+                mat[selt, ] = mat[selt, ] - mblCor
+              }
+          }
+        }
+      }
+    }
+  }
+  
+  # Select work area
+  # xlim <- input$keepDlRange * Inputs$dlScaleFacOrig
+  xlim <- dlRange() * Inputs$dlScaleFacOrig
+  ylim <- wlRange()
+
+  subX <- delay >= xlim[1] & delay <= xlim[2]
+  subY <- wavl  >= ylim[1] & wavl  <= ylim[2]
+
+  delay   <- delay[subX]
+  delayId <- delayId[subX]
+  wavl    <- wavl[subY]
+  mat     <- mat[subX, subY]
+  delaySave <- delaySave[subX]
+
+  Inputs$delay <<- delay
+  Inputs$delayId <<- delayId
+  Inputs$delaySave <<- delaySave
+  Inputs$wavl <<- wavl
+
+  # Aggregate and apply masks
+  delayMask <- rep(0, length(delay))
+  if (input$nMasksDl != 0) {
+    for (mask in 1:input$nMasksDl) {
+      xlim <- Masks[[paste0('dlm', mask)]]() * Inputs$dlScaleFacOrig
+      if (length(xlim) != 0) {
+        if (diff(xlim) != 0) {
+          sel <- delay >= xlim[1] & delay <= xlim[2]
+          if (sum(sel) != 0) delayMask[sel] <- NA
+        }
+      }
+    }
+  }
+  
+  wavlMask <- rep(0, length(wavl))
+  if (input$nMasksWl != 0) {
+    for (mask in 1:input$nMasksWl) {
+      ylim <- Masks[[paste0('wlm', mask)]]()
+      if (length(ylim) != 0) {
+        if (diff(ylim) != 0) {
+          sel <- wavl >= ylim[1] & wavl <= ylim[2]
+          if (sum(sel) != 0) wavlMask[sel] <- NA
+        }
+      }
+    }
+  }
+  
+  if (!anyNA(Inputs$delayGlitch)) {
+    for (i in 1:length(Inputs$delayGlitch))
+      delayMask[which(delay == Inputs$delayGlitch[i])] <- NA
+  }
+
+  # Track of baseline masks for plots
+  baselineMask <- rep(0, length(delay))
+  if (input$nMasksBaseline != 0) {
+    for (mask in 1:input$nMasksBaseline) {
+      xlim <- Masks[[paste0('blm', mask)]]() * Inputs$dlScaleFacOrig
+      if (length(xlim) != 0) {
+        if (diff(xlim) != 0) {
+          sel <- delay >= xlim[1] & delay <= xlim[2]
+          if (sum(sel) != 0) {
+            baselineMask[sel] <- NA
+          } 
+        }
+      }
+    }
+  }
+  
+  Inputs$baselineMask <<- baselineMask
+  Inputs$delayMask <<- delayMask
+  Inputs$wavlMask  <<- wavlMask
+
+  mat[is.na(delayMask), ] <- NA
+  mat[, is.na(wavlMask)]  <- NA
+
+  Inputs$mat <<- mat
+
+  # Automatic ajustment of DO range
+  # updateSlider(
+  #   "keepDoRange",
+  #   signif(range(Inputs$matOrig, na.rm = TRUE), 3),
+  #   signif(range(mat, na.rm = TRUE), 3),
+  #   200
+  # )
+})
+
+reshapeCS <- function(U, V, n) {
+  # Expand vectors wrt masks
+  C <- matrix(NA, nrow = length(Inputs$delay), ncol = n)
+  colnames(C) <- colnames(U)
+  S <- matrix(NA, nrow = length(Inputs$wavl), ncol = n)
+  colnames(S) <- colnames(V)
+  i <- 0
+  for (j in 1:nrow(C)) {
+    if (!is.na(Inputs$delayMask[j])) {
+      i <- i + 1
+      C[j, ] <- U[i, 1:n]
+    }
+  }
+  i <- 0
+  for (j in 1:nrow(S)) {
+    if (!is.na(Inputs$wavlMask[j])) {
+      i <- i + 1
+      S[j, ] <- V[i, 1:n]
+    }
+  }
+  return(list(C = C, S = S))
+}
 
 ## Manage masksDl ####
 observeEvent(
@@ -868,7 +921,7 @@ colorizeMask1D <- function(axis = "delay", dir = "v",
 rangesImage1 <- reactiveValues(x = NULL, y = NULL)
 
 output$image1 <- renderPlot({
-  if (is.null(selectArea()) | 
+  if (is.null(selectArea()) |
       is.null(Inputs$mat)) {
     return(NULL)
   }
@@ -987,6 +1040,8 @@ output$transects <- renderPlot({
     ylim <- rangesImage1$y
   }
   
+  zlim = doRange()
+  
   par(
     mfrow = c(2, 1),
     cex = cex, cex.main = cex, mar = mar,
@@ -1009,7 +1064,8 @@ output$transects <- renderPlot({
     type = "l", col = lineColors[6], lwd = 2,
     xlab = "Wavelength", ylab = "O.D.",
     xlim = ylim,
-    ylim = doRange(), yaxs = "i",
+    ylim = zlim, 
+    yaxs = "i",
     main = paste0(
       "Mean O.D. at delay: ", signif(mean(delay[indx]), 3),
       ifelse(delta == 0,
@@ -1020,7 +1076,7 @@ output$transects <- renderPlot({
   )
   grid()
   abline(h = 0, lty = 2)
-  colorizeMask1D(axis = "wavl", ylim = doRange())
+  colorizeMask1D(axis = "wavl", ylim = zlim)
   box()
   
   # Locally Averaged Kinetics
@@ -1039,7 +1095,8 @@ output$transects <- renderPlot({
     type = "l", col = lineColors[6], lwd = 2,
     xlab = "Delay", ylab = "O.D.",
     xlim = xlim,
-    ylim = doRange(), yaxs = "i",
+    ylim = zlim, 
+    yaxs = "i",
     main = paste0(
       "Mean O.D. at wavl: ", signif(mean(wavl[indx]), 3),
       ifelse(delta == 0,
@@ -1050,8 +1107,8 @@ output$transects <- renderPlot({
   )
   grid()
   abline(h = 0, lty = 2)
-  colorizeBaselineMask(ylim=ylim)
-  colorizeMask1D(axis = "delay", ylim = doRange())
+  colorizeBaselineMask(ylim = zlim)
+  colorizeMask1D(axis = "delay", ylim = zlim)
   box()
   
 })
@@ -1151,15 +1208,6 @@ output$cutsWl <- renderPlot({
   grid()
   colorizeBaselineMask(ylim=ylim)
   colorizeMask1D(axis = "delay", ylim = ylim)
-  # if (input$keepCbl != 0) {
-  #   rect(Inputs$delayOrig[1],
-  #     ylim[1],
-  #     Inputs$delayOrig[input$keepCbl],
-  #     ylim[2],
-  #     border = NA,
-  #     col = pink_tr
-  #   )
-  # }
   box()
 })
 
