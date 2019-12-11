@@ -36,7 +36,11 @@ fluidRow(
     fluidRow(
       column(
         width = 10,
-        uiOutput("selAmbParams")
+        uiOutput("selAmbParams"),
+        checkboxInput(
+          "ambDisplayLines", 
+          label = "Display Lines",
+          value = FALSE)
       ),
       column(
         width = 2,
@@ -59,7 +63,7 @@ fluidRow(
         ),
         tags$style(
           type='text/css',
-          "#killALSAmb { width:100%;}"
+          "#killALSAmb { width:100%; margin-top: 5px;}"
         ),
         actionButton(
           "rotAmbVecSave",
@@ -68,7 +72,7 @@ fluidRow(
         ),
         tags$style(
           type='text/css',
-          "#rotAmbVecSave { width:100%;}"
+          "#rotAmbVecSave { width:100%; margin-top: 5px;}"
         )
       )
     )

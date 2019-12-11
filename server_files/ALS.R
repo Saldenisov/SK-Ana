@@ -430,6 +430,7 @@ plotResidAna <- function(delay, wavl, mat, C, S,
 }
 plotAmbVec <- function(alsOut, solutions,
                        type = "Kin",
+                       displayLines = FALSE,
                        xlim = NULL, ylim = NULL, ...) {
   par(
     cex = cex, cex.main = cex, mar = mar,
@@ -501,11 +502,19 @@ plotAmbVec <- function(alsOut, solutions,
               col = col0, add = TRUE
       )
     }
-    for (j in 1:nvec)
+    for (j in 1:nvec) {
       polygon(
         c(xS, rev(xS)), c(Smin[, j], rev(Smax[, j])),
         col = colR[j], border = NA
       )
+      if (displayLines)
+        for (i in 1:nkeep) {
+          vec <- solutions[[i]]$S1[, j]
+          nn <- sum(vec)
+          vec = vec / nn
+          lines(xS,vec,lty=1,col=colF[j],lwd=1)
+        }
+    }
     colorizeMask1D(axis = "wavl", ylim = ylim)
     box()
   } else {
@@ -549,11 +558,19 @@ plotAmbVec <- function(alsOut, solutions,
         col = col0, add = TRUE
       )
     }
-    for (j in 1:nvec)
+    for (j in 1:nvec) {
       polygon(
         c(xC, rev(xC)), c(Cmin[, j], rev(Cmax[, j])),
         col = colR[j], border = NA
       )
+      if (displayLines)
+        for (i in 1:nkeep) {
+          vec <- solutions[[i]]$S1[, j]
+          nn <- sum(vec)
+          vec = solutions[[i]]$C1[, j] * nn
+          lines(xC,vec,lty=1,col=colF[j],lwd=1)
+        }    
+    }
     colorizeMask1D(axis = "delay", ylim = ylim)
     
     box()
@@ -1541,6 +1558,7 @@ output$ambSpVectors <- renderPlot(
     } else {
       plotAmbVec(alsOut, solutions,
                  type = "Sp",
+                 displayLines = input$ambDisplayLines,
                  xlim = rangesAmbSp$x,
                  ylim = rangesAmbSp$y
       )
@@ -1573,6 +1591,7 @@ output$ambKinVectors <- renderPlot(
     } else {
       plotAmbVec(alsOut, solutions,
                  type = "Kin",
+                 displayLines = input$ambDisplayLines,
                  xlim = rangesAmbKin$x,
                  ylim = rangesAmbKin$y
       )

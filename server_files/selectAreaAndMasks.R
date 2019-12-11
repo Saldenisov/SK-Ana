@@ -424,6 +424,7 @@ observeEvent(
 ## selectArea ####
 
 ### Temper excessive reactivity of sliders
+## TBD: add a control to let the user choose debounceDelay ?
 
 dlRange = reactive({input$keepDlRange}) %>% debounce(debounceDelay)
 wlRange = reactive({input$keepWlRange}) %>% debounce(debounceDelay)
