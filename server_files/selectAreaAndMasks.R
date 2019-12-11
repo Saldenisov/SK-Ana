@@ -603,12 +603,13 @@ selectArea <- reactive({
   Inputs$mat <<- mat
 
   # Automatic ajustment of DO range
-  # updateSlider(
-  #   "keepDoRange",
-  #   signif(range(Inputs$matOrig, na.rm = TRUE), 3),
-  #   signif(range(mat, na.rm = TRUE), 3),
-  #   200
-  # )
+  updateSlider(
+    "keepDoRange",
+    # signif(range(Inputs$matOrig, na.rm = TRUE), 3),
+    signif(range(mat, na.rm = TRUE), 3),
+    signif(range(mat, na.rm = TRUE), 3),
+    200
+  )
 })
 
 reshapeCS <- function(U, V, n) {
