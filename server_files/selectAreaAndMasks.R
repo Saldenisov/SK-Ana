@@ -1118,6 +1118,7 @@ outputOptions(output, "transects",
               suspendWhenHidden = FALSE
 )
 
+
 rangesDl <- reactiveValues(x = NULL, y = NULL)
 
 output$cutsDl <- renderPlot({
@@ -1280,6 +1281,64 @@ observeEvent(
           )
         ),
       row.names = FALSE
+    )
+  })
+)
+
+observeEvent(
+  input$wavlStepCutSave,
+  isolate({
+    mat <- Inputs$mat
+    wavl <- Inputs$wavl
+    delay <- Inputs$delaySave
+    indx <- seq(1, length(wavl),
+                by = max(1, input$stepWlCut)
+    )
+    mat = mat[,indx]
+    wavl = c("delay",paste0(wavl[indx]))
+    
+    write.table(
+     cbind(delay, mat),
+      file =
+        file.path(
+          "outputDir",
+          paste0(
+            input$projectTag,
+            "_wavlCuts.csv"
+          )
+        ),
+      sep = ",",
+      row.names = FALSE,
+      col.names = wavl
+    )
+  })
+)
+
+observeEvent(
+  input$delayStepCutSave,
+  isolate({
+    mat <- Inputs$mat
+    wavl <- Inputs$wavl
+    delay <- Inputs$delaySave
+    indx <- seq(1, length(delay),
+                by = max(1, input$stepDlCut)
+    )
+    mat = mat[indx,]
+    delay = c("wavl",paste0(delay[indx]))
+    
+    write.table(
+      cbind(wavl, t(mat)),
+      file =
+        file.path(
+          "outputDir",
+          paste0(
+            input$projectTag,
+            "_delayCuts.csv"
+          )
+        ),
+      sep = ",",
+      row.names = FALSE,
+      col.names = delay
     )
   })
 )

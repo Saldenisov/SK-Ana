@@ -255,13 +255,29 @@ sidebarLayout(
               # ),
               br(),
               wellPanel(
-                sliderInput(
-                  "stepDlCut",
-                  "Cut freq.",
-                  min = 0,
-                  max = 100,
-                  value = 10,
-                  sep = ""
+                fluidRow(
+                  column(
+                    9,
+                    sliderInput(
+                      "stepDlCut",
+                      "Cut freq.",
+                      min = 0,
+                      max = 100,
+                      value = 10,
+                      sep = ""
+                    )
+                  ),
+                  column(
+                    3,
+                    actionButton(
+                      "delayStepCutSave", "Save",
+                      icon = icon('save')
+                    ),
+                    tags$style(
+                      type = 'text/css',
+                      "#delayStepCutSave { width:100%; margin-top: 30px;}"
+                    )
+                  )
                 )
               )
             ),
@@ -279,15 +295,30 @@ sidebarLayout(
               # ),
               br(),
               wellPanel(
-                sliderInput(
-                  "stepWlCut",
-                  "Cut freq.",
-                  min = 0,
-                  max = 100,
-                  value = 10,
-                  sep = ""
+                fluidRow(
+                  column(
+                    9,
+                    sliderInput(
+                      "stepWlCut",
+                      "Cut freq.",
+                      min = 0,
+                      max = 100,
+                      value = 10,
+                      sep = ""
+                    )
+                  ),
+                  column(
+                    3,
+                    actionButton(
+                      "wavlStepCutSave", "Save",
+                      icon = icon('save')
+                    ),
+                    tags$style(
+                      type = 'text/css',
+                      "#wavlStepCutSave { width:100%; margin-top: 30px;}"
+                    )
+                  )
                 )
-                
               )
             )
           )
