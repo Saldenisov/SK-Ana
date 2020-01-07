@@ -464,3 +464,30 @@ output$saveProject <- downloadHandler(
          file     = con)
   }
 )
+
+observeEvent(
+  input$dataSave,
+  isolate({
+    mat <- Inputs$mat
+    wavl <- Inputs$wavl
+    delay <- Inputs$delaySave
+    delay = c("wavl",paste0(delay))
+    print(str(Inputs$delay))
+    print(str(Inputs$delaySave))
+    
+    write.table(
+      cbind(wavl, t(mat)),
+      file =
+        file.path(
+          "outputDir",
+          paste0(
+            input$projectTag,
+            "_Matrix.csv"
+          )
+        ),
+      sep = ",",
+      row.names = FALSE,
+      col.names = delay
+    )
+  })
+)

@@ -23,8 +23,9 @@ doMeanMatrix  <- function(sel) {
       v = matTab[,i,j]
       v = v[!is.na(v)]
       if(length(v) >=1) {
-        effData    = outliers::rm.outlier(v)
-        matm[i,j]  = mean(effData,na.rm = TRUE)
+        # effData    = outliers::rm.outlier(v)
+        # matm[i,j]  = mean(effData,na.rm = TRUE)
+        matm[i,j]    = mean(v,na.rm = TRUE)
       }
     }
   } 

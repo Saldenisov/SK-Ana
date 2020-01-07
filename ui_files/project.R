@@ -152,22 +152,32 @@ sidebarLayout(
     uiOutput("ui"),
     br(),
     fluidRow(
-      column(4,
-             conditionalPanel(
-               condition = "output.showPIN",
-               wellPanel(style = "background-color: #ffffff;", 
-                         uiOutput("projectInfoNew")
-               )
-             )
+      column(
+        4,
+        conditionalPanel(
+          condition = "output.showPIN",
+          wellPanel(style = "background-color: #ffffff;", 
+                    uiOutput("projectInfoNew")
+          ),
+          actionButton(
+            "dataSave", "Save Matrix",
+            icon = icon('save')
+          ),
+          tags$style(
+            type = 'text/css',
+            "#dataSave { width:40%; margin-top: 30px;}"
+          )
+        )
       ),
-      column(6,
-             conditionalPanel(
-               condition = "output.showPIN",
-               wellPanel(style = "background-color: #ffffff;", 
-                         plotOutput("vignette", height = 250, width=400)
-               )
-             )
-             
+      column(
+        6,
+        conditionalPanel(
+          condition = "output.showPIN",
+          wellPanel(style = "background-color: #ffffff;", 
+                    plotOutput("vignette", height = 250, width=400)
+          )
+        )
+        
       )
     )
     
