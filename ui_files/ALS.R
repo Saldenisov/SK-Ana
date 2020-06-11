@@ -66,10 +66,10 @@ sidebarLayout(
         tabPanel(
           title=h4("Contributions"),
           br(),
-          withSpinner(
+          # withSpinner(
             plotOutput("alsContribs", height=550),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="alsContribTab"
         ),
         tabPanel(

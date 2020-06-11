@@ -1,4 +1,4 @@
-# Functione ####
+# Functions ####
 lof <- function(model, data) {
   100 * (
     sum((data - model)^2, na.rm = TRUE) /
@@ -322,7 +322,6 @@ doSVD <- reactive({
   svd(mat, nu = nsvMax, nv = nsvMax)
 })
 
-
 observeEvent(
   input$clean, {
     # Build vector of glitches
@@ -354,7 +353,6 @@ output$svdSV <- renderPlot({
   if (is.null(s <- doSVD())) {
     return(NULL)
   }
-
   mat <- Inputs$mat
   # Suppress masked areas
   mat <- mat[!is.na(Inputs$delayMask), ]
@@ -418,7 +416,8 @@ height = plotHeight
 )
 
 output$svdStat <- DT::renderDataTable({
-  # Build table of SVD indicators (S.V., Lack-of-fit, Sd(resid))
+  # Build table of SVD indicators 
+  # (S.V., Lack-of-fit, Sd(resid))
   if (is.null(s <- doSVD())) {
     return(NULL)
   }

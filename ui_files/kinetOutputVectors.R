@@ -1,24 +1,26 @@
 fluidRow(
   column(6,
-         withSpinner(
+         # withSpinner(
            plotOutput("kinSpVectors", height=500,
                       dblclick = "kinSp_dblclick",
                       brush = brushOpts(
                         id = "kinSp_brush",
                         resetOnNew = TRUE
-                      )),
-           type=4
+                      )
+           # ),
+         #   type=4
          )
   ),
   column(6,
-         withSpinner(
+         # withSpinner(
            plotOutput("kinKinVectors", height=500,
                       dblclick = "kinKin_dblclick",
                       brush = brushOpts(
                         id = "kinKin_brush",
                         resetOnNew = TRUE
-                      )),
-           type=4
+                      )
+           # ),
+           # type=4
          )
          
   ),

@@ -33,46 +33,46 @@ sidebarLayout(
         tabPanel(
           title=h4("Vectors"),
           br(),
-          withSpinner(
+          # withSpinner(
             plotOutput("svdVec", height=550),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="delaySV"
         ),
         tabPanel(
           title=h4("Data vs. Model"),
           br(),
-          withSpinner(
+          # withSpinner(
             plotOutput("svdResid", height=550),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="residSVD"
         ),
         tabPanel(
           title=h4("Residuals"),
           br(),
-          withSpinner(
+          # withSpinner(
             plotOutput("svdResid1", height=550),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="residSVD1"
         ),
         tabPanel(
           title=h4("Contributions"),
           br(),
-          withSpinner(
+          # withSpinner(
             plotOutput("svdContribs", height=550),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="recSVD"
         ),
         tabPanel(
           title=h4("Statistics"),
           br(),
-          withSpinner(
+          # withSpinner(
             DT::dataTableOutput('svdStat',width = "50%"),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="statSVD"
         )
       ),

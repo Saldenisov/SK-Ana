@@ -5,10 +5,10 @@ wellPanel(
     ),
     column(6,
            h4('Best parameters (MAP)'),
-           withSpinner(
-             DT::dataTableOutput('kinOpt'),
-             type = 4
-           )
+           # withSpinner(
+             DT::dataTableOutput('kinOpt')#,
+           #   type = 4
+           # )
     )
   )
 )

@@ -44,10 +44,10 @@ sidebarLayout(
         tabPanel(
           title=h4("Contributions"),
           br(),
-          withSpinner(
+          # withSpinner(
             plotOutput("kinContribs", height=550),
-            type=4
-          ),
+          #   type=4
+          # ),
           value="kinContribTab"
         )
       )

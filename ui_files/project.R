@@ -23,7 +23,7 @@ sidebarLayout(
             "Streak"  = 'streakStyle',
             "Other..."= 'otherStyle'
           ), 
-          selected = 'csvStyle', 
+          # selected = 'csvStyle', 
           multiple = FALSE,
           selectize = FALSE, 
           width = NULL, 
@@ -156,7 +156,7 @@ sidebarLayout(
         4,
         conditionalPanel(
           condition = "output.showPIN",
-          wellPanel(style = "background-color: #ffffff;", 
+          wellPanel(style = "background-color: #ffffff;",
                     uiOutput("projectInfoNew")
           ),
           actionButton(
@@ -173,13 +173,12 @@ sidebarLayout(
         6,
         conditionalPanel(
           condition = "output.showPIN",
-          wellPanel(style = "background-color: #ffffff;", 
+          wellPanel(style = "background-color: #ffffff;",
                     plotOutput("vignette", height = 250, width=400)
           )
         )
-        
+
       )
     )
-    
   )
 ) 

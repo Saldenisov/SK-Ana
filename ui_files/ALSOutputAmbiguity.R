@@ -1,7 +1,7 @@
 fluidRow(
   column(
     width = 6,
-    withSpinner(
+    # withSpinner(
       plotOutput(
         "ambSpVectors",
         height = "450px",
@@ -10,13 +10,13 @@ fluidRow(
           id = "ambSp_brush",
           resetOnNew = TRUE
         )
-      ),
-      type=4
+      # ),
+      # type=4
     )
   ),
   column(
     width = 6,
-    withSpinner(
+    # withSpinner(
       plotOutput(
         "ambKinVectors",
         height = "450px",
@@ -25,8 +25,8 @@ fluidRow(
           id = "ambKin_brush",
           resetOnNew = TRUE
         )
-      ),
-      type=4
+      # ),
+      # type=4
     )
   ),
   br(),

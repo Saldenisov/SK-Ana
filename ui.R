@@ -1,3 +1,4 @@
+
 function(request) {
   source_ui <- function(...) {
     source(
@@ -5,7 +6,7 @@ function(request) {
       local = TRUE
     )$value
   }
-
+  
   navbarPage(
     title = "SK-Ana",
     tabPanel(
@@ -41,3 +42,4 @@ function(request) {
     )
   )
 }
+

@@ -1,3 +1,12 @@
+inputStyle = reactiveValues(
+  header = FALSE,
+  sep    = ",",
+  dec    = ".",
+  datStr = "wxd"
+)
+dataLoaded = reactive({
+  Inputs$gotData & Inputs$validData
+})
 # Functions ####
 downsizeMatrix <- function(delay, wavl, mat, fwD = 1, fwW = fwD) {
   # Downsize matrix by factors fwD (delay) and fwW (wavl)
@@ -54,14 +63,14 @@ getOneMatrix  <- function(dataFile) {
     as.numeric(
       as.vector(
         read.table(
-          dataFile, 
+          dataFile,
           nrows = 1,
-          header = input$header, 
-          sep = input$sep,
+          header = inputStyle$header,
+          sep = inputStyle$sep,
           stringsAsFactors = FALSE,
-          dec = input$dec,
+          dec = inputStyle$dec,
           fileEncoding = "ISO-8859-1",
-          quote=""
+          quote = ""
         )
       )
     )[-1],
@@ -73,10 +82,10 @@ getOneMatrix  <- function(dataFile) {
   mat = try(
     read.table(
       dataFile, 
-      header = input$header, 
+      header = inputStyle$header, 
       skip = 1,
-      dec = input$dec, 
-      sep = input$sep,
+      dec = inputStyle$dec, 
+      sep = inputStyle$sep,
       colClasses= 'numeric',
       stringsAsFactors = FALSE
     ),
@@ -115,7 +124,7 @@ getOneMatrix  <- function(dataFile) {
   }
   
   # Transpose if necessary
-  if(input$datStr != 'dxw') {
+  if(inputStyle$datStr != 'dxw') {
     # print('Permute')
     mat   = t(mat)
     tmp   = delay
@@ -127,7 +136,7 @@ getOneMatrix  <- function(dataFile) {
               delaySave=delay, delayId= rep(1,length(delay))))
   
 }
-getRawData    <- function (fileNames) {
+getRawData    <- function(fileNames) {
   initInputs()  # (Re)initialize data tables
   RawData <<- list()  # Init list in upper environment
   
@@ -144,9 +153,9 @@ getRawData    <- function (fileNames) {
     fName = fileNames[i,'name']
     updateProgress(value  = i / nrow(fileNames),detail = fName)
     O = getOneMatrix(fileNames[i,'datapath'])
-    if (!is.null(O)) 
+    if (!is.null(O)) { 
       O$name = fName
-    else {
+    } else {
       Inputs$validData <<- FALSE
       showModal(modalDialog(
         title = ">>>> Data problem <<<< ",
@@ -162,77 +171,86 @@ getRawData    <- function (fileNames) {
   Inputs$gotData <<- TRUE
 }
 
-# Predefined input styles
+# Predefined input styles ####
 observeEvent(
-  input$style, isolate({
+  input$style, 
+  isolate({
     switch( input$style,
             csvStyle = {
-              header = FALSE
-              sep= ","
-              dec= "."
-              datStr= "wxd"
+              inputStyle$header = FALSE
+              inputStyle$sep= ","
+              inputStyle$dec= "."
+              inputStyle$datStr= "wxd"
             },
             otherStyle = {
-              header = FALSE
-              sep= ","
-              dec= "."
-              datStr= "wxd"
+              inputStyle$header = FALSE
+              inputStyle$sep= ","
+              inputStyle$dec= "."
+              inputStyle$datStr= "wxd"
             },
             munichStyle = {
-              header = FALSE
-              sep= "\t"
-              dec= "."
-              datStr= "wxd"
+              inputStyle$header = FALSE
+              inputStyle$sep= "\t"
+              inputStyle$dec= "."
+              inputStyle$datStr= "wxd"
             },
             elyseStyle = {
-              header = FALSE
-              sep= "\t"
-              dec= "."
-              datStr= "wxd"
+              inputStyle$header = FALSE
+              inputStyle$sep= "\t"
+              inputStyle$dec= "."
+              inputStyle$datStr= "wxd"
             },
             heleneStyle={
-              header = FALSE
-              sep= ";"
-              dec= "."
-              datStr= "wxd"
+              inputStyle$header = FALSE
+              inputStyle$sep= ";"
+              inputStyle$dec= "."
+              inputStyle$datStr= "wxd"
             },
             streakStyle = {
-              header = TRUE
-              sep= ","
-              dec= "."
-              datStr= "wxd"
-            }      
+              inputStyle$header = TRUE
+              inputStyle$sep= ","
+              inputStyle$dec= "."
+              inputStyle$datStr= "wxd"
+            },
+            otherStyle = {
+              inputStyle$header = input$header
+              inputStyle$sep= input$sep
+              inputStyle$dec= input$dec
+              inputStyle$datStr= input$datStr
+            }       
     )
-    updateCheckboxInput(session, 
-                        inputId = "header", 
-                        value   = header)
-    updateRadioButtons(session,
-                       inputId  = "sep",
-                       selected = sep)
-    updateRadioButtons(session,
-                       inputId  = "dec",
-                       selected = dec)
-    updateRadioButtons(session,
-                       inputId  = "datStr",
-                       selected = datStr)
+    # updateCheckboxInput(session, 
+    #                     inputId = "header", 
+    #                     value   = header)
+    # updateRadioButtons(session,
+    #                    inputId  = "sep",
+    #                    selected = sep)
+    # updateRadioButtons(session,
+    #                    inputId  = "dec",
+    #                    selected = dec)
+    # updateRadioButtons(session,
+    #                    inputId  = "datStr",
+    #                    selected = datStr)
   })
 )
 
-# New project
+# New project ####
 observeEvent(
   input$dataFile,
   getRawData(input$dataFile)
 )
 output$loadMsg <- renderUI({
-  ll = list(
-    h4('No data loaded'),
-    h5('Please select data file(s)...')
-  )
-  if(Inputs$gotData & Inputs$validData) 
-    ll = list(
+  if(dataLoaded()) {
+    # if(Inputs$gotData & Inputs$validData) {
+      ll = list(
       h4('Data loaded !')
     )
-  
+  } else {
+    ll = list(
+      h4('No data loaded'),
+      h5('Please select data file(s)...')
+    )
+  }
   return(ll)
 })
 output$rawData = DT::renderDataTable({
@@ -244,35 +262,39 @@ output$rawData = DT::renderDataTable({
     name[i]   = RawData[[i]]$name
     ndelay[i] = length(RawData[[i]]$delay)
     nwavl[i]  = length(RawData[[i]]$wavl)
-    size[i]   = format(object.size(RawData[[i]]$mat),units="Mb")
+    size[i]   = format(
+      object.size(RawData[[i]]$mat),
+      units="Mb")
   }
-  DT::datatable(cbind(id=1:length(RawData),name,ndelay,nwavl,size),
-                options = list(paging    = FALSE,
-                               ordering  = FALSE,
-                               searching = FALSE,
-                               dom       = 't'   ),
-                selection=list(target='row',
-                               selected=1:length(RawData)
-                ), 
-                escape    = FALSE
+  DT::datatable(
+    cbind(id=1:length(RawData),name,ndelay,nwavl,size),
+    options = list(
+      paging    = FALSE,
+      ordering  = FALSE,
+      searching = FALSE,
+      dom       = 't'   ),
+    selection=list(
+      target='row',
+      selected=1:length(RawData)
+    ), 
+    escape    = FALSE
   )
-  
 })
 output$sel     = renderPrint({
   if( !(Inputs$gotData & Inputs$validData) )
     return(NULL)
-  
   cat(
-    paste0('Selected file(s) :',
-           ifelse(
-             length(input$rawData_rows_selected) != 0 ,
-             paste0(input$rawData_rows_selected,collapse=','),
-             ' none'
-           )
+    paste0(
+      'Selected file(s) :',
+      ifelse(
+        length(input$rawData_rows_selected) != 0 ,
+        paste0(input$rawData_rows_selected,collapse=','),
+        ' none'
+      )
     )
   )
   Inputs$process <<- FALSE
-  Inputs$finish <<- FALSE
+  Inputs$finish  <<- FALSE
 })
 output$showsel = reactive({
   Inputs$gotData & Inputs$validData 
@@ -356,7 +378,7 @@ output$ui      = renderUI({
 observeEvent(input$process,
   isolate({
     Inputs$process <<- TRUE
-    Inputs$finish <<- FALSE
+    Inputs$finish  <<- FALSE
     finishMatrix()
   })
 )

@@ -481,7 +481,7 @@ observeEvent(
 
 selectArea <- reactive({
   if (!checkInputsSanity()) {
-    print('Bad data...')
+    # print('Bad data...')
     return(NULL)
   }
 
@@ -935,7 +935,7 @@ output$image1 <- renderPlot({
   validate(
     need(
       is.finite(diff(range(wavl))) &
-        is.finite(diff(range(wavl))) &
+        is.finite(diff(range(delay))) &
         is.finite(diff(range(mat, na.rm = TRUE))),
       'Data not ready !'
     )
