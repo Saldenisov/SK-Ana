@@ -1,0 +1,138 @@
+---
+title: 'SK-Ana: Spectro-Kinetic matrices Analysis'
+author: "P. Pernot"
+date: "(`r Sys.Date()`)"
+output:
+  github_document:
+    toc: yes
+    toc_depth: 3
+    pandoc_args: --webtex
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    number_sections: yes
+    theme: cerulean
+    toc: yes
+---
+
+
+# Introduction
+
+The `SK-Ana` graphical interface is organized in sequential order
+of project management:
+
+* `Project`: define a project's name and load the data
+
+* `Data Selection`: define the data subset to be treated
+
+* `SVD`: perform Singular Values Decomposition analysis
+
+* `ALS`: perform Alternated Least-Squares decomposition
+
+* `Kinet`: constrain the analysis by a kinetic model
+
+* `Downloads`: download saved the results and/or a report
+
+* `About`: information about the code
+ 
+# Workflow
+
+A typical workflow consists in the sequence:
+
+```
+`Project` > (`Data Selection` > `SVD` > `ALS`) > `Downloads`
+```
+
+where the sequence between parentheses is iterated until _satisfecit_.
+Technically, the `SVD` step could be avoided for an ALS analysis, 
+but it provides a lot of useful information and should not be overlooked. 
+
+# Modules reference
+
+
+## Project
+
+Project definition and data input.
+
+### `New Project`
+
++ __`Project Name`__: choose a name. If not, a name will be generated
+from the datafiles selected below.
+    
++ __`Predefined File Formats`__: a few data file formats have been
+predefined from the datafiles of different experiments. 
+Choose the one corresponding to your data. For
+fine tuning, select 'Other...' which will open a new panel.
+    
+    |         |Header | Separator | Decimal | Data structure 
+    |---------|-------|-----------|---------|---------------      
+    | CSV     | FALSE |   ','     | '.'     | wxd
+    | ELYSE   | FALSE |   '\\t'   | '.'     | wxd
+    | Fluo    | FALSE |   ';'     | '.'     | wxd
+    | Streak  | TRUE  |   ','     | '.'     | wxd
+        
+    - `Header`: does the first line contain column headers ?
+        
+    - `Separator`: symbol used to separate the columns
+        
+    - `Decimal`: character used in the file for decimal points
+        
+    - `Data structure`: 
+        
+        * `wxd`: wavelength in columns; delays in lines
+        
+        * `dxw`: delays in columns; wavelengths in lines
+  
++ __`Load-time compression factors`__: the data can be averaged by blocks
+at load time to save processing time and reduce noise. 
+    
+    - `Delay` width (in pixels) of the block in delay dimension
+        
+    - `Wavl` width (in pixels) of the block in wavelength dimension
+        
++ __`Select data file(s)`__: select one or several files to be analyzed.
+Selecting the files will create new items in the right panel:
+    
+    - a success message '__Data Loaded !__'
+        
+    - an active table with a description of the file(s). 
+    When several files have been loaded:
+          
+        * it is possible to use the table to select a subset 
+          or to reorder them.
+
+        * a menu appears with processing options:
+            
+            + `Average`: average the selected files
+                
+            + `Tile Wavl`: assemble the matrices in the wavelength dimension
+                
+            + `Tile Delay` (default): assemble the matrices
+              in the delay dimension. In this case, the delay coordinate
+              is replaced by an index.
+                
+            + press on __`Do It!`__ to process the data
+                
+    - a summary of the processed matrix
+        
+    - a vignette of the processed matrix
+
++ __`Post-process compression factor`__: the block averaging is
+  performed _after_ the data files are assembled.
+        
+### `Open` and `Save` 
+
+These are placeholders. The functionalities are not active.
+
+## Data Selection
+
+## SVD
+
+## ALS
+
+## Kinet
+
+## Downloads
+
+## About
