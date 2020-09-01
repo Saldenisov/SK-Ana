@@ -188,12 +188,12 @@ observeEvent(
               inputStyle$dec= "."
               inputStyle$datStr= "wxd"
             },
-            munichStyle = {
-              inputStyle$header = FALSE
-              inputStyle$sep= "\t"
-              inputStyle$dec= "."
-              inputStyle$datStr= "wxd"
-            },
+            # munichStyle = {
+            #   inputStyle$header = FALSE
+            #   inputStyle$sep= "\t"
+            #   inputStyle$dec= "."
+            #   inputStyle$datStr= "wxd"
+            # },
             elyseStyle = {
               inputStyle$header = FALSE
               inputStyle$sep= "\t"
@@ -241,7 +241,6 @@ observeEvent(
 )
 output$loadMsg <- renderUI({
   if(dataLoaded()) {
-    # if(Inputs$gotData & Inputs$validData) {
       ll = list(
       h4('Data loaded !')
     )
@@ -254,7 +253,7 @@ output$loadMsg <- renderUI({
   return(ll)
 })
 output$rawData = DT::renderDataTable({
-  if( !(Inputs$gotData & Inputs$validData) )
+  if( !dataLoaded() )
     return(NULL)
   
   ndelay  = nwavl = name = size = c()
@@ -281,7 +280,7 @@ output$rawData = DT::renderDataTable({
   )
 })
 output$sel     = renderPrint({
-  if( !(Inputs$gotData & Inputs$validData) )
+  if( !dataLoaded() )
     return(NULL)
   cat(
     paste0(
@@ -301,7 +300,7 @@ output$showsel = reactive({
 })
 outputOptions(output, "showsel", suspendWhenHidden = FALSE)
 output$ui      = renderUI({
-  if( !(Inputs$gotData & Inputs$validData) )
+  if( !dataLoaded() )
     return(NULL)
   if(length(input$rawData_rows_selected) == 0)
     return(NULL)

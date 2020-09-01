@@ -167,8 +167,9 @@ sidebarLayout(
                 "image1",
                 height = 450,
                 dblclick = "image1_dblclick",
-                brush = brushOpts(id = "image1_brush",
-                                  resetOnNew = TRUE)
+                brush = brushOpts(
+                  id = "image1_brush",
+                  resetOnNew = TRUE)
               ),
               # type=4
               # ),

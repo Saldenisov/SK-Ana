@@ -40,8 +40,8 @@ function(input, output, session) {
     Inputs$wavl           <<- NULL
     Inputs$delay          <<- NULL
     Inputs$delaySave      <<- NULL # True delays used in saved kinetics
-    Inputs$delayId        <<- NA # Reference to original matrices when tiled
-    Inputs$delayGlitch    <<- NA # List of glitches to mask
+    Inputs$delayId        <<- NA   # Pointer to original matrices 
+    Inputs$delayGlitch    <<- NA   # List of glitches to mask
   }
   
   initInputs()

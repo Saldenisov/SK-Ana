@@ -19,7 +19,7 @@ sidebarLayout(
             "CSV"     = "csvStyle",
             "ELYSE"   = 'elyseStyle',
             "Fluo"    = 'heleneStyle',
-            "Münich"  = 'munichStyle',
+            # "Münich"  = 'munichStyle',
             "Streak"  = 'streakStyle',
             "Other..."= 'otherStyle'
           ), 
@@ -156,8 +156,9 @@ sidebarLayout(
         4,
         conditionalPanel(
           condition = "output.showPIN",
-          wellPanel(style = "background-color: #ffffff;",
-                    uiOutput("projectInfoNew")
+          wellPanel(
+            style = "background-color: #ffffff;",
+            uiOutput("projectInfoNew")
           ),
           actionButton(
             "dataSave", "Save Matrix",
@@ -173,11 +174,11 @@ sidebarLayout(
         6,
         conditionalPanel(
           condition = "output.showPIN",
-          wellPanel(style = "background-color: #ffffff;",
-                    plotOutput("vignette", height = 250, width=400)
+          wellPanel(
+            style = "background-color: #ffffff;",
+            plotOutput("vignette", height = 250, width=400)
           )
         )
-
       )
     )
   )
