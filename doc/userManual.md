@@ -41,6 +41,13 @@ project management:
 
   - `About`: information about the code
 
+A good introduction to the methods can be found in the article
+
+> C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan and R. Tauler (2012)
+> “Comprehensive data analysis of femtosecond transient absorption
+> spectra: A review”. *J. Photochem. Photobiol. C* **13**:1–27.
+> (<http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002>)
+
 # Workflow
 
 A typical workflow consists in the sequence:
@@ -156,7 +163,7 @@ and a set of buttons to `Reset`, `Save` and `Load` selections.
 
 **Warning**: the `Save` and `Load` operations are experimental, meaning
 unstable. Presently, any difference in the loaded matrices prevents the
-reuse of loaded selections.
+reuse of saved selections.
 
 The right panel contains two tabs with graphical representations that
 show the modifications due to the actions in the left panel:
@@ -255,6 +262,10 @@ positions.
 This module provides the Singular Values Decomposition of the selected
 data. The main utility of SVD is to inform us on the complexity of the
 data matrix.
+
+For more details about the method, see
+[SVD](https://en.wikipedia.org/wiki/Singular_value_decomposition) in
+Wikipedia.
 
 The left panel contains two control inputs:
 

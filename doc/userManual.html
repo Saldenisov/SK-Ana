@@ -407,6 +407,10 @@ summary {
 <li><p><code>Downloads</code>: download saved the results and/or a report</p></li>
 <li><p><code>About</code>: information about the code</p></li>
 </ul>
+<p>A good introduction to the methods can be found in the article</p>
+<blockquote>
+<p>C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan and R. Tauler (2012) “Comprehensive data analysis of femtosecond transient absorption spectra: A review”. <em>J. Photochem. Photobiol. C</em> <strong>13</strong>:1–27. (<a href="http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002" class="uri">http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002</a>)</p>
+</blockquote>
 </div>
 <div id="workflow" class="section level1">
 <h1><span class="header-section-number">2</span> Workflow</h1>
@@ -520,7 +524,7 @@ summary {
 <li><p><code>Delay Mask</code>: to define masks on the delay axis, typically to mask signal artefacts</p></li>
 </ul>
 <p>and a set of buttons to <code>Reset</code>, <code>Save</code> and <code>Load</code> selections.</p>
-<p><strong>Warning</strong>: the <code>Save</code> and <code>Load</code> operations are experimental, meaning unstable. Presently, any difference in the loaded matrices prevents the reuse of loaded selections.</p>
+<p><strong>Warning</strong>: the <code>Save</code> and <code>Load</code> operations are experimental, meaning unstable. Presently, any difference in the loaded matrices prevents the reuse of saved selections.</p>
 <p>The right panel contains two tabs with graphical representations that show the modifications due to the actions in the left panel:</p>
 <ul>
 <li><p>the <code>Data</code> tab represents the data matrix and averaged cuts along both axes.</p>
@@ -577,6 +581,7 @@ summary {
 <div id="svd-module" class="section level2">
 <h2><span class="header-section-number">3.3</span> <code>SVD</code> module</h2>
 <p>This module provides the Singular Values Decomposition of the selected data. The main utility of SVD is to inform us on the complexity of the data matrix.</p>
+<p>For more details about the method, see <a href="https://en.wikipedia.org/wiki/Singular_value_decomposition">SVD</a> in Wikipedia.</p>
 <p>The left panel contains two control inputs:</p>
 <ul>
 <li><p><code>SVD parameters</code>: the <code>Dimension</code> selector enables to select the number of singular values used to build figures in the <code>Data vs. Model</code>, <code>Residuals</code> and <code>Contributions</code> tabs of the right panel.</p></li>

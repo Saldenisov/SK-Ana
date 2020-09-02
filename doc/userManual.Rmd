@@ -3,10 +3,6 @@ title: 'SK-Ana: Spectro-Kinetic matrices Analysis'
 author: "P. Pernot"
 date: "(`r Sys.Date()`)"
 output:
-  github_document:
-    toc: yes
-    toc_depth: 3
-    pandoc_args: --webtex
   html_document:
     number_sections: yes
     theme: cerulean
@@ -14,6 +10,10 @@ output:
   pdf_document:
     toc: yes
     toc_depth: '3'
+  github_document:
+    toc: yes
+    toc_depth: 3
+    pandoc_args: --webtex
 ---
 
 
@@ -35,7 +35,12 @@ of project management:
 * `Downloads`: download saved the results and/or a report
 
 * `About`: information about the code
- 
+
+A good introduction to the methods can be found in the article
+
+> C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan and  R. Tauler (2012) "Comprehensive data analysis of femtosecond transient absorption spectra: A review". _J. Photochem. Photobiol. C_ __13__:1–27. (http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002)
+
+
 # Workflow
 
 A typical workflow consists in the sequence:
@@ -151,7 +156,7 @@ and a set of buttons to `Reset`, `Save` and `Load` selections.
 
 __Warning__: the `Save` and `Load` operations are experimental, 
 meaning unstable. Presently, any difference in the loaded matrices 
-prevents the reuse of loaded selections.
+prevents the reuse of saved selections.
 
 The right panel contains two tabs with graphical representations
 that show the modifications due to the actions in the left panel:
@@ -247,7 +252,11 @@ its min and max positions.
 
 This module provides the Singular Values Decomposition of the selected
 data. The main utility of SVD is to inform us on the complexity of the
-data matrix.
+data matrix. 
+
+For more details about the method, see
+[SVD](https://en.wikipedia.org/wiki/Singular_value_decomposition) 
+in Wikipedia.
 
 The left panel contains two control inputs:
 
