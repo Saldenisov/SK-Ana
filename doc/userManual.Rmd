@@ -3,6 +3,10 @@ title: 'SK-Ana: Spectro-Kinetic matrices Analysis'
 author: "P. Pernot"
 date: "(`r Sys.Date()`)"
 output:
+  github_document:
+    toc: yes
+    toc_depth: 3
+    pandoc_args: --webtex
   html_document:
     number_sections: yes
     theme: cerulean
@@ -10,10 +14,6 @@ output:
   pdf_document:
     toc: yes
     toc_depth: '3'
-  github_document:
-    toc: yes
-    toc_depth: 3
-    pandoc_args: --webtex
 ---
 
 
