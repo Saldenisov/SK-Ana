@@ -12,6 +12,6 @@ sidebarPanel(
   a(href="https://github.com/ppernot/SK-Ana/issues",
     "Bugs report, Features request"),
   br(),
-  a(href="https://github.com/ppernot/SK-Ana/doc/userManual.md",
+  a(href="https://github.com/ppernot/SK-Ana/blob/master/doc/userManual.md",
     "Users Manual")
 )
