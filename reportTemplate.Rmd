@@ -17,7 +17,7 @@ output:
 fontsize: 11pt
 ---
 
-```{r, results='asis', echo=FALSE}
+```{r init, results='asis', echo=FALSE}
 cat('# Project name :',input$projectTag)
 cex=1
 mar=c(4,4,2,1)
@@ -26,18 +26,8 @@ pty='s'
 tcl=-0.5
 scale = 0.5 # for multiplots
 ```
+
 __Data file(s)__ :`r Inputs$fileOrig`
-
-
-```{r, results='asis', echo=FALSE}
-#getData()
-if(input$keepCbl!=0) {
-  cat('## Baseline correction\n')
-  cat('__Delay range__ :', signif(c(min(Inputs$delay),
-                                    input$delay[input$keepCbl]),
-                                  3))
-}
-```
 
 ## Selected data
 
@@ -45,7 +35,7 @@ __Wavelength range__ : `r signif(range(Inputs$wavl),3)`
 
 __Delay range__ : `r signif(range(Inputs$delay),3)`
 
-```{r echo=FALSE}
+```{r image, echo=FALSE}
 par(
   cex = cex, cex.main = cex, mar = mar,
   mgp = mgp, tcl = tcl, pty = pty
@@ -54,7 +44,7 @@ plotImage(Inputs$delay,Inputs$wavl,Inputs$mat)
 ```
 
 
-```{r results='asis', echo=FALSE}
+```{r svd, results='asis', echo=FALSE}
 if('SVD' %in% input$inReport){
   cat ('# Singular Values Decomposition')
   s<-doSVD()
@@ -63,7 +53,7 @@ if('SVD' %in% input$inReport){
 }
 ```
 
-```{r echo=FALSE}
+```{r svd2, echo=FALSE}
 if('SVD' %in% input$inReport) {
   if (!is.null(s)){
   mat <- Inputs$mat
@@ -75,14 +65,14 @@ if('SVD' %in% input$inReport) {
 }
 ```
 
-```{r echo=FALSE}
+```{r svd3, echo=FALSE}
 if('SVD' %in% input$inReport) {
   if (!is.null(s))
     plotSVDVecBloc(CS$C,CS$S,Inputs$delay,Inputs$wavl,cex=scale)    
 }
 ```
 
-```{r results='asis', echo=FALSE}
+```{r als, results='asis', echo=FALSE}
 if ("ALS" %in% input$inReport) {
   cat("# ALS Decomposition\n\n")
   if (!is.null(alsOut <- doALS())) {
@@ -94,13 +84,13 @@ if ("ALS" %in% input$inReport) {
 }
 ```
 
-```{r results='asis', echo=FALSE}
+```{r als2, results='asis', echo=FALSE}
 if('ALS' %in% input$inReport){
   cat ('## Spectra and Kinetics')
 }
 ```
 
-```{r echo=FALSE}
+```{r als3, echo=FALSE}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
     par(mfrow=c(1,2))
@@ -110,14 +100,14 @@ if('ALS' %in% input$inReport) {
 }
 ```
 
-```{r results='asis', echo=FALSE}
+```{r als4, results='asis', echo=FALSE}
 if('ALS' %in% input$inReport){
   cat ('## Residuals')
 }
 ```
 
 
-```{r echo=FALSE, fig.height=7}
+```{r als5, echo=FALSE, fig.height=7}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
     plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
@@ -126,13 +116,13 @@ if('ALS' %in% input$inReport) {
 }
 ```
 
-```{r results='asis', echo=FALSE}
+```{r als6, results='asis', echo=FALSE}
 if('ALS' %in% input$inReport){
   cat ('## Contributions')
 }
 ```
 
-```{r echo=FALSE, fig.height=7}
+```{r als7, echo=FALSE, fig.height=7}
 if('ALS' %in% input$inReport) {
   if (!is.null(alsOut)){
     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
@@ -141,7 +131,7 @@ if('ALS' %in% input$inReport) {
 }
 ```
 
-```{r results='asis', echo=FALSE}
+```{r als8, results='asis', echo=FALSE}
 if('ALS' %in% input$inReport){
   cat ('## Rotational Ambiguity')
 }

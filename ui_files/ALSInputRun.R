@@ -3,7 +3,7 @@ fluidRow(
     width = 4,
     numericInput(
       "nALS", 
-      label = "Nb. spectra", 
+      label = "Dimension", 
       value =  2, 
       min   =  1, 
       max   = 10, 
@@ -15,7 +15,7 @@ fluidRow(
     width = 4,
     numericInput(
       "maxiter", 
-      label = "MaxIter", 
+      label = "Max # Iter.", 
       value =  1000, 
       min   =    20, 
       max   =  9999, 

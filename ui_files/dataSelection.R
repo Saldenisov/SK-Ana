@@ -16,7 +16,7 @@ sidebarLayout(
         # ),
         sliderInput(
           "keepDoRange",
-          "DO Range",
+          "OD Range",
           min = 0,
           max = 1,
           value = c(0, 1),
