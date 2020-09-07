@@ -1,3 +1,550 @@
-## Welcome to GitHub Pages
+SK-Ana: Spectro-Kinetic matrices Analysis
+================
+P. Pernot
+(2020-09-02)
 
-[SK-Ana manual](https://github.com/ppernot/SK-Ana/doc/userManual.md) 
+  - [Introduction](#introduction)
+  - [Workflow](#workflow)
+  - [Modules reference](#modules-reference)
+      - [`Project` module](#project-module)
+          - [`New Project` tab](#new-project-tab)
+          - [`Open` and `Save` tabs](#open-and-save-tabs)
+      - [`Data Selection` module](#data-selection-module)
+          - [`Selection` tab](#selection-tab)
+          - [`Baseline` tab](#baseline-tab)
+          - [`Wavl Mask` tab](#wavl-mask-tab)
+          - [`Delay Mask` tab](#delay-mask-tab)
+      - [`SVD` module](#svd-module)
+      - [`ALS` module](#als-module)
+          - [Controls](#controls)
+          - [Outputs](#outputs)
+      - [`Kinet` module](#kinet-module)
+      - [`Downloads` module](#downloads-module)
+      - [`About` module](#about-module)
+
+# Introduction
+
+The `SK-Ana` graphical interface is organized in sequential order of
+project management:
+
+  - `Project`: define a project’s name and load the data
+
+  - `Data Selection`: define the data subset to be treated
+
+  - `SVD`: perform Singular Values Decomposition analysis
+
+  - `ALS`: perform Alternated Least-Squares decomposition
+
+  - `Kinet`: constrain the analysis by a kinetic model
+
+  - `Downloads`: download saved the results and/or a report
+
+  - `About`: information about the code
+
+A good introduction to the methods can be found in the article
+
+> C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan and R. Tauler (2012)
+> “Comprehensive data analysis of femtosecond transient absorption
+> spectra: A review”. *J. Photochem. Photobiol. C* **13**:1–27.
+> (<http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002>)
+
+# Workflow
+
+A typical workflow consists in the sequence:
+
+    `Project` > (`Data Selection` > `SVD` > `ALS`) > `Downloads`
+
+where the sequence between parentheses is iterated until *satisfecit*.
+Technically, the `SVD` step could be avoided for an ALS analysis, but it
+provides a lot of useful information and should not be overlooked.
+
+# Modules reference
+
+## `Project` module
+
+Project definition and data input.
+
+### `New Project` tab
+
+  - **`Project Name`**: choose a name. If not, a name will be generated
+    from the datafiles selected below.
+
+  - **`Predefined File Formats`**: a few data file formats have been
+    predefined from the datafiles of different experiments. Choose the
+    one corresponding to your data. For fine tuning, select ‘Other…’
+    which will open a new panel.
+    
+    |        | Header | Separator | Decimal | Data structure |
+    | ------ | ------ | --------- | ------- | -------------- |
+    | CSV    | FALSE  | ‘,’       | ‘.’     | wxd            |
+    | ELYSE  | FALSE  | ‘\\t’     | ‘.’     | wxd            |
+    | Fluo   | FALSE  | ‘;’       | ‘.’     | wxd            |
+    | Streak | TRUE   | ‘,’       | ‘.’     | wxd            |
+    
+
+      - `Header`: does the first line contain column headers ?
+    
+      - `Separator`: symbol used to separate the columns
+    
+      - `Decimal`: character used in the file for decimal points
+    
+      - `Data structure`:
+        
+          - `wxd`: wavelength in columns; delays in lines
+        
+          - `dxw`: delays in columns; wavelengths in lines
+
+  - **`Load-time compression factors`**: the data can be averaged by
+    blocks at load time to save processing time and reduce noise.
+    
+      - `Delay` width (in pixels) of the block in delay dimension
+    
+      - `Wavl` width (in pixels) of the block in wavelength dimension
+
+  - **`Select data file(s)`**: select one or several files to be
+    analyzed. Selecting the files will create new items in the right
+    panel:
+    
+      - a success message ‘**Data Loaded \!**’
+    
+      - an active table with a description of the file(s). When several
+        files have been loaded:
+        
+          - it is possible to use the table to select a subset or to
+            reorder them.
+        
+          - a menu appears with processing options:
+            
+              - `Average`: average the selected files
+            
+              - `Tile Wavl`: assemble the matrices in the wavelength
+                dimension
+            
+              - `Tile Delay` (default): assemble the matrices in the
+                delay dimension. In this case, the delay coordinate is
+                replaced by an index.
+            
+              - press on **`Do It!`** to process the data
+    
+      - a summary of the processed matrix
+    
+    \-`Save Matrix`: to save the processed matrix in a .csv file
+    
+      - a vignette of the processed matrix
+
+  - **`Post-process compression factor`**: the block averaging is
+    performed *after* the data files are assembled.
+
+### `Open` and `Save` tabs
+
+These are placeholders. The functionalities are not active.
+
+## `Data Selection` module
+
+This module enables to fine tune a subset of data to be analyzed, mainly
+to remove over-noisy area or artefacts (signal rise, Cherenkov…).
+
+**Important**: you have to visit this tab to activate/enable the the
+analysis tabs (`SVD`, `ALS`…).
+
+The left panel contains four tabs:
+
+  - `Selection`: to select the external limits of the treated area
+
+  - `Baseline`: to define the areas used to correct the signal baseline
+
+  - `Wavl Mask`: to define masks on the wavelength axis (wavelengths
+    ranges not to be analyzed)
+
+  - `Delay Mask`: to define masks on the delay axis, typically to mask
+    signal artefacts
+
+and a set of buttons to `Reset`, `Save` and `Load` selections.
+
+**Warning**: the `Save` and `Load` operations are experimental, meaning
+unstable. Presently, any difference in the loaded matrices prevents the
+reuse of saved selections.
+
+The right panel contains two tabs with graphical representations that
+show the modifications due to the actions in the left panel:
+
+  - the `Data` tab represents the data matrix and averaged cuts along
+    both axes.
+    
+      - The data matrix is zoomable (`click and drag` + `dble click`;
+        another `dble click` cancels the zoom).
+    
+      - The cuts position are marked by violet dashed lines and they are
+        controlled by two sliders (`Reference wavl` and `Reference
+        delay`). Each cuts data can be saved to disk by clicking on the
+        corresponding `Save` buttons.
+    
+      - Masks are represented by grayed areas.
+
+  - the `Cuts` tab provides the usual stacked lines representation, for
+    the spectra (left) and kinetic traces (right), where you can choose
+    the cut frequency `Cut freq.` for each axis. Both figures are
+    zoomable and the corresponding data can be saved to disk.
+
+### `Selection` tab
+
+This tab contains three sliders:
+
+  - `OD Range`: select the Optical Density range to improve
+    visualization, notably when there are spikes. **This has no impact
+    on data selection.**
+
+  - `Wavelength Range`: selects the min and max wavelengths of the
+    matrix
+
+  - `Delay Range`: selects the min and max delays of the matrix
+
+### `Baseline` tab
+
+A Baseline mask is used to correct the baseline in a data matrix, by
+delaywise averaging the masked values to zero.
+
+When several matrices have been delay-tiled, each baseline correction is
+applied to the data between this mask and the next one (or the end if
+none is present).
+
+**Note**: The data covered by the Baseline masks are *not* excluded from
+the data analysis.
+
+The initial tab contains two elements:
+
+  - a `Nb of masks` input where you can select the desired number of
+    masks.
+
+  - a `Auto` button, which attempts to generate and locate the adequate
+    number of masks.
+
+For each mask, a slider is created enabling to define its min and max
+positions. The masks are represented by salmon transparent areas on the
+matrix and cuts figures.
+
+**Tip**: Zooming on the data matrix is helpful to define precise limits.
+
+### `Wavl Mask` tab
+
+The wavl masks are intended to exclude wavelength-delimited area(s) from
+data analysis, typically over-noisy areas or laser wavelengths.
+
+The initial tab contains two elements:
+
+  - a `Nb of masks` input where you can select the desired number of
+    masks.
+
+  - a `Auto` button, which attempts to generate and locate the adequate
+    number of masks.
+
+For each mask, a slider is created enabling to define its min and max
+positions.
+
+### `Delay Mask` tab
+
+The delay masks are intended to exclude delay-delimited area(s) from
+data analysis, typically baseline areas and artefacts (Cherenkov).
+
+The initial tab contains two elements:
+
+  - a `Nb of masks` input where you can select the desired number of
+    masks.
+
+  - a `Auto` button, which attempts to generate and locate the adequate
+    number of masks.
+
+For each mask, a slider is created enabling to define its min and max
+positions.
+
+## `SVD` module
+
+This module provides the Singular Values Decomposition of the selected
+data. The main utility of SVD is to inform us on the complexity of the
+data matrix.
+
+For more details about the method, see
+[SVD](https://en.wikipedia.org/wiki/Singular_value_decomposition) in
+Wikipedia.
+
+The left panel contains two control inputs:
+
+  - `SVD parameters`: the `Dimension` selector enables to select the
+    number of singular values used to build figures in the `Data vs.
+    Model`, `Residuals` and `Contributions` tabs of the right panel.
+
+  - `Glitch removal in kinetics` enables to remove spikes in the data
+    from the visualization of singular vectors in tab `Vectors`
+    
+      - `Level` is the index of the target **delay** vector from which
+        the spike is to be removed.
+    
+      - the `Clean` button removes the spike. The code masks the point
+        with the largest absolute value in the selected vector.
+    
+      - the `Cancel` button cancels the last spike removal
+
+The right panel contains a set of tabs covering different aspects of the
+results:
+
+  - `Singular Values` contains two figures
+    
+      - the spectrum of singular values (golden dots, dotted blue line)
+        and a baseline of noise estimated from the largest singular
+        values (violet dashed lines). The number of species that can be
+        identified in the data is given by the index of the smallest
+        singular value standing out of the noise.
+    
+      - the lack-of-fit spectrum, which gives the percentage of the
+        signal that is not represented depending on the number of
+        singular vectors used in the signal recomposition. One can
+        appreciate on this graph how adding a new species improves the
+        model. For large indexes, on gets the noise-to-signal ratio.
+    
+    **Rq**: except for ideal data matrices, there is always an ambiguity
+    of plus or minus one species (at best) on the cutting level from
+    both figures. One gets rather a clear indication on the largest
+    decomposition that would *not* be acceptable.
+
+  - `Vectors` presents the wavelength-wise and delay-wise singular
+    vectors. The idea here is to discard vectors that contain pure
+    noise. Here again, the step from signal to noise is often not
+    clearcut.
+    
+    Spikes in the data matrix can create artificial signal, and one can
+    remove the spikes in the *decay-wise* vectors by using the `Glitch
+    removal in kinetics` tool in the left panel.
+
+  - `Data vs. Model` shows the SVD data recomposition and the original
+    matrix side-by-side. The recomposition is driven by the `Dimension`
+    parameter entered in the left panel.
+    
+    This for illustration, but in order to appreciate the effects of
+    `Dimension` on the quality of the model, it is better to focus on
+    the nex tab: `Residuals`
+
+  - `Residuals` shows the difference between the data matrix and its
+    reconstruction from SVD vectors, controlled by `Dimension` in the
+    left panel.
+
+  - `Contributions` shows the individual components of the SVD
+    reconstruction.
+
+  - `Statistics` provides a table of results with the singular values,
+    the lack-of-fit and the standard deviation of the residuals, versus
+    the number of singular vectors.
+
+## `ALS` module
+
+The Alternated Least Squares (ALS) algorithms factorizes the data matrix
+given a number of species and some constraints (*e.g.*, positivity of
+kinetics…).
+
+The left panel contains the controls, and the right panel displays the
+outputs.
+
+### Controls
+
+  - `Dimension` is the number of species. This should be consistent with
+    the results of the SVD analysis.
+
+  - `Max # Iter.` is the maximal number of iterations allowed before
+    stopping the optimizer.
+
+  - `Log convergence threshold` controls the logarithm of the stopping
+    convergence threshold of the optimizer.
+
+  - The `Run` button starts the ALS optimization.
+
+Several tabs enable to fine tune the ALS analysis:
+
+  - `Options` tab
+    
+      - **Initialization** enables to select a starting point
+        
+          - `|SVD|` takes the absolute values of the SVD vectors
+        
+          - `NMF` takes the solution of a Non-negative Matrix
+            Factorization algorithm
+        
+          - `Sequential` performs a series of ALS optimizations with
+            increasing dimension
+        
+          - `Restart` enables to restart from a previous run. It does
+            not work if `Dimension` is changed.
+    
+      - `Use SVD-filtered matrix` uses the noise filtering ability of
+        thee SVD reconstruction. The matrix is computed with the
+        dimension specified in the `SVD` tab.
+    
+      - `Opt S first` start by optimizing the spectra vectors, instead
+        of the kinetics vectors by default.
+
+  - `S const.` tab: constraints on the spectra vectors
+    
+      - `S > 0`: positivity constraint
+    
+      - `S unimodal`: unimodality constraint
+    
+      - `Normalize`: normalize the spectra:
+        
+          - `SUM(S) = 1` normalizes the area of the spectra. The default
+            is to normalize the intensities.
+    
+      - `Smooth`: a smoothing factor to get less noisy spectra, used as
+        the `span` parameter in the
+        [`loess`](https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/loess)
+        function.
+    
+      - `External Spectrum Shape` opens a new control enabling to read a
+        `.csv` file with spectra to be constrained.
+        
+        By default, the spectra are used as such (hard constraint) which
+        is often too strong and results in poor solutions. Activating
+        `Soft constraint` enables to input a weight for the similarity
+        constraint in the loss function of the ALS. The `logWeight`
+        slider enables to tune this weight.
+
+  - `C const.` tab: constraints on the kinetics vectors
+    
+      - `C > 0`: positivity constraint
+    
+      - `Closure`: imposes the conservation of matter by normalizing the
+        sum of the kinetics to 1 (at each delay).
+        
+        **Warning**: This works only for unimolecular processes and
+        could be in conflict with normalization constrains on the
+        spectra.
+    
+      - `Presence matrix` enables to specify the occurrence of
+        individual species in different experiments when datasets have
+        been delay-tiled. By default the matrix is filled with ones (1).
+        Put 0 where a species is not expected to occur. **When finished,
+        press `Done`**.
+
+### Outputs
+
+  - `Alternated Least Squares` tab
+    
+    This shows the convergence message of the ALS code.
+    
+    **Tip**: For a succesful fit, the lack-of-fit should be versy close
+    to the lack-of-fit statistics of a SVD with the same dimension.
+
+  - `Diagnostics` tab
+    
+    This gives access to several results:
+    
+      - `Data vs. Model` whichh compares side by side the best fit model
+        to the data matrix
+    
+      - `Residuals`which shows the residuals map and an histogram of the
+        residuals compared to the histogram of the data.
+    
+      - `SVD of residuals` which provides the Singular Values
+        Decomposition of the residuals matrix.In the ideal case, all
+        vectors should be featureless and appear as pure noise. A normal
+        Q-Q plot is provided to assess the normality of the residuals
+        distribution.
+
+  - `Kinetics and Spectra` tab
+    
+    This tab provides zoomable plots of the spectra and the associated
+    kinetics, identified by color code. The data can be saved to disk.
+
+  - `Contributions` tab
+    
+    This tab shows the contribution matrix of each species with its
+    weight.
+
+  - `Ambiguity` tab
+    
+    In most cases, the ALS decomposition is not unique and subject to
+    rotational ambiguity. If one transforms/combines the spectra, the
+    inverse transformation applied to the kinetics will leave their
+    combination unchanged. The range of eligible transformations is
+    limited by the varoius constraints on the ALS solutions
+    (positivity…).
+    
+    The algorithm performs a brute force exploration of transformation
+    matrices and might require a long time to finish. It returns a
+    subset of valid spectra and kinetics, from which one can appreciate
+    the level of ambiguity and/or search for better behaved solutions
+    than the ones returned by the ALS.
+    
+    Several controls are available:
+    
+      - `Pick 2 or 3 vectors`: according to the dimension of the ALS
+        decomposition, one has to choose a set of vectors. This might be
+        the full set for dimensions 2 and 3, but the algorithm does not
+        allow explorations of more than three-vectors transformations.
+    
+      - `Relative positivity threshold`: because of the noise in the
+        data, one has to enable some level on non-positivity in the
+        transformed vectors. The slider enables to pick a level.
+    
+      - `Exploration step`: the step amplitude for the exploration of
+        the transformation matrix elements. The smaller the better and
+        more accurate, but very small steps might incur very long
+        calculations.
+    
+      - `Start`: click to start process when all other parameters have
+        been chosen.
+    
+      - `Stop`: early stop of the process (it works sometimes…)
+    
+      - `Save`: save the subset of transformed spectra and kinetics to
+        disk
+
+## `Kinet` module
+
+This is an experimental module, to be documented.
+
+## `Downloads` module
+
+Two functionalities in this module:
+
+  - `Generate Report`: generates a .html file containing the results of
+    the analysis. You can choose to omit `SVD` or `ALS`. To generate and
+    download the report, **`Ctrl+Click`** on `Download` (if you simply
+    click, this will crashe the app and you will loose all your hard
+    work…)
+
+  - `Get my files`: generates a .zip archive with all the files you
+    saved to disk in the previous modules. To download the archive,
+    **`Ctrl+Click`** on `Download` (if you simply click, this will
+    crashe the app and you will loose all your hard work…)
+    
+    **Note**: all files starting by you project’s name are included in
+    the .zip file. If you do not change the project’s name, you might
+    gather older files along…
+
+**Remarks**
+
+  - these downloads should go to your default `Downloads` folder
+
+  - if you run SK-Ana locally, the saved files are stored in
+    `SK-Ana/outputdir` and you can simply pick them up from there.
+
+## `About` module
+
+Provides miscellaneous information about the code, notably:
+
+  - `How to cite` provides you the correct citation to report if/when
+    you use SK-Ana for a publication, namely
+    
+    > Pernot, P. (2018) SK-Ana: Analysis of Spectro-Kinetic Data
+    > (Version X.X).  
+    > <https://doi.org/10.5281/zenodo.1064370>
+    
+    where the version number is provided just above the `How to cite`
+    link.
+
+  - `code@github` links to the [Github
+    page](https://github.com/ppernot/SK-Ana) for the source code
+
+  - `Bugs report, Features request` guides you to the [‘Issues’
+    page](https://github.com/ppernot/SK-Ana/issues) of the github
+    deposit, where you can interact with the author.
+
+  - `Users Manual` should lead you to the present documentation…
