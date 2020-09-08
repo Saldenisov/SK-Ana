@@ -440,7 +440,7 @@ doKin                <- eventReactive(input$runKin, {
       reactants = Scheme$reactants,
       eps = eps,
       uniS = FALSE,
-      nonnegS = TRUE,
+      nonnegS = input$nonnegS,
       smooth = input$kinSmooth
     )
     
@@ -1074,7 +1074,8 @@ output$kinSpVectors  <- renderPlot({
     type = "Sp",
     xlim = rangesKinSp$x,
     ylim = rangesKinSp$y,
-    plotUQ = input$plotCSUQ
+    plotUQ = input$plotCSUQ,
+    nonnegS = input$nonnegS
   )
 }, height = plotHeight - 50)
 output$kinKinVectors <- renderPlot({

@@ -250,7 +250,8 @@ myals <- function(C, Psi, S,
 
 plotAlsVec <- function(alsOut, type = "Kin",
                        xlim = NULL, ylim = NULL,
-                       plotUQ = FALSE, nMC = 100, ...) {
+                       plotUQ = FALSE, nMC = 100, 
+                       nonnegS = TRUE, ...) {
   par(
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = pty
@@ -329,9 +330,11 @@ plotAlsVec <- function(alsOut, type = "Kin",
     )
     colorizeMask1D(axis = "delay", ylim = ylim)
     box()
+    
   } else {
     if (is.null(ylim)) {
-      ylim <- c(0, 1.1 * max(alsOut$S))
+      if(nonnegS)
+         ylim <- c(0, 1.1 * max(alsOut$S))
     }
     x <- alsOut$xS
     matplot(
@@ -348,6 +351,8 @@ plotAlsVec <- function(alsOut, type = "Kin",
       ),
       xaxs = "i", yaxs = "i"
     )
+    if(!nonnegS)
+      abline(h=0, lty=2)
     grid()
     if (plotBands) {
       for (j in 1:nvec)

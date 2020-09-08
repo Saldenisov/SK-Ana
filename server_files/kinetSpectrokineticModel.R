@@ -47,24 +47,29 @@ kinet   = function(pars,parms) {
     #     kReacFI[iReac] = kReac[iReac] * 10^gamma
     #   }
     
-    parms$kReac = parms$D * kReacFI
-    
-    C=c()
-    i0=0
-    for (iExp in 1:nExp) {     
+    parms$kReac = parms$D * kReac # kReacFI
+
+    C = c()
+    i0 = 0
+    for (iExp in 1:nExp) {
       # Time grid for current experiment
-      tExp = parms$times[(i0+1):startd[iExp]]
+      tExp = parms$times[(i0 + 1):startd[iExp]]
       i0 = startd[iExp]
-      # tExp = tExp - tExp[1] + 10e-12 #+ parms$deltaStart[iExp] 
-      tc=c(0.0,tExp)
-      conc = deSolve::ode(y=state[,iExp], times=tc, 
-                          func=C.model, parms=parms,
-                          method="lsoda",
-                          rtol=1e-6,atol=1e-8,
-                          verbose=FALSE)
+      # tExp = tExp - tExp[1] + 10e-12 #+ parms$deltaStart[iExp]
+      tc = c(0.0, tExp)
+      conc = deSolve::ode(
+        y = state[, iExp],
+        times = tc,
+        func = C.model,
+        parms = parms,
+        method = "lsoda",
+        rtol = 1e-6,
+        atol = 1e-8,
+        verbose = FALSE
+      )
       
-      C=rbind(C,conc[-1,-1])
-    }  
+      C = rbind(C, conc[-1, -1])
+    }
     return(C)
   })      
 }
