@@ -22,6 +22,10 @@ wellPanel(
                        max   =   -2, 
                        value =   -8
            ),
+           checkboxInput("nonnegSKinet", 
+                         label= "S>0",
+                         value = FALSE
+           ),
            numericInput("kinSmooth", 
                         label = "Smooth", 
                         value =    0, 
@@ -32,7 +36,8 @@ wellPanel(
            ),
            checkboxInput("kinWeighted", 
                          label= "Weigted data",
-                         value = FALSE),
+                         value = FALSE
+           ),
            # shinyBS::bsTooltip("closeC", 
            #                    title = "Ensures that sum(C)=1 at each delay"),
            conditionalPanel(

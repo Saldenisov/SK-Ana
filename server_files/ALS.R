@@ -267,7 +267,7 @@ plotAlsVec <- function(alsOut, type = "Kin",
       plotBands <- TRUE
       eps <- 0.0
       S <- alsOut$S
-      Smax <- matrix(eps, nrow = nrow(S), ncol = nvec)
+      Smax <- matrix(ifelse(nonnegS,eps,-1e30), nrow = nrow(S), ncol = nvec)
       Smin <- matrix(1e30, nrow = nrow(S), ncol = nvec)
       C <- alsOut$C
       Cmax <- matrix(eps, nrow = nrow(C), ncol = nvec)
@@ -334,7 +334,9 @@ plotAlsVec <- function(alsOut, type = "Kin",
   } else {
     if (is.null(ylim)) {
       if(nonnegS)
-         ylim <- c(0, 1.1 * max(alsOut$S))
+        ylim <- c(0, 1.1 * max(alsOut$S))
+      else
+        ylim <- 1.1 * range(alsOut$S)
     }
     x <- alsOut$xS
     matplot(

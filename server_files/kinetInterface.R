@@ -440,7 +440,7 @@ doKin                <- eventReactive(input$runKin, {
       reactants = Scheme$reactants,
       eps = eps,
       uniS = FALSE,
-      nonnegS = input$nonnegS,
+      nonnegS = input$nonnegSKinet,
       smooth = input$kinSmooth
     )
     
@@ -796,6 +796,7 @@ output$epsilon       <- renderUI({
 
   ui
 })
+# Trace ####
 output$kinGlPrint    <- renderPrint({
   cat("### GLOBAL OPTIMIZATION ###\n")
   gsub("\t", " ", kinPrint$glOut)
@@ -943,6 +944,7 @@ output$kinOpt        <- DT::renderDataTable({
     width = 200
   )
 })
+#PriPost ####
 output$kinPriPost    <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
@@ -968,6 +970,7 @@ output$kinParamsSamp <- renderPlot({
 
   SAPlot(sample, cex = cex)
 }, height = plotHeight)
+# Diagnostics ####
 output$kinResid      <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
@@ -1066,6 +1069,7 @@ output$kinDatavsMod  <- renderPlot({
     cont = input$kinContours
   )
 }, height = plotHeight)
+# Spectra & Kinetics ####
 output$kinSpVectors  <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
@@ -1075,7 +1079,7 @@ output$kinSpVectors  <- renderPlot({
     xlim = rangesKinSp$x,
     ylim = rangesKinSp$y,
     plotUQ = input$plotCSUQ,
-    nonnegS = input$nonnegS
+    nonnegS = input$nonnegSKinet
   )
 }, height = plotHeight - 50)
 output$kinKinVectors <- renderPlot({
@@ -1089,6 +1093,7 @@ output$kinKinVectors <- renderPlot({
     plotUQ = input$plotCSUQ
   )
 }, height = plotHeight - 50)
+# Contribs ####
 output$kinContribs   <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)

@@ -142,7 +142,8 @@ spectra = function (C,pars,parms) {
                 silent=TRUE)
       if (class(mod) != "try-error") {
         y=predict(mod)
-        y[y<0]=0
+        if (parms$nonnegS)
+          y[y<0] = 0
         S[,i]=y      
       } 
     }
