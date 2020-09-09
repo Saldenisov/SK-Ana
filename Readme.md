@@ -25,10 +25,9 @@
     
     + [RStudio](https://www.rstudio.com/products/rstudio/download/#download) (Optional)
 
-## How to run SK-Ana
+## How to run SK-Ana (for non-docker-based installs)
 
 * Using `R`: go to the installation directory and run the command `shiny::runApp()` in a `R` console
-    
     
 * Using `RStudio`
 
@@ -76,16 +75,30 @@ docker restart skana
 docker remove -v skana
 ```
 
-**How to cite SK-Ana**
+## How to cite SK-Ana
 
 If you use SK-Ana in one of your publications, do not forget to cite it and include the version you used for reproducibility:
 
 > Pernot, P. (2018) SK-Ana: Analysis of Spectro-Kinetic Data (Version X.X).    
 > https://doi.org/10.5281/zenodo.1064370
 
-**References**
+## References
+
+### Methods
 
 * C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan, R. Tauler, "Comprehensive data analysis of femtosecond transient absorption spectra: A review", J. Photochem. Photobiol., C, vol. 13, 2012, pp. 1–27. (http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002)
+
+### Applications
+
+* R. Kaczmarek, S. Ward, D. Debnath, T. Jacobs, A. D. Stark, D. Korczyński, A. Kumar, M. D. Sevilla, S. A. Denisov, V. Shcherbakov, P. Pernot, M. Mostafavi, R. Dembinski, A. Adhikary, "One Way Traffic: Base-to-backbone Hole Transfer in Nucleoside Phosphorodithioates", Chemistry – A European Journal, vol. 26, 2020, pp. 9495–9505. (http://dx.doi.org/10.1002/chem.202000247)
+
+* F. Wang, P. Pernot, J. Marignier, P. Archirel, M. Mostafavi, "Mechanism of (SCN)$^2.-$ Formation and Decay in Neutral and Basic $KSCN$ Solution Under Irradiation from Pico to Microsecond Range", The Journal of Physical Chemistry B, vol. 123, 2019, pp. 6599-6608. (http://dx.doi.org/10.1021/acs.jpcb.9b05560)
+
+* F. Wang, G. P. Horne, P. Pernot, P. Archirel, M. Mostafavi, "Picosecond Pulse Radiolysis Study on the Radiation Induced Reactions in Neat Tributyl Phosphate", J. Phys. Chem. B, vol. 122, 2018, pp. 7134-7142. (http://dx.doi.org/10.1021/acs.jpcb.8b03715)
+
+* J. Ma, S. A. Denisov, J. Marignier, P. Pernot, A. Adhikary, S. Seki, M. Mostafavi, "Ultrafast Electron Attachment and Hole Transfer Following Ionizing Radiation of Aqueous Uridine Monophosphate", J. Phys. Chem. Lett., vol. 9, 2018, pp. 5105-5109. (http://dx.doi.org/10.1021/acs.jpclett.8b02170)
+
+* J. Ma, J. Marignier, P. Pernot, C. Houée-Levin, A. Kumar, M. D. Sevilla, A. Adhikary, M. Mostafavi, "Direct observation of the oxidation of DNA bases by phosphate radicals formed under radiation: a model of the backbone-to-base hole transfer", Phys. Chem. Chem. Phys., vol. 20, 2018, pp. 14927-14937. (http://dx.doi.org/10.1039/C8CP00352A)
 
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër, M. Mostafavi, "Identification of Transient Radical Anions (LiClO4)n (n= 1-3) in THF Solutions: Experimental and Theoretical Investigation on Electron Localization in Oligomers", J. Phys. Chem. B, vol. 120, 2016, pp. 773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
