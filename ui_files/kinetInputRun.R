@@ -35,7 +35,7 @@ wellPanel(
                         width = '120px'
            ),
            checkboxInput("kinWeighted", 
-                         label= "Weigted data",
+                         label= "Weighted data",
                          value = FALSE
            ),
            # shinyBS::bsTooltip("closeC", 

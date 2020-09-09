@@ -597,7 +597,8 @@ the outputs.
           c0_B_1 = 1 / 1 
           c0_C_1 = 1 / 1 
           ```
-    
+          or
+          
           ```
           # Transformation of A to C with a blind intermediate 
           A -> B ; 1 / 3 
@@ -666,7 +667,7 @@ the outputs.
       least-squares criterion (experimental...)
       
     + `Restart` controls the initialization of the
-      optimizer with the last results (shoul not be 
+      optimizer with the last results (should not be 
       checked at first run)
       
     + `Run` launches the optimized.
@@ -674,7 +675,7 @@ the outputs.
     __Note(s)__
     
     - It is recommended to make a final run with `Restart`
-      on to check that the oprimized value is stable
+      on to check that the optimized value is stable
     
     - For a gloal optimization, it is recommended to
       run several small sets of iterations with `Restart` on
@@ -747,8 +748,15 @@ the outputs.
     
 * `Kinetics and Spectra` tab
 
-    This tab provides zoomable plots of the spectra and the associated 
-    kinetics, identified by color code. The data can be saved to disk. 
+    This tab provides zoomable plots of the spectra and the
+    associated kinetics, identified by color code. 
+    
+    + `Plot uncertainty bands` plots the envelope of the set of
+    spectra and kinetics enabled by the final uncertainty on the
+    optimized model parameters. These correspond to the min and 
+    max values generated from a random sample of parameters.
+    
+    + `Save` the displayed vectors can be saved to disk. 
 
 * `Contributions` tab
 

@@ -33,7 +33,7 @@ fluidRow(
       ),
       column(6,
              checkboxInput("plotCSUQ",
-                           label = " Plot confidence bands",
+                           label = " Plot uncertainty bands",
                            value = FALSE)
       )
     )

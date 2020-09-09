@@ -13,7 +13,7 @@
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
 
-**Installation** 
+## Installation 
 
 * Download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest) 
   and decompress the archive in a dedicated directory. If you want the most recent code
@@ -25,7 +25,7 @@
     
     + [RStudio](https://www.rstudio.com/products/rstudio/download/#download) (Optional)
 
-**How to run SK-Ana**
+## How to run SK-Ana
 
 * Using `R`: go to the installation directory and run the command `shiny::runApp()` in a `R` console
     
@@ -44,6 +44,37 @@ the code will install a set of packages, if they are not installed already:
 `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, 
 `msm`, and `xtable`. 
 Depending on your OS, you might have to install them manually.
+
+## Docker container
+
+The [skana](https://hub.docker.com/repository/docker/ppernot1/skana)
+[Docker](https://www.docker.com/) container has all elements preinstalled.
+
+To run the container:
+
+0. Install [Docker](https://www.docker.com/products/docker-desktop)
+
+1. Type the following commands in a terminal
+```
+docker run -d -p 3840:3840 --name skana ppernot1/skana
+```      
+
+2. Access SK-Ana at http://localhost:3840 in your favorite browser
+
+3. When finished
+```
+docker kill skana
+```
+
+4. For further sessions
+```
+docker restart skana
+```
+
+4. To cleanup
+```
+docker remove -v skana
+```
 
 **How to cite SK-Ana**
 

@@ -22,14 +22,15 @@ libs <- c(
   "inlmisc","shinythemes","magrittr"
 )
 for (lib in libs) {
-  if (!require(lib, character.only = TRUE, quietly = TRUE)) {
-    install.packages(
-      lib,
-      dependencies = TRUE,
-      repos = "https://cran.univ-paris1.fr"
-    )
+  # # Avoid installing packages because of renv packages management
+  # if (!require(lib, character.only = TRUE, quietly = TRUE)) {
+  #   install.packages(
+  #     lib,
+  #     dependencies = TRUE,
+  #     repos = "https://cran.univ-paris1.fr"
+  #   )
     library(lib, character.only = TRUE, quietly = TRUE)
-  }
+  # }
 }
 
 
