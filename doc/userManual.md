@@ -60,6 +60,13 @@ where the sequence between parentheses is iterated until *satisfecit*.
 Technically, the `SVD` step could be avoided for an ALS analysis, but it
 provides a lot of useful information and should not be overlooked.
 
+To perform a SAS or DAS analysis, the sequence would be
+
+    `Project` > `Data Selection` > `SVD` > `Kinet` > `Downloads`
+
+here again, the `SVD` step helps to decide the number of species to
+include in the chemical scheme.
+
 # Modules reference
 
 ## `Project` module
@@ -738,7 +745,7 @@ Two functionalities in this module:
   - `Generate Report`: generates a .html file containing the results of
     the analysis. You can choose to omit `SVD` or `ALS`. To generate and
     download the report, **`Ctrl+Click`** on `Download` (if you simply
-    click, this will crashe the app and you will loose all your hard
+    click, this will crash the app and you will loose all your hard
     work…)
 
   - `Get my files`: generates a .zip archive with all the files you

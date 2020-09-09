@@ -420,6 +420,9 @@ summary {
 <p>A typical workflow consists in the sequence:</p>
 <pre><code>`Project` &gt; (`Data Selection` &gt; `SVD` &gt; `ALS`) &gt; `Downloads`</code></pre>
 <p>where the sequence between parentheses is iterated until <em>satisfecit</em>. Technically, the <code>SVD</code> step could be avoided for an ALS analysis, but it provides a lot of useful information and should not be overlooked.</p>
+<p>To perform a SAS or DAS analysis, the sequence would be</p>
+<pre><code>`Project` &gt; `Data Selection` &gt; `SVD` &gt; `Kinet` &gt; `Downloads`</code></pre>
+<p>here again, the <code>SVD</code> step helps to decide the number of species to include in the chemical scheme.</p>
 </div>
 <div id="modules-reference" class="section level1">
 <h1><span class="header-section-number">3</span> Modules reference</h1>
@@ -804,7 +807,7 @@ c0_A_1 = 1 / 1 </code></pre></li>
 <h2><span class="header-section-number">3.6</span> <code>Downloads</code> module</h2>
 <p>Two functionalities in this module:</p>
 <ul>
-<li><p><code>Generate Report</code>: generates a .html file containing the results of the analysis. You can choose to omit <code>SVD</code> or <code>ALS</code>. To generate and download the report, <strong><code>Ctrl+Click</code></strong> on <code>Download</code> (if you simply click, this will crashe the app and you will loose all your hard work…)</p></li>
+<li><p><code>Generate Report</code>: generates a .html file containing the results of the analysis. You can choose to omit <code>SVD</code> or <code>ALS</code>. To generate and download the report, <strong><code>Ctrl+Click</code></strong> on <code>Download</code> (if you simply click, this will crash the app and you will loose all your hard work…)</p></li>
 <li><p><code>Get my files</code>: generates a .zip archive with all the files you saved to disk in the previous modules. To download the archive, <strong><code>Ctrl+Click</code></strong> on <code>Download</code> (if you simply click, this will crashe the app and you will loose all your hard work…)</p>
 <p><strong>Note</strong>: all files starting by you project’s name are included in the .zip file. If you do not change the project’s name, you might gather older files along…</p></li>
 </ul>
