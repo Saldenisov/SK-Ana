@@ -43,7 +43,7 @@ project management:
 
 A good introduction to the methods can be found in the article
 
-> C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan and R. Tauler (2012)
+> C. Ruckebusch, M. Sliwa, P. Pernot, A. de Juan and R. Tauler (2012)
 > “Comprehensive data analysis of femtosecond transient absorption
 > spectra: A review”. *J. Photochem. Photobiol. C* **13**:1–27.
 > (<http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002>)
@@ -128,7 +128,7 @@ Project definition and data input.
     
       - a summary of the processed matrix
     
-    \-`Save Matrix`: to save the processed matrix in a .csv file
+      - `Save Matrix`: to save the processed matrix in a .csv file
     
       - a vignette of the processed matrix
 

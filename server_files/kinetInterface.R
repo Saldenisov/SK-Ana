@@ -581,7 +581,8 @@ output$scheme        <- DT::renderDataTable({
       )
 
   DT::datatable(
-    data.frame(Reactions = reacString),
+    data.frame(Tags = Scheme$tags, Reactions = reacString),
+    rownames = FALSE,
     class = "cell-border stripe",
     fillContainer = FALSE,
     options = list(

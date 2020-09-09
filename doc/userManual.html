@@ -364,7 +364,7 @@ summary {
 
 <h1 class="title toc-ignore">SK-Ana: Spectro-Kinetic matrices Analysis</h1>
 <h4 class="author">P. Pernot</h4>
-<h4 class="date">(2020-09-02)</h4>
+<h4 class="date">(2020-09-09)</h4>
 
 </div>
 
@@ -388,7 +388,10 @@ summary {
 <li><a href="#controls"><span class="toc-section-number">3.4.1</span> Controls</a></li>
 <li><a href="#outputs"><span class="toc-section-number">3.4.2</span> Outputs</a></li>
 </ul></li>
-<li><a href="#kinet-module"><span class="toc-section-number">3.5</span> <code>Kinet</code> module</a></li>
+<li><a href="#kinet-module"><span class="toc-section-number">3.5</span> <code>Kinet</code> module</a><ul>
+<li><a href="#controls-1"><span class="toc-section-number">3.5.1</span> Controls</a></li>
+<li><a href="#outputs-1"><span class="toc-section-number">3.5.2</span> Outputs</a></li>
+</ul></li>
 <li><a href="#downloads-module"><span class="toc-section-number">3.6</span> <code>Downloads</code> module</a></li>
 <li><a href="#about-module"><span class="toc-section-number">3.7</span> <code>About</code> module</a></li>
 </ul></li>
@@ -499,10 +502,8 @@ summary {
 </ul></li>
 </ul></li>
 <li><p>a summary of the processed matrix</p></li>
-</ul>
-<p>-<code>Save Matrix</code>: to save the processed matrix in a .csv file</p>
-<ul>
-<li>a vignette of the processed matrix</li>
+<li><p><code>Save Matrix</code>: to save the processed matrix in a .csv file</p></li>
+<li><p>a vignette of the processed matrix</p></li>
 </ul></li>
 <li><p><strong><code>Post-process compression factor</code></strong>: the block averaging is performed <em>after</em> the data files are assembled.</p></li>
 </ul>
@@ -690,7 +691,114 @@ summary {
 </div>
 <div id="kinet-module" class="section level2">
 <h2><span class="header-section-number">3.5</span> <code>Kinet</code> module</h2>
-<p>This is an experimental module, to be documented.</p>
+<p>This module enables to introduce an explicit chemical scheme, leading to a hybrid model, as described in <a href="http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002">Ruckebusch (2012)</a>. The spectra are optimized by least-squares for each value of the kinetic parameters, which are optimized by a non-linear algorithm.</p>
+<p>The optimizer is based on a Bayesian statistical model where one maximizes the posterior probability density function (pdf) of the kinetic parameters, given the data and model.</p>
+<p>The left panel contains the controls, and the right panel displays the outputs.</p>
+<div id="controls-1" class="section level3">
+<h3><span class="header-section-number">3.5.1</span> Controls</h3>
+<ul>
+<li><p><code>Model</code> enables to describe the chemical scheme. It contains two groups of tabs. At the top, <code>Type</code>, <code>Load</code> and <code>Save</code> manage the model and model files. At the bottom, <code>Scheme</code>, <code>Rates</code>, <code>Conc.</code> and <code>Eps.</code> display the parameters values and enable to edit some of them.</p>
+<ul>
+<li><p><code>Type</code> to enter manually the model in the text box. It must contain the reaction scheme and initial values for the reaction rates, the initial concentrations of species and their maximum extinction coefficients</p>
+<ul>
+<li><p><strong>Reactions</strong> are typed one per line, with two segments, separated by a semi-column (;). The first segment contains the reaction, for instance <code>A + B -&gt; C + D</code>, where A, B are the reactants, ‘-&gt;’ the reaction symbol and C, D the products. The second segment contains the initial value for the reaction rate and its uncertainty factor, separated by a slash ‘/’. For instance, <code>1e8 / 1.2</code>, meaning a rate constant of 1e8 (units should be consistent with your data) and a multiplicative uncertainty factor of 1.2, which corresponds to a relative uncertainty of about 20%.</p>
+<p>The full line for this example is thus <code>A + B -&gt; C + D ; 1e8 / 1.2</code></p>
+<p><strong>Note(s)</strong></p>
+<ul>
+<li><p>to fix a rate constant, its uncertainty factor should be 1.</p></li>
+<li><p>lines starting with a sharp (#) are treated as comments</p></li>
+<li><p>the reaction scheme is the same for all the experiments when data have been delay-tiled.</p></li>
+</ul></li>
+<li><p><strong>Extinction coefficients</strong> are typed in the form <code>eps_X = value / Feps</code>, where <code>X</code> is the name of a species declared in the scheme, <code>value</code> is the value and <code>Feps</code> the uncertainty factor on this value.</p>
+<p>For instance <code>eps_A = 0.001 / 3</code></p>
+<p><strong>Note(s)</strong></p>
+<ul>
+<li>the extinction coefficient of all species in the recation scheme is 0 by default. The extinction coefficients of ‘visible’ species have to be declared.</li>
+</ul></li>
+<li><p><strong>Initial concentrations</strong> are decalred with a format similar to the extinction coefficients <code>c0_X_i = value / Fc0</code>, where <code>X</code> is a species, <code>i</code> is the index of an experiment (should be 1 for single experiments) and <code>Fc0</code> is an uncertainty factor.</p>
+<p>For instance <code>c0_A_1 = 1 / 1</code>, meaning that the initial concentration of <code>A</code> is fixed to 1 in the first (or single) experiment.</p>
+<p><strong>Note(s)</strong></p>
+<ul>
+<li>all initial concentrations are 0 by default.</li>
+</ul></li>
+<li><p><strong>Examples</strong></p>
+<pre><code># 3-species DAS 
+A -&gt; 0 ; 1 / 3 
+B -&gt; 0 ; 0.5 / 3 
+C -&gt; 0 ; 0.001 / 3 
+
+eps_A = 0.001 / 3 
+eps_B = 0.001 / 3 
+eps_C = 0.001 / 3 
+
+c0_A_1 = 1 / 1 
+c0_B_1 = 1 / 1 
+c0_C_1 = 1 / 1 </code></pre>
+<pre><code># Transformation of A to C with a blind intermediate 
+A -&gt; B ; 1 / 3 
+B -&gt; C ; 0.5 / 3 
+eps_A = 0.001 / 3 
+eps_C = 0.001 / 3 
+c0_A_1 = 1 / 1 </code></pre></li>
+<li><p>Click <code>Done</code> to process the model</p></li>
+</ul></li>
+<li><p><code>Load</code> to load an existing model file</p></li>
+<li><p><code>Save</code> to save the typed model file (this does not save the optimized values)</p></li>
+<li><p><code>Scheme</code> displays the reaction scheme after a model is defined (<code>Type &gt; Done</code> or<code>Load</code>). It is not editable.</p></li>
+<li><p><code>Rates</code> displays the reaction rates and their uncertainty factors, which are editable.</p></li>
+<li><p><code>Conc.</code> displays the initial concentrations of all species, with one tab per experiment. All values are editable.</p></li>
+<li><p><code>Eps.</code> displays the extinction coefficients of all species. All values are editable.</p>
+<p><strong>Note(s)</strong></p>
+<ul>
+<li>values modified in the <code>Rates</code>, <code>Conc.</code> or <code>Eps.</code> tabs affect only the initial values for the optimizer. They are not taken into account when saving a model file in <code>Save</code>.</li>
+</ul></li>
+</ul></li>
+<li><p><code>Run</code> contains the controls for the optimizer. By default, the optimizer performs a local search around the initial values, in a box defined by the parameters uncertainty factors. A global optimization can be performed by using multiple random starting points within this uncertainty box.</p>
+<ul>
+<li><p><code>Global Optimization Iterations</code> controls the number of iterations of the global optimizer (default 0)</p></li>
+<li><p><code>Global Population Factor</code> controls the number of random starting points. Active only if the number of lobal iterations is not zero.</p></li>
+<li><p><code>Log Convergence Threshold</code> enables to tweak the convergence threshold os the optimizer.</p></li>
+<li><p><code>S&gt;0</code> defines the positivity constraint on spectra. It should be unchecked for DAS analysis.</p></li>
+<li><p><code>Smooth</code>: a smoothing factor to get less noisy spectra, used as the <code>span</code> parameter in the <a href="https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/loess"><code>loess</code></a> function.</p></li>
+<li><p><code>Weighted data</code> controls the use of a weighted least-squares criterion (experimental…)</p></li>
+<li><p><code>Restart</code> controls the initialization of the optimizer with the last results (shoul not be checked at first run)</p></li>
+<li><p><code>Run</code> launches the optimized.</p></li>
+</ul>
+<p><strong>Note(s)</strong></p>
+<ul>
+<li><p>It is recommended to make a final run with <code>Restart</code> on to check that the oprimized value is stable</p></li>
+<li><p>For a gloal optimization, it is recommended to run several small sets of iterations with <code>Restart</code> on to ensure a faster convergence, rather than a single large set of iterations. This avoids a premature trapping of the walkers in a local minimum.</p></li>
+</ul></li>
+</ul>
+</div>
+<div id="outputs-1" class="section level3">
+<h3><span class="header-section-number">3.5.2</span> Outputs</h3>
+<ul>
+<li><p><code>Best Params</code> tab</p>
+<p>It displays the results of the optimization (notably the final Lack-of-fit, which can be analyzed in <code>Diagnostics</code>) and signals possible problems with the solution, for instance when a value is at a limit of the initial uncertainty box. Such problems can be visualized in the <code>Identifiability</code> tab.</p></li>
+<li><p><code>Trace</code> tab</p>
+<p>It shows the output and messages of the optimizer.</p></li>
+<li><p><code>Identifiability</code> tab</p>
+<p>It presents two tabs to appreciate the identification of the parameters:</p>
+<ul>
+<li><p><code>Densities</code> plots the marginal densities of the Laplace approximation of the posterior pdf (salmon) in comparison to the prior densities defined by the parameters uncertainty factors (blue). If a parameter is well identified, its posterior density should be more concentrated than its prior density. Also, the posterior density should not be concentrated at a limit of the uncertainty box.</p></li>
+<li><p><code>Sample</code> displays histograms and pairs scatterplots for parameters samples drawn from the Laplace approximation of the posterior pdf. The upper panel shows the correlation coefficients between the parameters.</p></li>
+</ul></li>
+<li><p><code>Diagnostics</code> tab</p>
+<p>This tab contains a series of tabs</p>
+<ul>
+<li><p><code>Lack-of-fit</code> presents the level of LOF reached by the solution, compared to the level for a SVD decomposition with the same number of species.</p></li>
+<li><p><code>Integ. kinet.</code> presents the wavelength-integrated optimized matrix compared to the data.</p></li>
+<li><p><code>Data vs. Model</code> whichh compares side by side the best fit model to the data matrix</p></li>
+<li><p><code>Residuals</code>which shows the residuals map and an histogram of the residuals compared to the histogram of the data.</p></li>
+<li><p><code>SVD of residuals</code> which provides the Singular Values Decomposition of the residuals matrix. In the ideal case, all vectors should be featureless and appear as pure noise. A normal Q-Q plot is provided to assess the normality of the residuals distribution.</p></li>
+</ul></li>
+<li><p><code>Kinetics and Spectra</code> tab</p>
+<p>This tab provides zoomable plots of the spectra and the associated kinetics, identified by color code. The data can be saved to disk.</p></li>
+<li><p><code>Contributions</code> tab</p>
+<p>This tab shows the contribution matrix of each species with its weight.</p></li>
+</ul>
+</div>
 </div>
 <div id="downloads-module" class="section level2">
 <h2><span class="header-section-number">3.6</span> <code>Downloads</code> module</h2>
