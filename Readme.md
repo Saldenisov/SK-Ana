@@ -10,10 +10,13 @@
 
 * Multi Curve Resolution by Alternated Least Squares (MCR-ALS)
 
+* Hybrid hard-soft modeling (DAS, homogeneous chemistry...)
+
+
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
 
-## Installation 
+## Local install 
 
 * Download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest) 
   and decompress the archive in a dedicated directory. If you want the most recent code
@@ -25,7 +28,7 @@
     
     + [RStudio](https://www.rstudio.com/products/rstudio/download/#download) (Optional)
 
-## How to run SK-Ana (for non-docker-based installs)
+### How to run SK-Ana (for non-docker-based installs)
 
 * Using `R`: go to the installation directory and run the command `shiny::runApp()` in a `R` console
     
