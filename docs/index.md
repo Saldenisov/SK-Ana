@@ -22,7 +22,7 @@ P. Pernot
           - [Controls](#controls-1)
           - [Outputs](#outputs-1)
       - [`Downloads` module](#downloads-module)
-      - [`About` module](#about-module)
+      - [`About` module](about.html)
 
 # Introduction
 
