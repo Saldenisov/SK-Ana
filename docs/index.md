@@ -1,7 +1,7 @@
 SK-Ana: Spectro-Kinetic matrices Analysis
 ================
 P. Pernot
-(2020-09-09)
+(2020-09-11)
 
   - [Introduction](#introduction)
   - [Workflow](#workflow)
@@ -102,6 +102,16 @@ Project definition and data input.
           - `wxd`: wavelength in columns; delays in lines
         
           - `dxw`: delays in columns; wavelengths in lines
+    
+    **Note**: the first line of the matrix must contain the delays or
+    wavelengths, depending on the choice of `Data structure`.
+    
+    **Example** of a CSV-type data file structure
+    
+        'x/y', t1,  t2,  t3,  t4, ...
+        wl1,  x11, x12, x13, x14, ...
+        wl2,  x21, x22, x23, x24, ...
+        ...
 
   - **`Load-time compression factors`**: the data can be averaged by
     blocks at load time to save processing time and reduce noise.
@@ -599,6 +609,8 @@ outputs.
                 c0_B_1 = 1 / 1 
                 c0_C_1 = 1 / 1 
             
+            or
+            
                 # Transformation of A to C with a blind intermediate 
                 A -> B ; 1 / 3 
                 B -> C ; 0.5 / 3 
@@ -659,14 +671,14 @@ outputs.
         criterion (experimental…)
     
       - `Restart` controls the initialization of the optimizer with the
-        last results (shoul not be checked at first run)
+        last results (should not be checked at first run)
     
       - `Run` launches the optimized.
     
     **Note(s)**
     
       - It is recommended to make a final run with `Restart` on to check
-        that the oprimized value is stable
+        that the optimized value is stable
     
       - For a gloal optimization, it is recommended to run several small
         sets of iterations with `Restart` on to ensure a faster
@@ -731,7 +743,14 @@ outputs.
   - `Kinetics and Spectra` tab
     
     This tab provides zoomable plots of the spectra and the associated
-    kinetics, identified by color code. The data can be saved to disk.
+    kinetics, identified by color code.
+    
+      - `Plot uncertainty bands` plots the envelope of the set of
+        spectra and kinetics enabled by the final uncertainty on the
+        optimized model parameters. These correspond to the min and max
+        values generated from a random sample of parameters.
+    
+      - `Save` the displayed vectors can be saved to disk.
 
   - `Contributions` tab
     

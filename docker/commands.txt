@@ -1,11 +1,11 @@
 BUILD : 
-    1/ cd ShinyApps
-    2/ docker build -t ppernot1/skana -f SK-Ana/docker/Dockerfile .
+    1/ cd SK-Ana
+    2/ docker build -t ppernot1/skana -f docker/Dockerfile .
     3/ docker push ppernot1/skana
 
 RUN : 
    UI : 
-       1/ docker run -d -p 3840:3840 ppernot1/skana
+       1/ docker run -d -p 3840:3840 --name skana ppernot1/skana
        3/ access http://localhost:3840 in browser
  
    BASH : 

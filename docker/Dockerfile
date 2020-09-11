@@ -32,22 +32,22 @@ RUN Rscript -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-pr
 RUN Rscript -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 
 RUN mkdir SK-Ana
-COPY SK-Ana/.Rprofile /SK-Ana/
-COPY SK-Ana/renv/activate.R /SK-Ana/renv/activate.R
-COPY SK-Ana/renv.lock /SK-Ana/renv.lock
+COPY .Rprofile /SK-Ana/
+COPY renv/activate.R /SK-Ana/renv/activate.R
+COPY renv.lock /SK-Ana/renv.lock
 WORKDIR /SK-Ana
 RUN R -e 'renv::consent(TRUE)' \
  && R -e 'renv::restore()'
 
 ## app files
-COPY SK-Ana/global.R /SK-Ana/
-COPY SK-Ana/ui.R /SK-Ana/
-COPY SK-Ana/server.R /SK-Ana/
-COPY SK-Ana/reportTemplate.Rmd /SK-Ana/
-COPY SK-Ana/ui_files /SK-Ana/ui_files/
-COPY SK-Ana/server_files /SK-Ana/server_files/
-COPY SK-Ana/data /SK-Ana/data/
-COPY SK-Ana/outputDir /SK-Ana/outputDir/
+COPY global.R /SK-Ana/
+COPY ui.R /SK-Ana/
+COPY server.R /SK-Ana/
+COPY reportTemplate.Rmd /SK-Ana/
+COPY ui_files /SK-Ana/ui_files/
+COPY server_files /SK-Ana/server_files/
+COPY data /SK-Ana/data/
+COPY outputDir /SK-Ana/outputDir/
 
 # expose port
 EXPOSE 3840
