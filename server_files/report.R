@@ -16,6 +16,16 @@ output$report = downloadHandler(
     owd <- setwd(tempdir())
     on.exit(setwd(owd))
     file.copy(src, 'reportTemplate.Rmd')
+    id = showNotification(
+      "Generating report (in your 'Downloads' folder)", 
+      type = "message",
+      duration = NULL, 
+      closeButton = FALSE
+    )
+    on.exit(
+      removeNotification(id), 
+      add = TRUE
+    )
     out <- rmarkdown::render('reportTemplate.Rmd',"html_document")
     
     # No other formats available on styx (install pandoc ???)

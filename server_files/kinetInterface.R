@@ -462,6 +462,17 @@ doKin                <- eventReactive(input$runKin, {
     niter <- input$kinGlobNit
     global <- input$kinGlobFac * length(startp)
     
+    id = showNotification(
+      "Running optimizer...", 
+      type = "message",
+      duration = NULL, 
+      closeButton = FALSE
+    )
+    on.exit(
+      removeNotification(id), 
+      add = TRUE
+    )
+    
     opt0 <- bmc_hyb(parOpt,
                     parms = kinParms,
                     global = global,

@@ -70,7 +70,9 @@ wellPanel(
            ),
            checkboxInput("kinRestart",
                          label=strong(" Restart"),
-                         value=FALSE)
+                         value=FALSE
+           )
+                        
     )
   )
 )

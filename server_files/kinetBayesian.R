@@ -70,11 +70,12 @@ bmc_hyb = function (paropt, parms,
   
   best = NA
   kinPrint$optOut <<- capture.output(
-    best <- Rsolnp::solnp(best1, 
-                          fun = ifelse(weighted,mwlogP,mulogP), 
-                          LB=pars$LB, UB=pars$UB, 
-                          control=list(tol=tol,trace=1), 
-                          parms=parms,paropt=paropt)
+    best <- Rsolnp::solnp(
+      best1, 
+      fun = ifelse(weighted,mwlogP,mulogP), 
+      LB=pars$LB, UB=pars$UB, 
+      control=list(tol=tol,trace=1), 
+      parms=parms,paropt=paropt)
   )
   p1=best$pars
   names(p1) = names(paropt)
