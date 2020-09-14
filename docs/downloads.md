@@ -1,4 +1,4 @@
-[__Go to Top__](index.html)
+[__Go to Main Page__](index.html)
 
 # __Downloads__ module
 
@@ -15,9 +15,9 @@ Two functionalities in this module:
     **`Ctrl+Click`** on `Download` (if you simply click, this will
     crashe the app and you will loose all your hard work…)
     
-    **Note**: all files starting by you project’s name are included in
-    the .zip file. If you do not change the project’s name, you might
-    gather older files along…
+    **Note**: all files with names starting by you project’s name 
+    are included in the .zip file. If you never change the project’s 
+    name, you might gather older files along…
 
 **Remarks**
 

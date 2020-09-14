@@ -1,4 +1,4 @@
-[__Go to Top__](index.html)
+[__Go to Main Page__](index.html)
 
 # __Kinet__ module
 
