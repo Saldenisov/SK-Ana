@@ -1,5 +1,3 @@
-[__Go to Main Page__](index.html)
-
 # __Kinet__ module
 
 This module enables to introduce an explicit chemical scheme, leading to

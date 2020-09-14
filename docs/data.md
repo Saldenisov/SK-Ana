@@ -1,6 +1,3 @@
-[__Go to Main Page__](index.html)
-
-
 # __Data Selection__ module
 
 This module enables to fine tune a subset of data to be analyzed, mainly

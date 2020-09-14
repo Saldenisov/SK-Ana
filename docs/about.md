@@ -1,6 +1,3 @@
-[__Go to Main Page__](index.html)
-
-
 # __About__ module
 
 Provides miscellaneous information about the code, notably:

@@ -1,6 +1,3 @@
-[__Go to Main Page__](index.html)
-
-
 # __Project__ module
 
 Project definition and data input.

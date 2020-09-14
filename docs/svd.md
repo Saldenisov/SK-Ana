@@ -1,6 +1,3 @@
-[__Go to Main Page__](index.html)
-
-
 # __SVD__ module
 
 This module provides the Singular Values Decomposition of the selected

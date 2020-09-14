@@ -1,6 +1,5 @@
-SK-Ana: Spectro-Kinetic matrices Analysis
+SK-Ana User's Manual
 ================
-P. Pernot
 (2020-09-11)
 
 

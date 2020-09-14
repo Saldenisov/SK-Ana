@@ -1,6 +1,3 @@
-[__Go to Main Page__](index.html)
-
-
 # __ALS__ module
 
 The Alternated Least Squares (ALS) algorithms factorizes the data matrix
