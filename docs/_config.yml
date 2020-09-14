@@ -1,1 +1,10 @@
-theme: jekyll-theme-slate
+theme: jekyll-Minimal
+
+header_pages:
+  - project.md
+  - data.md
+  - svd.md
+  - als.md
+  - kinet.md
+  - downloads.md
+  - about.md
