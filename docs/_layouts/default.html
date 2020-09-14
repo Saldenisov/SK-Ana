@@ -15,9 +15,18 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>couocu</h1>
         <h1 class="header">{{ site.title | default: site.github.repository_name }}</h1>
         <p class="header">{{ site.description | default: site.github.project_tagline }}</p>
+        <ul>
+          <li><a href="index.html">INtroduction</a></li>
+          <li><a href="project.html">Project</a></li>
+          <li><a href="data.html">Data Selection</a></li>
+          <li><a href="svd.html">SVD</a></li>
+          <li><a href="als.html">ALS</a></li>
+          <li><a href="kinet.html">Kinet</a></li>
+          <li><a href="downloads.html">Downloads</a></li>
+          <li><a href="about.html">About</a></li>
+        </ul>
 
         <ul>
           {% if site.show_downloads %}
