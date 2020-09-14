@@ -1,9 +1,4 @@
-[__Main__](index.html)
-================
-P. Pernot
-(2020-09-11)
-
-
+[__Go to Top__](index.html)
 
 # __Project__ module
 

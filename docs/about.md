@@ -1,4 +1,6 @@
-# `About` module
+[__Go to Top__](index.html)
+
+# __About__ module
 
 Provides miscellaneous information about the code, notably:
 
@@ -18,4 +20,4 @@ link.
 page](https://github.com/ppernot/SK-Ana/issues) of the github
 deposit, where you can interact with the author.
 
-- `Users Manual` should lead you to the present documentation…
+- `Users Manual` should lead you to the present [documentation](index.html)…

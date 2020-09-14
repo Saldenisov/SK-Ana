@@ -1,4 +1,6 @@
-# `Kinet` module
+[__Go to Top__](index.html)
+
+# __Kinet__ module
 
 This module enables to introduce an explicit chemical scheme, leading to
 a hybrid model, as described in [Ruckebusch

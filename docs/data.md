@@ -1,4 +1,6 @@
-# `Data Selection` module
+[__Go to Top__](index.html)
+
+# __Data Selection__ module
 
 This module enables to fine tune a subset of data to be analyzed, mainly
 to remove over-noisy area or artefacts (signal rise, Cherenkov…).
@@ -45,7 +47,7 @@ show the modifications due to the actions in the left panel:
     the cut frequency `Cut freq.` for each axis. Both figures are
     zoomable and the corresponding data can be saved to disk.
 
-## `Selection` tab
+## __Selection__ tab
 
 This tab contains three sliders:
 
@@ -58,7 +60,7 @@ This tab contains three sliders:
 
   - `Delay Range`: selects the min and max delays of the matrix
 
-## `Baseline` tab
+## __Baseline__ tab
 
 A Baseline mask is used to correct the baseline in a data matrix, by
 delaywise averaging the masked values to zero.
@@ -84,7 +86,7 @@ matrix and cuts figures.
 
 **Tip**: Zooming on the data matrix is helpful to define precise limits.
 
-## `Wavl Mask` tab
+## __Wavl Mask__ tab
 
 The wavl masks are intended to exclude wavelength-delimited area(s) from
 data analysis, typically over-noisy areas or laser wavelengths.
@@ -100,7 +102,7 @@ The initial tab contains two elements:
 For each mask, a slider is created enabling to define its min and max
 positions.
 
-## `Delay Mask` tab
+## __Delay Mask__ tab
 
 The delay masks are intended to exclude delay-delimited area(s) from
 data analysis, typically baseline areas and artefacts (Cherenkov).

@@ -1,4 +1,6 @@
-# `ALS` module
+[__Go to Top__](index.html)
+
+# __ALS__ module
 
 The Alternated Least Squares (ALS) algorithms factorizes the data matrix
 given a number of species and some constraints (*e.g.*, positivity of
