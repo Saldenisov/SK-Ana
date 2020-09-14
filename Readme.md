@@ -15,6 +15,9 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
+## User's manual
+
+__New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
 
 ## Local install 
 

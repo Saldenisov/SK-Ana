@@ -3,7 +3,7 @@ SK-Ana User's Manual
 (2020-09-11)
 
 
-# Introduction
+## Introduction
 
 The `SK-Ana` graphical interface is organized in sequential order of
 project management:
@@ -30,7 +30,7 @@ A good introduction to the methods can be found in the article
 > spectra: A review”. *J. Photochem. Photobiol. C* **13**:1–27.
 > (<http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002>)
 
-# Workflow
+## Workflow
 
 A typical workflow consists in the sequence:
 
