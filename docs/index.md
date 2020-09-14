@@ -9,24 +9,24 @@ P. Pernot
 The `SK-Ana` graphical interface is organized in sequential order of
 project management:
 
-  - [`Project`](project.html): define a project’s name and load the data
+  - [__Project__](project.html): define a project’s name and load the data
 
-  - [`Data Selection`](data.html): define the data subset to be treated
+  - [__Data Selection__](data.html): define the data subset to be treated
 
-  - [`SVD`](svd.html): perform Singular Values Decomposition analysis
+  - [__SVD__](svd.html): perform Singular Values Decomposition analysis
 
-  - [`ALS`](als.html): perform Alternated Least-Squares decomposition
+  - [__ALS__](als.html): perform Alternated Least-Squares decomposition
 
-  - [`Kinet`](kinet.html): constrain the analysis by a kinetic model
+  - [__Kinet__](kinet.html): constrain the analysis by a kinetic model
 
-  - [`Downloads`](downloads.html): 
+  - [__Downloads__](downloads.html): 
   download saved the results and/or a report
 
-  - [`About`](about.html): information about the code
+  - [__About__](about.html): information about the code
 
 A good introduction to the methods can be found in the article
 
-> C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan and R. Tauler (2012)
+> C. Ruckebusch, M. Sliwa, P. Pernot, A. de Juan and R. Tauler (2012)
 > “Comprehensive data analysis of femtosecond transient absorption
 > spectra: A review”. *J. Photochem. Photobiol. C* **13**:1–27.
 > (<http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002>)

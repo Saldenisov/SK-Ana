@@ -1,11 +1,18 @@
-# `Project` module
+SK-Ana: Spectro-Kinetic matrices Analysis
+================
+P. Pernot
+(2020-09-11)
+
+[__Main__](index.html)
+
+# __Project__ module
 
 Project definition and data input.
 
-- [`New Project` tab](#new-project-tab)
-- [`Open` and `Save` tabs](#open-and-save-tabs)
+- [__New Project__ tab](#new-project-tab)
+- [__Open__ and __Save__ tabs](#open-and-save-tabs)
 
-## `New Project` tab
+## __New Project__ tab
 
   - **`Project Name`**: choose a name. If not, a name will be generated
     from the datafiles selected below.
@@ -86,6 +93,6 @@ Project definition and data input.
   - **`Post-process compression factor`**: the block averaging is
     performed *after* the data files are assembled.
 
-## `Open` and `Save` tabs
+## __Open__ and __Save__ tabs
 
 These are placeholders. The functionalities are not active.
