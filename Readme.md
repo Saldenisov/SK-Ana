@@ -92,7 +92,16 @@ If you use SK-Ana in one of your publications, do not forget to cite it and incl
 
 ### Methods
 
-* C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan, R. Tauler, "Comprehensive data analysis of femtosecond transient absorption spectra: A review", J. Photochem. Photobiol., C, vol. 13, 2012, pp. 1–27. (http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002)
+* C. Ruckebusch, M. Sliwa, P. Pernot, A. d. Juan, R. Tauler (2012) 
+"Comprehensive data analysis of femtosecond transient absorption spectra: 
+A review", _J. Photochem. Photobiol. C_ __13__:1–27. [DOI](http://dx.doi.org/10.1016/j.jphotochemrev.2011.10.002)
+
+### Tutorial (in french)
+
+* _Apport de la simulation à la détermination de mécanismes réactionnels en 
+chimie sous rayonnement_. Action Nationale de Formation CNRS "Chimie sous
+Rayonnement et Radiochimie" (Oléron, 2017/09) 
+[PDF](http://pagesperso.lcp.u-psud.fr/pernot/Downloads/2017_ANF_Oleron_Pernot.pdf)
 
 ### Applications
 
