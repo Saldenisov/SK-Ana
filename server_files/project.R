@@ -1,4 +1,6 @@
 inputStyle = reactiveValues(
+  # TBD: check reactivity to inputStyle when otherStyle is used.
+  #      (does not work for datStr...)
   header = FALSE,
   sep    = ",",
   dec    = ".",
@@ -124,8 +126,9 @@ getOneMatrix  <- function(dataFile) {
   }
   
   # Transpose if necessary
-  if(inputStyle$datStr != 'dxw') {
-    # print('Permute')
+  # if(inputStyle$datStr != 'dxw') {
+  if(input$datStr != 'dxw') {
+    print('Transpose')
     mat   = t(mat)
     tmp   = delay
     delay = wavl

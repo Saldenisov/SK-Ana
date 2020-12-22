@@ -1355,7 +1355,8 @@ output$alsSpVectors <- renderPlot(
   plotAlsVec(alsOut,
              type = "Sp",
              xlim = rangesAlsSp$x,
-             ylim = rangesAlsSp$y
+             ylim = rangesAlsSp$y,
+             nonnegS = input$nonnegS
   )
 },
 height = plotHeight
