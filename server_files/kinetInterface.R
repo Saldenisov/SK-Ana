@@ -146,7 +146,7 @@ plotIntKin <- function(opt) {
       tinteg, dd,
       xlim = c(0, max(tinteg) / 1),
       xlab = "Delay",
-      ylim = c(0, max(dd) * 1.1),
+      # ylim = c(0, max(dd) * 1.1),
       ylab = "Integrated O.D.",
       pch = 16,
       col = lineColors[3],
@@ -508,7 +508,7 @@ doKin                <- eventReactive(input$runKin, {
         times = times,
         xC = delay,
         xS = wavl,
-        C = Ca,
+        C = C,
         S = S,
         lof = vlof,
         glOut = opt0$glOut,
@@ -1091,7 +1091,8 @@ output$kinSpVectors  <- renderPlot({
     xlim = rangesKinSp$x,
     ylim = rangesKinSp$y,
     plotUQ = input$plotCSUQ,
-    nonnegS = input$nonnegSKinet
+    nonnegS = input$nonnegSKinet,
+    cols = 1
   )
 }, height = plotHeight - 50)
 output$kinKinVectors <- renderPlot({
@@ -1102,9 +1103,49 @@ output$kinKinVectors <- renderPlot({
     type = "Kin",
     xlim = rangesKinKin$x,
     ylim = rangesKinKin$y,
-    plotUQ = input$plotCSUQ
+    plotUQ = input$plotCSUQ,
+    cols = 1
   )
 }, height = plotHeight - 50)
+
+observeEvent(
+  input$kinSpKinSave,
+  isolate({
+    if (is.null(opt <- doKin())) {
+      return(NULL)
+    }
+    
+    CS <- reshapeCS(opt$C, opt$S, ncol(opt$C))
+    
+    S <- cbind(Inputs$wavl, CS$S)
+    colnames(S) <- c("wavl", colnames(opt$S))
+    write.csv(
+      S,
+      file = file.path(
+        "outputDir",
+        paste0(
+          input$projectTag,
+          "_kinetSpectra.csv"
+        )
+      ),
+      row.names = FALSE
+    )
+    C <- cbind(Inputs$delaySave, CS$C)
+    colnames(C) <- c("delay", colnames(opt$C))
+    write.csv(
+      C,
+      file = file.path(
+        "outputDir",
+        paste0(
+          input$projectTag,
+          "_kinetKinets.csv"
+        )
+      ),
+      row.names = FALSE
+    )
+  })
+)
+
 # Contribs ####
 output$kinContribs   <- renderPlot({
   if (is.null(opt <- doKin())) {

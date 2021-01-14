@@ -251,7 +251,9 @@ myals <- function(C, Psi, S,
 plotAlsVec <- function(alsOut, type = "Kin",
                        xlim = NULL, ylim = NULL,
                        plotUQ = FALSE, nMC = 100, 
-                       nonnegS = TRUE, ...) {
+                       nonnegS = TRUE, 
+                       cols = NULL,
+                       ...) {
   par(
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = pty
@@ -297,7 +299,17 @@ plotAlsVec <- function(alsOut, type = "Kin",
   }
   
   colF <- lineColors
+  if(!is.null(cols)) {
+    names(colF) = Scheme$species
+    colFk = colF[colnames(alsOut$C)]
+    colFs = colF[colnames(alsOut$S)]
+  }
   colR <- colo_tr2
+  if(!is.null(cols)) {
+    names(colR) = Scheme$species
+    colRk = colR[colnames(alsOut$C)]
+    colRs = colR[colnames(alsOut$S)]
+  }
   
   if (type == "Kin") {
     if (is.null(ylim)) {
@@ -308,7 +320,7 @@ plotAlsVec <- function(alsOut, type = "Kin",
       x, alsOut$C,
       type = ifelse(length(x) > 20, "p", "b"),
       pch = 16, cex = 0.5, lwd = 2, lty = 3,
-      col = colF,
+      col = if(is.null(cols)) colF else colFk,
       xlab = "Delay", ylab = "C",
       xlim = xlim,
       ylim = ylim,
@@ -320,13 +332,15 @@ plotAlsVec <- function(alsOut, type = "Kin",
       for (j in 1:nvec)
         polygon(
           c(x, rev(x)), c(Cmin[, j], rev(Cmax[, j])),
-          col = colR[j], border = NA
+          col = if(is.null(cols)) colR[j] else colFk[j], 
+          border = NA
         )
     }
     legend(
       "topright",
       legend = colnames(alsOut$C),
-      lty = 3, lwd = 3, col = colF
+      lty = 3, lwd = 3, 
+      col = if(is.null(cols)) colF else colFk
     )
     colorizeMask1D(axis = "delay", ylim = ylim)
     box()
@@ -343,7 +357,7 @@ plotAlsVec <- function(alsOut, type = "Kin",
       x, alsOut$S,
       type = ifelse(length(x) > 20, "p", "b"),
       pch = 16, cex = 0.5, lwd = 2, lty = 3,
-      col = colF,
+      col = if(is.null(cols)) colF else colFs,
       xlab = "Wavelength", ylab = "S",
       xlim = xlim,
       ylim = ylim,
@@ -360,7 +374,8 @@ plotAlsVec <- function(alsOut, type = "Kin",
       for (j in 1:nvec)
         polygon(
           c(x, rev(x)), c(Smin[, j], rev(Smax[, j])),
-          col = colR[j], border = NA
+          col = if(is.null(cols)) colR[j] else colRs[j],
+          border = NA
         )
     }
     colorizeMask1D(axis = "wavl", ylim = ylim)

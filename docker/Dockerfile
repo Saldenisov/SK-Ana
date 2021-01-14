@@ -1,28 +1,29 @@
 # Base image https://hub.docker.com/u/rocker/
-FROM rocker/shiny:3.6.3
+#FROM rocker/shiny:3.6.3
+FROM ppernot1/shiny_base
 
 # system libraries of general use
 ## install debian packages
-RUN apt-get update -qq && apt-get -y --no-install-recommends install \
-    libxml2-dev \
-    libcairo2-dev \
-    libsqlite3-dev \
-    libmariadbd-dev \
-    libpq-dev \
-    libssh2-1-dev \
-    unixodbc-dev \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    gfortran \ 
-    libgdal-dev \
-    gdal-bin\
-    libgsl0-dev\
-    libudunits2-dev
+#RUN apt-get update -qq && apt-get -y --no-install-recommends install \
+#    libxml2-dev \
+#    libcairo2-dev \
+#    libsqlite3-dev \
+#    libmariadbd-dev \
+#    libpq-dev \
+#    libssh2-1-dev \
+#    unixodbc-dev \
+#    libcurl4-openssl-dev \
+#    libssl-dev \
+#    gfortran \ 
+#    libgdal-dev \
+#    gdal-bin\
+#    libgsl0-dev\
+#    libudunits2-dev
 
 ## update system libraries
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get clean
+#RUN apt-get update && \
+#    apt-get upgrade -y && \
+#    apt-get clean
 
 # Add necessary files
 
@@ -49,9 +50,6 @@ COPY server_files /SK-Ana/server_files/
 COPY data /SK-Ana/data/
 COPY outputDir /SK-Ana/outputDir/
 
-# expose port
+# expose port and run app
 EXPOSE 3840
-
-# run app on container start
-#CMD ["R", "-e", "renv::status();renv:::renv_paths_cache()"]
 CMD ["R", "-e", "shiny::runApp(host = '0.0.0.0', port = 3840)"]

@@ -84,7 +84,8 @@ combineMatrix <- function(sel){
       return(NULL)
     list(
       mat       = RawData[[sel]]$mat, 
-      delay     = 1:length(RawData[[sel]]$delay), 
+      # delay     = 1:length(RawData[[sel]]$delay), 
+      delay     = RawData[[sel]]$delay, 
       wavl      = RawData[[sel]]$wavl, 
       delaySave = RawData[[sel]]$delay,
       delayId   = rep(1,length(RawData[[sel]]$delay))

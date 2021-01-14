@@ -612,7 +612,7 @@ selectArea <- reactive({
   )
 })
 
-reshapeCS <- function(U, V, n) {
+reshapeCSOld <- function(U, V, n) {
   # Expand vectors wrt masks
   C <- matrix(NA, nrow = length(Inputs$delay), ncol = n)
   colnames(C) <- colnames(U)
@@ -630,6 +630,31 @@ reshapeCS <- function(U, V, n) {
     if (!is.na(Inputs$wavlMask[j])) {
       i <- i + 1
       S[j, ] <- V[i, 1:n]
+    }
+  }
+  return(list(C = C, S = S))
+}
+
+reshapeCS <- function(U, V,...) {
+  # Expand vectors wrt masks
+  nC = ncol(U)
+  C <- matrix(NA, nrow = length(Inputs$delay), ncol = nC)
+  colnames(C) <- colnames(U)
+  nS = ncol(V)
+  S <- matrix(NA, nrow = length(Inputs$wavl), ncol = nS)
+  colnames(S) <- colnames(V)
+  i <- 0
+  for (j in 1:nrow(C)) {
+    if (!is.na(Inputs$delayMask[j])) {
+      i <- i + 1
+      C[j, ] <- U[i, 1:nC]
+    }
+  }
+  i <- 0
+  for (j in 1:nrow(S)) {
+    if (!is.na(Inputs$wavlMask[j])) {
+      i <- i + 1
+      S[j, ] <- V[i, 1:nS]
     }
   }
   return(list(C = C, S = S))

@@ -131,6 +131,7 @@ if('ALS' %in% input$inReport) {
 }
 ```
 
+<!--
 ```{r als8, results='asis', echo=FALSE}
 if('ALS' %in% input$inReport){
   cat ('## Rotational Ambiguity')
@@ -152,6 +153,7 @@ if('ALS' %in% input$inReport) {
   }
 }
 ```
+-->
 
 ******
 
