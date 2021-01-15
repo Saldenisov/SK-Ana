@@ -508,6 +508,7 @@ doKin                <- eventReactive(input$runKin, {
         times = times,
         xC = delay,
         xS = wavl,
+        active = kinParms$active,
         C = C,
         S = S,
         lof = vlof,
@@ -988,7 +989,7 @@ output$kinResid      <- renderPlot({
     return(NULL)
   }
 
-  CS <- reshapeCS(opt$C, opt$S, ncol(opt$C))
+  CS <- reshapeCS(opt$C, opt$S)
 
   if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
     s <- doSVD()
@@ -1006,7 +1007,7 @@ output$kinResid      <- renderPlot({
     main <- "Raw data"
   }
   plotResid(Inputs$delay, Inputs$wavl, mat,
-    CS$C, CS$S,
+    CS$C[,opt$active], CS$S,
     main = main
   )
 }, height = plotHeight)
@@ -1015,7 +1016,7 @@ output$kinResidAna   <- renderPlot({
     return(NULL)
   }
 
-  CS <- reshapeCS(opt$C, opt$S, ncol(opt$C))
+  CS <- reshapeCS(opt$C, opt$S)
 
   if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
     s <- doSVD()
@@ -1033,7 +1034,7 @@ output$kinResidAna   <- renderPlot({
     main <- "Raw data"
   }
   plotResidAna(Inputs$delay, Inputs$wavl, mat,
-    CS$C, CS$S,
+    CS$C[,opt$active], CS$S,
     main = main
   )
 }, height = plotHeight)
@@ -1056,7 +1057,7 @@ output$kinDatavsMod  <- renderPlot({
     return(NULL)
   }
 
-  CS <- reshapeCS(opt$C, opt$S, ncol(opt$C))
+  CS <- reshapeCS(opt$C, opt$S)
 
   if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
     s <- doSVD()
@@ -1076,7 +1077,7 @@ output$kinDatavsMod  <- renderPlot({
   plotDatavsMod(Inputs$delay,
     Inputs$wavl,
     mat,
-    CS$C, CS$S,
+    CS$C[,opt$active], CS$S,
     main = main,
     cont = input$kinContours
   )
@@ -1115,7 +1116,7 @@ observeEvent(
       return(NULL)
     }
     
-    CS <- reshapeCS(opt$C, opt$S, ncol(opt$C))
+    CS <- reshapeCS(opt$C, opt$S)
     
     S <- cbind(Inputs$wavl, CS$S)
     colnames(S) <- c("wavl", colnames(opt$S))
@@ -1151,10 +1152,10 @@ output$kinContribs   <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
-  CS <- reshapeCS(opt$C, opt$S, ncol(opt$C))
+  CS <- reshapeCS(opt$C, opt$S)
   plotConbtribs(
     Inputs$delay, Inputs$wavl, Inputs$mat,
-    CS$C, CS$S
+    CS$C[,opt$active], CS$S
   )
 }, height = plotHeight)
 
