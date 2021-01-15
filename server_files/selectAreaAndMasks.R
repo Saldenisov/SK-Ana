@@ -635,12 +635,12 @@ reshapeCSOld <- function(U, V, n) {
   return(list(C = C, S = S))
 }
 
-reshapeCS <- function(U, V,...) {
+reshapeCS <- function(U, V, n = NULL) {
   # Expand vectors wrt masks
-  nC = ncol(U)
+  nC = ifelse(is.null(n),ncol(U),n)
   C <- matrix(NA, nrow = length(Inputs$delay), ncol = nC)
   colnames(C) <- colnames(U)
-  nS = ncol(V)
+  nS = ifelse(is.null(n),ncol(V),n)
   S <- matrix(NA, nrow = length(Inputs$wavl), ncol = nS)
   colnames(S) <- colnames(V)
   i <- 0
