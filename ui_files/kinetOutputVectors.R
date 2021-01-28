@@ -34,6 +34,9 @@ fluidRow(
       column(6,
              checkboxInput("plotCSUQ",
                            label = " Plot uncertainty bands",
+                           value = FALSE),
+             checkboxInput("activeOnly",
+                           label = " Only active species",
                            value = FALSE)
       )
     )

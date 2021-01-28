@@ -253,13 +253,12 @@ plotAlsVec <- function(alsOut, type = "Kin",
                        plotUQ = FALSE, nMC = 100, 
                        nonnegS = TRUE, 
                        cols = NULL,
+                       activeOnly = FALSE,
                        ...) {
   par(
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = pty
   )
-  
-  nvec <- ncol(alsOut$S)
   
   plotBands <- FALSE
   if (is.finite(alsOut$hessian) && plotUQ) {
@@ -269,11 +268,14 @@ plotAlsVec <- function(alsOut, type = "Kin",
       plotBands <- TRUE
       eps <- 0.0
       S <- alsOut$S
-      Smax <- matrix(ifelse(nonnegS,eps,-1e30), nrow = nrow(S), ncol = nvec)
-      Smin <- matrix(1e30, nrow = nrow(S), ncol = nvec)
+      epsS = ifelse(nonnegS,eps,-1e30)
+      Smax <- matrix(epsS, nrow = nrow(S), ncol = ncol(S))
+      Smin <- matrix(1e30, nrow = nrow(S), ncol = ncol(S))
+      colnames(Smax) = colnames(Smin) = colnames(S)
       C <- alsOut$C
-      Cmax <- matrix(eps, nrow = nrow(C), ncol = nvec)
-      Cmin <- matrix(1e30, nrow = nrow(C), ncol = nvec)
+      Cmax <- matrix(eps, nrow = nrow(C), ncol = ncol(C))
+      Cmin <- matrix(1e30, nrow = nrow(C), ncol = ncol(C))
+      colnames(Cmax) = colnames(Cmin) = colnames(C)
       for (iMC in 1:nMC) {
         pmc <- mvtnorm::rmvnorm(
           n = 1,
@@ -281,34 +283,34 @@ plotAlsVec <- function(alsOut, type = "Kin",
           sigma = Sigma
         )
         map <- parExpand(pmc, alsOut$paropt)
-        sel <- alsOut$parms[["active"]]
-        C <- kinet(map, alsOut$parms)[, sel]
-        S <- spectra(C, map, alsOut$parms)
-        for (j in 1:nvec) {
-          for (k in 1:nrow(C)) {
-            Cmin[k, j] <- min(Cmin[k, j], C[k, j], na.rm = TRUE)
-            Cmax[k, j] <- max(Cmax[k, j], C[k, j], na.rm = TRUE)
-          }
-          for (k in 1:nrow(S)) {
-            Smin[k, j] <- min(Smin[k, j], S[k, j], na.rm = TRUE)
-            Smax[k, j] <- max(Smax[k, j], S[k, j], na.rm = TRUE)
-          }
-        }
+        C <- kinet(map, alsOut$parms)
+        Cmin = pmin(C,Cmin)
+        Cmax = pmax(C,Cmax)
+        # for (j in 1:ncol(C)) {
+        #   # for (k in 1:nrow(C)) {
+        #   #   Cmin[k, j] <- min(Cmin[k, j], C[k, j], na.rm = TRUE)
+        #   #   Cmax[k, j] <- max(Cmax[k, j], C[k, j], na.rm = TRUE)
+        #   # }
+        # }
+        Ca <- C[, alsOut$active]
+        S <- spectra(Ca, map, alsOut$parms)
+        Smin = pmin(S,Smin)
+        Smax = pmax(S,Smax)
+        # for (j in 1:ncol(S)) {
+        #   for (k in 1:nrow(S)) {
+        #     Smin[k, j] <- min(Smin[k, j], S[k, j], na.rm = TRUE)
+        #     Smax[k, j] <- max(Smax[k, j], S[k, j], na.rm = TRUE)
+        #   }
+        # }
       }
     }
   }
   
-  colF <- lineColors
+  colF <- lineColors # Full colors
+  colR <- colo_tr2   # Transparent colors
   if(!is.null(cols)) {
     names(colF) = Scheme$species
-    colFk = colF[colnames(alsOut$C)]
-    colFs = colF[colnames(alsOut$S)]
-  }
-  colR <- colo_tr2
-  if(!is.null(cols)) {
     names(colR) = Scheme$species
-    colRk = colR[colnames(alsOut$C)]
-    colRs = colR[colnames(alsOut$S)]
   }
   
   if (type == "Kin") {
@@ -316,11 +318,15 @@ plotAlsVec <- function(alsOut, type = "Kin",
       ylim <- c(0, 1.1 * max(alsOut$C))
     }
     x <- alsOut$xC
+    y <- alsOut$C
+    if(activeOnly & !is.null(alsOut$active))
+      y <- y[,alsOut$active]
+    sp = colnames(y)
     matplot(
-      x, alsOut$C,
+      x, y,
       type = ifelse(length(x) > 20, "p", "b"),
       pch = 16, cex = 0.5, lwd = 2, lty = 3,
-      col = if(is.null(cols)) colF else colFk,
+      col = if(is.null(cols)) colF else colF[sp],
       xlab = "Delay", ylab = "C",
       xlim = xlim,
       ylim = ylim,
@@ -329,18 +335,21 @@ plotAlsVec <- function(alsOut, type = "Kin",
     )
     grid()
     if (plotBands) {
-      for (j in 1:nvec)
+      sel = 1:ncol(Cmin)
+      if(activeOnly & !is.null(alsOut$active))
+        sel = sel[alsOut$active]
+      for (j in sel)
         polygon(
           c(x, rev(x)), c(Cmin[, j], rev(Cmax[, j])),
-          col = if(is.null(cols)) colR[j] else colFk[j], 
+          col = if(is.null(cols)) colR[j] else colR[colnames(Cmin)[j]], 
           border = NA
         )
     }
     legend(
       "topright",
-      legend = colnames(alsOut$C),
+      legend = sp,
       lty = 3, lwd = 3, 
-      col = if(is.null(cols)) colF else colFk
+      col = if(is.null(cols)) colF else colF[sp],
     )
     colorizeMask1D(axis = "delay", ylim = ylim)
     box()
@@ -353,11 +362,13 @@ plotAlsVec <- function(alsOut, type = "Kin",
         ylim <- 1.1 * range(alsOut$S)
     }
     x <- alsOut$xS
+    y <- alsOut$S
+    sp = colnames(y)
     matplot(
-      x, alsOut$S,
+      x, y,
       type = ifelse(length(x) > 20, "p", "b"),
       pch = 16, cex = 0.5, lwd = 2, lty = 3,
-      col = if(is.null(cols)) colF else colFs,
+      col = if(is.null(cols)) colF else colF[sp],
       xlab = "Wavelength", ylab = "S",
       xlim = xlim,
       ylim = ylim,
@@ -371,10 +382,10 @@ plotAlsVec <- function(alsOut, type = "Kin",
       abline(h=0, lty=2)
     grid()
     if (plotBands) {
-      for (j in 1:nvec)
+      for (j in 1:ncol(Smin))
         polygon(
           c(x, rev(x)), c(Smin[, j], rev(Smax[, j])),
-          col = if(is.null(cols)) colR[j] else colRs[j],
+          col = if(is.null(cols)) colR[j] else colR[colnames(Smin)[j]],
           border = NA
         )
     }

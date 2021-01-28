@@ -96,7 +96,7 @@ plotLofVsSvd <- function(s, opt, lmax = 10) {
     col = lineColors[5],
     pos = 3
   )
-  nsp <- ncol(opt$C)
+  nsp <- ncol(opt$S)
   abline(
     h = loft[nsp - lmin + 1],
     col = lineColors[2],
@@ -1105,7 +1105,8 @@ output$kinKinVectors <- renderPlot({
     xlim = rangesKinKin$x,
     ylim = rangesKinKin$y,
     plotUQ = input$plotCSUQ,
-    cols = 1
+    cols = 1,
+    activeOnly = input$activeOnly
   )
 }, height = plotHeight - 50)
 
