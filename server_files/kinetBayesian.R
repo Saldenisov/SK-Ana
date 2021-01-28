@@ -65,8 +65,11 @@ bmc_hyb = function (paropt, parms,
     if(!is.null(startp))
       best1 = startp
     else
-      best1 = pars$p0
+      best1 = pars$p0 
   } 
+
+  # small perturbation to force hessian calculation 
+  best1 = best1 * rlnorm(length(best1),0,0.01)
   
   best = NA
   kinPrint$optOut <<- capture.output(
