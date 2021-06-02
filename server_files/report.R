@@ -1,13 +1,15 @@
-observe(updateTextInput(
-  session,
-  inputId = "reportName",
-  value = paste0(input$projectTag,
-                 '_Report')
-))
+observeEvent(
+  input$projectTag,
+  updateTextInput(
+    session,
+    inputId = 'reportName',
+    value = paste0(input$projectTag,'_Report')
+  )
+)
 
 output$report = downloadHandler(
   filename = function() {
-    paste0(input$reportName, '.html') # cf. below for format choice
+    paste0(input$reportName, '.html')
   },
   content = function(file) {
     src <- normalizePath('reportTemplate.Rmd')
@@ -36,6 +38,7 @@ output$report = downloadHandler(
     #                                  pdf  = "pdf_document",
     #                                  docx = "word_document"
     #                                ))
+
     file.rename(out, file)
   }
 )

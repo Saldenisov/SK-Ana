@@ -1227,10 +1227,10 @@ als <- function() {
   colnames(res[[nAls]]$C) <- paste0("C_", 1:nAls)
   
   # Update Reporting
-  updateCheckboxGroupInput(session,
-                           inputId = "inReport",
-                           selected = c("SVD", "ALS")
-  )
+  # updateCheckboxGroupInput(session,
+  #                          inputId = "inReport",
+  #                          selected = c("SVD", "ALS")
+  # )
   
   res[[nAls]]$nullC <- nullC
   

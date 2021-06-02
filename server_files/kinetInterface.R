@@ -336,7 +336,7 @@ observeEvent(input$kinSigmaIndex, {
   })
 })
 
-doKin                <- eventReactive(input$runKin, {
+doKin <- eventReactive(input$runKin, {
   isolate({
     kinPrint$glOut <<- NULL
     kinPrint$optOut <<- NULL

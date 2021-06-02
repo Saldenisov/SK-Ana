@@ -7,7 +7,9 @@ sidebarPanel(
       label   = 'Include these results', 
       choices = c(
         'SVD' = 'SVD',
-        'ALS' = 'ALS'), 
+        'ALS' = 'ALS',
+        'KIN' = 'KIN'
+      ), 
       selected = c('SVD')
     ),
     # No other formats than html available on styx (install pandoc ???)
@@ -21,7 +23,7 @@ sidebarPanel(
       textInput(
         inputId = 'reportName', 
         label   = 'Report Name', 
-        value   = "SK-Ana"
+        value   = 'SK-Ana'
       ),
       downloadButton(
         outputId = 'report',
