@@ -7,13 +7,16 @@ output:
     fig_width: 10
     number_sections: yes
     theme: cerulean
+    toc: true
   pdf_document:
     fig_height: 5
     fig_width: 7
     number_sections: yes
+    toc: true
   word_document:
     fig_height: 5
     fig_width: 7
+    toc: true
 fontsize: 11pt
 ---
 
@@ -26,8 +29,6 @@ pty='s'
 tcl=-0.5
 scale = 0.5 # for multiplots
 ```
-
-__Report contents__ : `r input$inReport`
 
 __Data file(s)__ :`r Inputs$fileOrig`
 
@@ -74,6 +75,7 @@ if('SVD' %in% input$inReport) {
     plotSVDVecBloc(CS$C,CS$S,Inputs$delay,Inputs$wavl,cex=scale)    
 }
 ```
+
 
 ```{r als, results='asis', echo=FALSE}
 if ('ALS' %in% input$inReport) {
@@ -140,25 +142,25 @@ if ('KIN' %in% input$inReport) {
 }
 ```
 
-```{r kinsc1, results='asis', echo=FALSE}
+```{r kincs, results='asis', echo=FALSE}
 if ('KIN' %in% input$inReport) {
   cat('## Chemical scheme and initial parameters values')
 }
 ```
 
-```{r kinsc2, results='asis', comment='',echo=FALSE}
+```{r kincs.1, results='asis', comment='',echo=FALSE}
 if ('KIN' %in% input$inReport) {
   cat(paste(Scheme$scheme, collapse = '\n\n')) 
 }
 ```
 
-```{r kinop1, results='asis', echo=FALSE}
+```{r kinop, results='asis', echo=FALSE}
 if ('KIN' %in% input$inReport) {
   cat('## Optimization')
 }
 ```
 
-```{r kinop2, results='markup', comment='', echo=FALSE}
+```{r kinop.1, results='markup', comment='', echo=FALSE}
 if ('KIN' %in% input$inReport) {
   if (!is.null(kinOut <- doKin())) {
     if(!is.null(kinPrint$glOut)) {
@@ -179,7 +181,7 @@ if ('KIN' %in% input$inReport) {
 }
 ```
 
-```{r kinopt, results = 'asis', echo=FALSE}
+```{r kinop.2, results = 'asis', echo=FALSE}
 if ('KIN' %in% input$inReport) {
   if (!is.null(kinOut <- doKin())) {
     cat('## Optimal parameters\n\n')
@@ -257,13 +259,67 @@ if ('KIN' %in% input$inReport) {
 }
 ```
 
-```{r kin2, results='asis', echo=FALSE}
+
+```{r kinLOF, results='asis', echo=FALSE}
+if('KIN' %in% input$inReport){
+  cat ('## L.o.f. vs. SVD and Integrated Kinetics')
+}
+```
+
+
+```{r kinLOF.1, echo=FALSE}
+if('KIN' %in% input$inReport) {
+  if (!is.null(opt <- doKin()) & !is.null(s <- doSVD())) {
+    par(mfrow=c(1,2)) # Does not work... !?!?!?
+    plotLofVsSvd(s, opt)
+    plotIntKin(opt)
+  }
+}
+```
+
+
+```{r kinPD, results='asis', echo=FALSE}
+if('KIN' %in% input$inReport){
+  cat ('## Parameters densities')
+}
+```
+
+
+```{r kinPD.1, echo=FALSE}
+if('KIN' %in% input$inReport) {
+  if (!is.null(kinOut)){
+    plotPriPost(kinOut)
+  }
+}
+```
+
+
+```{r kinRes, results='asis', echo=FALSE}
+if('KIN' %in% input$inReport){
+  cat ('## Residuals')
+}
+```
+
+
+```{r kinRes.1, echo=FALSE}
+if('KIN' %in% input$inReport) {
+  if (!is.null(kinOut)){
+    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
+              CS$C,CS$S,cex=scale)
+    plotResidAna(Inputs$delay,Inputs$wavl,Inputs$mat,
+                 CS$C,CS$S,cex=scale)
+  }
+}
+```
+
+
+```{r kinSC, results='asis', echo=FALSE}
 if('KIN' %in% input$inReport){
   cat ('## Spectra and Kinetics')
 }
 ```
 
-```{r kin3, echo=FALSE}
+```{r kinSC.1, echo=FALSE}
 if('KIN' %in% input$inReport) {
   if (!is.null(kinOut)){
     par(mfrow=c(1,2))
@@ -273,49 +329,22 @@ if('KIN' %in% input$inReport) {
 }
 ```
 
-```{r kin4, results='asis', echo=FALSE}
+
+```{r kinCont, results='asis', echo=FALSE}
 if('KIN' %in% input$inReport){
-  cat ('## Residuals')
+  cat ('## Contributions')
 }
 ```
 
-```{r kin5, echo=FALSE}
+```{r kinCont.1, echo=FALSE, fig.height=7}
 if('KIN' %in% input$inReport) {
   if (!is.null(kinOut)){
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
-              CS$C,CS$S,cex=scale)
+     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
+                   CS$C,CS$S)
   }
 }
 ```
 
-```{r kin6, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## Parameters densities')
-}
-```
-
-
-```{r kin7, echo=FALSE}
-if('KIN' %in% input$inReport) {
-  if (!is.null(kinOut)){
-    plotPriPost(kinOut)
-  }
-}
-```
-
-```{r kin8, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## L.o.f. vs. SVD')
-}
-```
-
-
-```{r kin9, echo=FALSE}
-if('KIN' %in% input$inReport) {
-   if (!is.null(opt <- doKin()) & !is.null(s <- doSVD())) 
-     plotLofVsSvd(s, opt)
-}
-```
 
 ******
 

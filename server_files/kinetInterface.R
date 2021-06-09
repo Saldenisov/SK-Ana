@@ -45,7 +45,7 @@ SAPlot <- function(X, cex = 1) {
 
 plotLofVsSvd <- function(s, opt, lmax = 10) {
   par(
-    mfrow = c(1, 2),
+    # mfrow = c(1, 1),
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = "s"
   )
