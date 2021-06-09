@@ -494,6 +494,15 @@ doKin <- eventReactive(input$runKin, {
     # Global variable for restart
     Restart_Kin <<- opt0
     
+    # Update Reporting
+    todo = c(includeInReport(),'KIN')
+    includeInReport(todo) 
+    updateCheckboxGroupInput(session,
+                             inputId = "inReport",
+                             choices = todo,
+                             selected = todo
+    )
+    
     return(
       list(
         map = opt0$map,

@@ -4,11 +4,11 @@ sidebarPanel(
     h4("Generate Report"),
     checkboxGroupInput(
       inputId = 'inReport', 
-      label   = 'Include these results', 
+      label   = 'Include the following results:', 
       choices = c(
-        'SVD' = 'SVD',
-        'ALS' = 'ALS',
-        'KIN' = 'KIN'
+        'SVD' = 'SVD' #,
+        # 'ALS' = 'ALS',
+        # 'KIN' = 'KIN'
       ), 
       selected = c('SVD')
     ),

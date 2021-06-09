@@ -1,3 +1,5 @@
+includeInReport = reactiveVal("SVD") 
+  
 observeEvent(
   input$projectTag,
   updateTextInput(
@@ -28,7 +30,8 @@ output$report = downloadHandler(
       removeNotification(id), 
       add = TRUE
     )
-    out <- rmarkdown::render('reportTemplate.Rmd',"html_document")
+    out <- rmarkdown::render('reportTemplate.Rmd',"html_document",
+                             clean = TRUE)
     
     # No other formats available on styx (install pandoc ???)
     #       out <- rmarkdown::render('reportTemplate.Rmd',

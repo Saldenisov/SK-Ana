@@ -1,6 +1,6 @@
 ---
 title: "SK-Ana Report"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r format(Sys.time(), '%Y-%m-%d %H:%M:%S')`"
 output:
   html_document:
     fig_height: 5
@@ -21,6 +21,9 @@ fontsize: 11pt
 ---
 
 ```{r init, results='asis', echo=FALSE}
+
+knitr::opts_chunk$set(error = TRUE) 
+
 cat('# Project name :',input$projectTag)
 cex=1
 mar=c(4,4,2,1)
@@ -89,11 +92,13 @@ if ('ALS' %in% input$inReport) {
 }
 ```
 
+
 ```{r als2, results='asis', echo=FALSE}
 if('ALS' %in% input$inReport){
   cat ('## Spectra and Kinetics')
 }
 ```
+
 
 ```{r als3, echo=FALSE}
 if('ALS' %in% input$inReport) {
