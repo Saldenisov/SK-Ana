@@ -151,7 +151,7 @@ spectra = function (C,pars,parms) {
   
   # Amplitude constraints    
   for (spec in colnames(S))
-    S[,spec] = (S[,spec]/max(S[,spec])) * eps[spec]
+    S[,spec] = (S[,spec]/max(abs(S[,spec]))) * eps[spec]
   
   return(S)
 }
