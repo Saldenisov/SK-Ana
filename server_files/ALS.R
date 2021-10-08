@@ -307,9 +307,14 @@ plotAlsVec <- function(alsOut, type = "Kin",
     if(activeOnly & !is.null(alsOut$active))
       y <- y[,alsOut$active]
     if (is.null(ylim)) {
-      ylim <- c(0, 1.1 * max(y))
-      if(plotBands)
-        ylim <- c(0, 1.1 * max(Cmax))
+      if(plotBands){
+        if(activeOnly & !is.null(alsOut$active))
+          ylim <- c(0, 1.1 * max(Cmax[,alsOut$active]))
+        else
+          ylim <- c(0, 1.1 * max(Cmax))
+      } else {
+        ylim <- c(0, 1.1 * max(y))
+      }
     }
     sp = colnames(y)
     matplot(
