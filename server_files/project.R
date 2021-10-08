@@ -181,15 +181,15 @@ observeEvent(
     switch( input$style,
             csvStyle = {
               inputStyle$header = FALSE
-              inputStyle$sep= ","
-              inputStyle$dec= "."
-              inputStyle$datStr= "wxd"
+              inputStyle$sep    = ","
+              inputStyle$dec    = "."
+              inputStyle$datStr = "wxd"
             },
             otherStyle = {
               inputStyle$header = FALSE
-              inputStyle$sep= ","
-              inputStyle$dec= "."
-              inputStyle$datStr= "wxd"
+              inputStyle$sep    = ","
+              inputStyle$dec    = "."
+              inputStyle$datStr = "wxd"
             },
             # munichStyle = {
             #   inputStyle$header = FALSE
@@ -199,27 +199,27 @@ observeEvent(
             # },
             elyseStyle = {
               inputStyle$header = FALSE
-              inputStyle$sep= "\t"
-              inputStyle$dec= "."
-              inputStyle$datStr= "wxd"
+              inputStyle$sep    = "\t"
+              inputStyle$dec    = "."
+              inputStyle$datStr = "wxd"
             },
             heleneStyle={
               inputStyle$header = FALSE
-              inputStyle$sep= ";"
-              inputStyle$dec= "."
-              inputStyle$datStr= "wxd"
+              inputStyle$sep    = ";"
+              inputStyle$dec    = "."
+              inputStyle$datStr = "wxd"
             },
             streakStyle = {
               inputStyle$header = TRUE
-              inputStyle$sep= ","
-              inputStyle$dec= "."
-              inputStyle$datStr= "wxd"
+              inputStyle$sep    = ","
+              inputStyle$dec    = "."
+              inputStyle$datStr = "wxd"
             },
             otherStyle = {
               inputStyle$header = input$header
-              inputStyle$sep= input$sep
-              inputStyle$dec= input$dec
-              inputStyle$datStr= input$datStr
+              inputStyle$sep    = input$sep
+              inputStyle$dec    = input$dec
+              inputStyle$datStr = input$datStr
             }       
     )
     # updateCheckboxInput(session, 
