@@ -286,22 +286,10 @@ plotAlsVec <- function(alsOut, type = "Kin",
         C <- kinet(map, alsOut$parms)
         Cmin = pmin(C,Cmin)
         Cmax = pmax(C,Cmax)
-        # for (j in 1:ncol(C)) {
-        #   # for (k in 1:nrow(C)) {
-        #   #   Cmin[k, j] <- min(Cmin[k, j], C[k, j], na.rm = TRUE)
-        #   #   Cmax[k, j] <- max(Cmax[k, j], C[k, j], na.rm = TRUE)
-        #   # }
-        # }
         Ca <- C[, alsOut$active]
         S <- spectra(Ca, map, alsOut$parms)
         Smin = pmin(S,Smin)
         Smax = pmax(S,Smax)
-        # for (j in 1:ncol(S)) {
-        #   for (k in 1:nrow(S)) {
-        #     Smin[k, j] <- min(Smin[k, j], S[k, j], na.rm = TRUE)
-        #     Smax[k, j] <- max(Smax[k, j], S[k, j], na.rm = TRUE)
-        #   }
-        # }
       }
     }
   }
@@ -314,13 +302,15 @@ plotAlsVec <- function(alsOut, type = "Kin",
   }
   
   if (type == "Kin") {
-    if (is.null(ylim)) {
-      ylim <- c(0, 1.1 * max(alsOut$C))
-    }
     x <- alsOut$xC
     y <- alsOut$C
     if(activeOnly & !is.null(alsOut$active))
       y <- y[,alsOut$active]
+    if (is.null(ylim)) {
+      ylim <- c(0, 1.1 * max(y))
+      if(plotBands)
+        ylim <- c(0, 1.1 * max(Cmax))
+    }
     sp = colnames(y)
     matplot(
       x, y,
