@@ -1,7 +1,8 @@
 BUILD : 
     1/ cd SK-Ana
     2/ docker build -t ppernot1/skana -f docker/Dockerfile .
-    3/ docker push ppernot1/skana
+    3/ docker login
+    4/ docker push ppernot1/skana
 
 RUN : 
    UI : 

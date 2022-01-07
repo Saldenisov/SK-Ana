@@ -125,6 +125,20 @@ outputs.
           - values modified in the `Rates`, `Conc.` or `Eps.` tabs
             affect only the initial values for the optimizer. They are
             not taken into account when saving a model file in `Save`.
+      
+      - `Spectra` enables to read a `.csv` file with spectra 
+        to be constrained. The file should be in the same format
+        as the data files (separator, decimal mark) and contain
+        a header with the names of the species. The first column
+        should contain the wavelength. It is possible to load several
+        files.
+        
+        **Note(s)**
+        
+          - the spectra are interpolated on the wavl grid of the data matrix
+          
+          - the spectra are normalized such as max(S) = 1
+        
 
   - `Run` contains the controls for the optimizer. By default, the
     optimizer performs a local search around the initial values, in a

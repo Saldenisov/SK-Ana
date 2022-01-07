@@ -520,7 +520,7 @@ doKin <- eventReactive(
       )
     
     mc <- FALSE
-    niter <- input$kinGlobNit
+    niter  <- input$kinGlobNit
     global <- input$kinGlobFac * length(startp)
     
     id = showNotification(
