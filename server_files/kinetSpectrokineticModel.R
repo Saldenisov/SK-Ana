@@ -96,7 +96,10 @@ spectra = function (C,pars,parms) {
     if(pName %in% names(parms)) { 
       if(!is.null(parms[[pName]])) {
         freeS[[spec]]=FALSE
-        S[,spec]= ifelse(!is.na(eps[spec]),eps[spec],1)*parms[[pName]]  
+        S[,spec]= ifelse(
+          !is.na(eps[spec]),
+          eps[spec],
+          1) * parms[[pName]]  
         M = M - C[,spec] %o% S[,spec]
       }
     }
@@ -152,7 +155,7 @@ spectra = function (C,pars,parms) {
   # Amplitude constraints    
   for (spec in colnames(S))
     # S[,spec] = (S[,spec]/max(S[,spec])) * eps[spec]
-  S[,spec] = (S[,spec]/max(abs(S[,spec]))) * eps[spec]
+    S[,spec] = (S[,spec]/max(abs(S[,spec]))) * eps[spec]
   
   return(S)
 }

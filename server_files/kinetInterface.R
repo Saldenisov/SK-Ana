@@ -42,7 +42,6 @@ SAPlot <- function(X, cex = 1) {
     lower.panel = panel.smooth
   )
 }
-
 plotLofVsSvd <- function(s, opt, lmax = 10) {
   par(
     # mfrow = c(1, 1),
@@ -254,10 +253,11 @@ parseScheme <- function(scheme) {
 }
 
 # Interactive ####
-kinPrint     <- reactiveValues(glOut = NULL, optOut = NULL)
-Scheme       <- reactiveValues(gotData = FALSE)
-rangesKinSp  <- reactiveValues(x = NULL, y = NULL)
-rangesKinKin <- reactiveValues(x = NULL, y = NULL)
+kinPrint        <- reactiveValues(glOut = NULL, optOut = NULL)
+Scheme          <- reactiveValues(gotData = FALSE)
+rangesKinSp     <- reactiveValues(x = NULL, y = NULL)
+rangesKinKin    <- reactiveValues(x = NULL, y = NULL)
+externalSpectra <- list()
 
 observeEvent(input$kinSp_dblclick, {
   brush <- input$kinSp_brush
@@ -336,7 +336,60 @@ observeEvent(input$kinSigmaIndex, {
   })
 })
 
-doKin <- eventReactive(input$runKin, {
+output$extSpectra <- renderUI({
+  req(input$S0KinFile)
+
+  wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+  species <- Scheme$species
+
+  fixWidth = 1
+  spWidth  = 3  
+  ui <- list(
+    h4('Fix spectra'),
+    hr(style = "border-color: #666;")
+  )
+  # Get all shapes
+  isp = 0
+  for (i in seq_along(input$S0KinFile$datapath)) {
+    fname = input$S0KinFile[i,'name']
+    fN    = input$S0KinFile[i,'datapath']
+    tmp <- read.table(
+      file   = fN,
+      header = TRUE,
+      dec    = inputStyle$dec,
+      sep    = inputStyle$sep,
+      colClasses = "numeric",
+      stringsAsFactors = FALSE
+    )
+    for (k in 2:ncol(tmp)) {
+      isp = isp + 1
+      sp = colnames(tmp)[k]
+      
+      # Interpolate on wavl grid
+      S0 = spline(tmp[, 1], tmp[, k], xout = wavl)$y
+      
+      # Normalize
+      S0 = S0 / max(S0)
+      
+      # Store in global list
+      externalSpectra[[paste0("S_",sp)]] <<- S0
+      
+      # Generate selection control
+      ui[[isp +2]] <-
+        checkboxInput(
+          inputId = paste0('fix_S_',sp),
+          label   = paste0(sp,' (orig: ',fname,')'),
+          value   = FALSE
+        )
+      
+    }
+  }
+  ui
+})
+
+
+doKin <- eventReactive(
+  input$runKin, {
   isolate({
     kinPrint$glOut <<- NULL
     kinPrint$optOut <<- NULL
@@ -436,13 +489,21 @@ doKin <- eventReactive(input$runKin, {
       active = active,
       startd = startd,
       deltaStart = deltaStart,
-      sigma = input$kinSigma,
+      sigma   = input$kinSigma,
       reactants = Scheme$reactants,
-      eps = eps,
-      uniS = FALSE,
+      eps     = eps,
+      uniS    = FALSE,
       nonnegS = input$nonnegSKinet,
-      smooth = input$kinSmooth
+      smooth  = input$kinSmooth
     )
+    
+    # External spectrum shapes
+    if (length(externalSpectra) != 0)
+      for(sp in names(externalSpectra)) {
+        pname = paste0('fix_',sp)
+        if( input[[pname]] )
+          kinParms[[sp]] = externalSpectra[[sp]]
+      }
     
     # Generate hard-coded prior PDF
     logPri <<- genPriorPDF(parOpt)
@@ -521,7 +582,7 @@ doKin <- eventReactive(input$runKin, {
         C = C,
         S = S,
         lof = vlof,
-        glOut = opt0$glOut,
+        glOut  = opt0$glOut,
         optOut = opt0$optOut,
         values = opt0$values,
         cnv = opt0$cnv

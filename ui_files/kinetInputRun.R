@@ -63,7 +63,7 @@ wellPanel(
     column(4,
            actionButton("runKin",
                         strong("Run"),
-                        icon=icon('gear')
+                        icon=icon('cog')
            ),
            tags$style(type='text/css', 
                       "#runKin { width:100%; margin-top: 25px;}"

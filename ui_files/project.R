@@ -82,6 +82,17 @@ sidebarLayout(
           )
         ),
         hr( style="border-color: #666;"),
+        fluidRow(
+          column(
+            6,
+            checkboxInput(
+              inputId = 'useDelayIndex',
+              label   = 'Use delay index',
+              value   = FALSE
+            )
+          )
+        ),
+        hr( style="border-color: #666;"),
         fileInput(
           inputId = 'dataFile',
           label   = 'Select data file(s)',

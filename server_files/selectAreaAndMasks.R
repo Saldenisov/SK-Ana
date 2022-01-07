@@ -956,6 +956,8 @@ output$image1 <- renderPlot({
   mat   <- Inputs$mat
   wavl  <- Inputs$wavl
   delay <- Inputs$delay
+  # if(input$useDelayIndex)
+  #   delay = 1:length(delay)
   
   validate(
     need(

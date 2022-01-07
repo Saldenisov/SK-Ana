@@ -878,7 +878,6 @@ rotAmb3 <- function(C0, S0, data, rotVec = 1:3,
 getS0 <- eventReactive(
   input$S0File, {
     isolate({
-      
       # Get all shapes
       S0_in <- list()
       i <- 0

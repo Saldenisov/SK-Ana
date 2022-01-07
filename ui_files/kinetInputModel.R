@@ -1,5 +1,17 @@
 wellPanel(
   tabsetPanel(
+    
+    tabPanel(
+      h4("Load"),
+      hr( style="border-color: #666;"),
+      fileInput(
+        inputId = 'schemeFile',
+        label   = 'Select scheme file',
+        multiple= FALSE,
+        accept  = c('.txt','.in')
+      )
+    ),
+    
     tabPanel(
       h4("Type"),
       hr( style="border-color: #666;"),
@@ -24,16 +36,7 @@ wellPanel(
         )
       )
     ),
-    tabPanel(
-      h4("Load"),
-      hr( style="border-color: #666;"),
-      fileInput(
-        inputId = 'schemeFile',
-        label   = 'Select scheme file',
-        multiple= FALSE,
-        accept  = c('.txt','.in')
-      )
-    ),
+    
     tabPanel(
       h4("Save"),
       hr( style="border-color: #666;"),
@@ -50,25 +53,68 @@ wellPanel(
         )
       )
     )
+    
   ),
   hr( style="border-color: #666;"),
   tabsetPanel(
+    
     tabPanel(
       h4("Scheme"),
       DT::dataTableOutput('scheme')
     ),
+    
     tabPanel(
       h4("Rates"),
       uiOutput('rates')
     ),
+    
     tabPanel(
       h4("Conc."),
       tabsetPanel(id='all_conc'),
       uiOutput('concentrations')
     ),
+    
     tabPanel(
       h4("Eps."),
       uiOutput('epsilon')
+    ),
+    
+    tabPanel(
+      h4("Spectra"),
+      hr( style="border-color: #666;"),
+      # checkboxInput(
+      #   "shapeSKin", 
+      #   label= "External spectrum shape(s)",
+      #   value = FALSE
+      # ),
+      # conditionalPanel(
+      #   condition = "input.shapeSKin",
+        fileInput(
+          inputId  = 'S0KinFile',
+          label    = 'Select file(s)',
+          multiple = TRUE,
+          accept   = c('.dat','.txt','.csv')
+        )#,
+        # checkboxInput(
+        #   "softS0", 
+        #   label= "Soft constraint",
+        #   value = FALSE
+        # ),
+        # conditionalPanel(
+        #   condition = "input.softS0",
+        #   sliderInput(
+        #     "wSoftS0", 
+        #     "logWeight for Soft constraint",
+        #     min   =  -3, 
+        #     max   =   3, 
+        #     value =   1,
+        #     step  = 0.5,
+        #     sep   = ""
+        #   )
+        # )
+      # )
+        ,
+      uiOutput('extSpectra')
     )
   )
 )

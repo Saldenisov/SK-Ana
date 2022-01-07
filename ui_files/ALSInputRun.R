@@ -28,7 +28,7 @@ fluidRow(
     actionButton(
       "runALS",
       strong("Run"),
-      icon=icon('gear')
+      icon=icon('cog')
     ),
     tags$style(
       type='text/css', 

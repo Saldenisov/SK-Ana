@@ -17,7 +17,7 @@ fluidRow(
     actionButton(
       'clean',
       strong("Clean"),
-      icon = icon("gear")
+      icon = icon("cog")
     )
   ),
   column(

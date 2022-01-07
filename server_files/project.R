@@ -363,7 +363,7 @@ output$ui      = renderUI({
           actionButton(
             "process",
             strong("Do it!"),
-            icon=icon('gear')
+            icon=icon('cog')
           ),
           tags$style(
             type='text/css',

@@ -62,7 +62,7 @@ sidebarLayout(
                  actionButton(
                    'autoBaselineMask',
                    strong("Auto"),
-                   icon = icon("gear")
+                   icon = icon("cog")
                  ))
         ),
         tags$div(id = "masksBl")
@@ -89,7 +89,7 @@ sidebarLayout(
                  actionButton(
                    'autoWlMask',
                    strong("Auto"),
-                   icon = icon("gear")
+                   icon = icon("cog")
                  ))
         ),
         tags$div(id = "masksS")
@@ -116,7 +116,7 @@ sidebarLayout(
                  actionButton(
                    'autoDlMask',
                    strong("Auto"),
-                   icon = icon("gear")
+                   icon = icon("cog")
                  ))
         ),
         tags$div(id = "masksC")
