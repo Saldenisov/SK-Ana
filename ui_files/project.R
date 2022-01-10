@@ -84,11 +84,14 @@ sidebarLayout(
         hr( style="border-color: #666;"),
         fluidRow(
           column(
-            6,
-            checkboxInput(
-              inputId = 'useDelayIndex',
-              label   = 'Use delay index',
-              value   = FALSE
+            12,
+            radioButtons(
+              inputId = 'transformDelay',
+              label   = 'Transform delay (for single matrix only)',
+              choices = c('No' = 0, 
+                          'Index' = 1,
+                          'Log10' = 2),
+              inline  = TRUE 
             )
           )
         ),

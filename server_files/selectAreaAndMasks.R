@@ -148,11 +148,11 @@ observeEvent(
       Inputs$delayGlitch <<- ll$delayGlitch
 
       # Ranges of sliders
-      wavl <- Inputs$wavlOrig
+      wavl  <- Inputs$wavlOrig
       delay <- Inputs$delayOrig / Inputs$dlScaleFacOrig
-      mat <- Inputs$matOrig
-      wlRange <- signif(range(wavl), 3)
-      dlRange <- signif(range(delay), 3)
+      mat   <- Inputs$matOrig
+      wlRange  <- signif(range(wavl), 3)
+      dlRange  <- signif(range(delay), 3)
       cblRange <- c(0, length(delay))
 
       nsteps <- min(length(wavl), 200)

@@ -84,9 +84,22 @@ combineMatrix <- function(sel){
       return(NULL)
     
     del = RawData[[sel]]$delay
-    if(!is.null(input$useDelayIndex))
-      if(input$useDelayIndex)
+    
+    # Delay transforms for single matrix
+    if(!is.null(input$transformDelay))
+      if(input$transformDelay == 1) {
         del = 1:length(del)
+      } else if(input$transformDelay == 2) {
+        minLoc = which(del>0)[1]
+        if(minLoc > 1) {
+          # Compress all points below minLoc 
+          # into ]0,del(minLoc)[ 
+          step   = del[minLoc]/minLoc
+          for(i in 1:minLoc-1) 
+            del[i] = del[minLoc] - (minLoc-i)*step
+        }
+        del = log10(del)
+      }
     
     list(
       mat       = RawData[[sel]]$mat, 
