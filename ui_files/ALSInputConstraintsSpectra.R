@@ -42,39 +42,33 @@ wellPanel(
       title = "If Normalize is set, set norm such as sum(S)=1 "
     )
   ),
-  fluidRow(
+  fixedRow(
     column(
       width = 12,
-      hr( style="border-color: #666;"),
+      hr(style = "border-color: #666;"),
+      fileInput(
+        inputId = 'S0File',
+        label   = 'Fix spectral shape(s)',
+        multiple= TRUE,
+        accept  = c('.dat','.txt','.csv')
+      ),
+      uiOutput('extSpectraALS'),
+      hr(style = "border-color: #666;"),
       checkboxInput(
-        "shapeS", 
-        label= "External spectrum shape(s)",
+        "softS0", 
+        label= "Soft constraint",
         value = FALSE
       ),
       conditionalPanel(
-        condition = "input.shapeS",
-        fileInput(
-          inputId = 'S0File',
-          label   = 'Select file(s)',
-          multiple= TRUE,
-          accept  = c('.dat','.txt','.csv')
-        ),
-        checkboxInput(
-          "softS0", 
-          label= "Soft constraint",
-          value = FALSE
-        ),
-        conditionalPanel(
-          condition = "input.softS0",
-          sliderInput(
-            "wSoftS0", 
-            "logWeight for Soft constraint",
-            min   =  -3, 
-            max   =   3, 
-            value =   1,
-            step  = 0.5,
-            sep   = ""
-          )
+        condition = "input.softS0",
+        sliderInput(
+          "wSoftS0", 
+          "logWeight for Soft constraint",
+          min   =  -3, 
+          max   =   3, 
+          value =   1,
+          step  = 0.5,
+          sep   = ""
         )
       )
     )

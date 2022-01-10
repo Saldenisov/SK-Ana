@@ -131,7 +131,7 @@ outputs.
         as the data files (separator, decimal mark) and contain
         a header with the names of the species. The first column
         should contain the wavelength. It is possible to load several
-        files.
+        files.  Example: (https://github.com/ppernot/SK-Ana/blob/master/data/spectrum_ABC_Kinet.csv)
         
         **Note(s)**
         

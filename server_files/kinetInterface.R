@@ -340,12 +340,12 @@ output$extSpectra <- renderUI({
   req(input$S0KinFile)
 
   wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
-  species <- Scheme$species
+  # species <- Scheme$species
 
   fixWidth = 1
   spWidth  = 3  
   ui <- list(
-    h4('Fix spectra'),
+    h4('Fix spectra shapes'),
     hr(style = "border-color: #666;")
   )
   # Get all shapes

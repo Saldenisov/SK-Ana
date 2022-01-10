@@ -39,7 +39,7 @@ wellPanel(
     
     tabPanel(
       h4("Save"),
-      hr( style="border-color: #666;"),
+      hr(style="border-color: #666;"),
       verticalLayout(
         textInput(
           inputId = 'schemeFileName', 
@@ -81,40 +81,30 @@ wellPanel(
     
     tabPanel(
       h4("Spectra"),
-      hr( style="border-color: #666;"),
+      fileInput(
+        inputId  = 'S0KinFile',
+        label    = 'Select file(s)',
+        multiple = TRUE,
+        accept   = c('.dat','.txt','.csv')
+      ),
+      uiOutput('extSpectra')
       # checkboxInput(
-      #   "shapeSKin", 
-      #   label= "External spectrum shape(s)",
+      #   "softS0", 
+      #   label= "Soft constraint",
       #   value = FALSE
       # ),
       # conditionalPanel(
-      #   condition = "input.shapeSKin",
-        fileInput(
-          inputId  = 'S0KinFile',
-          label    = 'Select file(s)',
-          multiple = TRUE,
-          accept   = c('.dat','.txt','.csv')
-        )#,
-        # checkboxInput(
-        #   "softS0", 
-        #   label= "Soft constraint",
-        #   value = FALSE
-        # ),
-        # conditionalPanel(
-        #   condition = "input.softS0",
-        #   sliderInput(
-        #     "wSoftS0", 
-        #     "logWeight for Soft constraint",
-        #     min   =  -3, 
-        #     max   =   3, 
-        #     value =   1,
-        #     step  = 0.5,
-        #     sep   = ""
-        #   )
-        # )
+      #   condition = "input.softS0",
+      #   sliderInput(
+      #     "wSoftS0", 
+      #     "logWeight for Soft constraint",
+      #     min   =  -3, 
+      #     max   =   3, 
+      #     value =   1,
+      #     step  = 0.5,
+      #     sep   = ""
+      #   )
       # )
-        ,
-      uiOutput('extSpectra')
     )
   )
 )

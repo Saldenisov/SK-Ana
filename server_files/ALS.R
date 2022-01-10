@@ -874,29 +874,82 @@ rotAmb3 <- function(C0, S0, data, rotVec = 1:3,
 
 
 # Interactive ####
+ 
+externalSpectraALS <- list()
 
-getS0 <- eventReactive(
-  input$S0File, {
-    isolate({
-      # Get all shapes
-      S0_in <- list()
-      i <- 0
-      for (fN in input$S0File$datapath) {
-        tmp <- read.table(
-          file = fN,
-          header = FALSE,
-          dec = input$dec,
-          sep = input$sep,
-          colClasses = "numeric",
-          stringsAsFactors = FALSE
+output$extSpectraALS <- renderUI({
+  req(input$S0File)
+  
+  wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+  # species <- Scheme$species
+  
+  fixWidth = 1
+  spWidth  = 3  
+  ui <- list(
+    # hr(style = "border-color: #666;")
+  )
+  offset = length(ui)
+  # Get all shapes
+  isp = 0
+  for (i in seq_along(input$S0File$datapath)) {
+    fname = input$S0File[i,'name']
+    fN    = input$S0File[i,'datapath']
+    tmp <- read.table(
+      file   = fN,
+      header = TRUE,
+      dec    = inputStyle$dec,
+      sep    = inputStyle$sep,
+      colClasses = "numeric",
+      stringsAsFactors = FALSE
+    )
+    for (k in 2:ncol(tmp)) {
+      isp = isp + 1
+      sp = colnames(tmp)[k]
+      
+      # Interpolate on wavl grid
+      S0 = spline(tmp[, 1], tmp[, k], xout = wavl)$y
+      
+      # Normalize
+      S0 = S0 / max(S0)
+      
+      # Store in global list
+      externalSpectraALS[[paste0("S_",sp)]] <<- S0
+      
+      # Generate selection control
+      ui[[isp + offset]] <-
+        checkboxInput(
+          inputId = paste0('fixALS_S_',sp),
+          label   = paste0(sp,' (orig: ',fname,')'),
+          value   = FALSE
         )
-        i <- i + 1
-        S0_in[[i]] <- tmp
-      }
-      return(S0_in)
-    })
+      
+    }
   }
-)
+  ui
+})
+
+# getS0 <- eventReactive(
+#   input$S0File, {
+#     isolate({
+#       # Get all shapes
+#       S0_in <- list()
+#       i <- 0
+#       for (fN in input$S0File$datapath) {
+#         tmp <- read.table(
+#           file = fN,
+#           header = FALSE,
+#           dec = input$dec,
+#           sep = input$sep,
+#           colClasses = "numeric",
+#           stringsAsFactors = FALSE
+#         )
+#         i <- i + 1
+#         S0_in[[i]] <- tmp
+#       }
+#       return(S0_in)
+#     })
+#   }
+# )
 
 showMSE <- function(a, b, c) {
   if (is.null(a)) {
@@ -1074,8 +1127,6 @@ als <- function() {
   delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
   wavl <- Inputs$wavl[!is.na(Inputs$wavlMask)]
   
-  
-  
   if (input$useFiltered) {
     # Choose SVD filtered matrix
     s <- doSVD()
@@ -1090,18 +1141,12 @@ als <- function() {
   
   # External spectrum shapes
   S0 <- NULL
-  if (input$shapeS) {
-    if (is.null(S0_in)) {
-      S0_in <- getS0()
+  if (length(externalSpectraALS) != 0)
+    for(sp in names(externalSpectraALS)) {
+      pname = paste0('fixALS_',sp)
+      if( input[[pname]] )
+        S0 = cbind(S0, externalSpectraALS[[sp]])
     }
-    ii <- 0
-    S0 <- c()
-    for (i in 1:length(S0_in)) {
-      tmp <- S0_in[[i]]
-      for (k in 2:ncol(tmp))
-        S0 <- cbind(S0, spline(tmp[, 1], tmp[, k], xout = wavl)$y)
-    }
-  }
   
   # Null C constraints
   nullC <- NA

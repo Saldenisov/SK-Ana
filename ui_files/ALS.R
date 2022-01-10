@@ -24,16 +24,16 @@ sidebarLayout(
         value='ALSparams'
       ),
       tabPanel(
-        title=h4("S const."),
-        br(),
-        source_ui("ALSInputConstraintsSpectra.R"),
-        value='ALSSconstraints'
-      ),
-      tabPanel(
         title=h4("C const."),
         br(),
         source_ui("ALSInputConstraintsKinet.R"),
         value='ALSCconstraints'
+      ),
+      tabPanel(
+        title=h4("S const."),
+        br(),
+        source_ui("ALSInputConstraintsSpectra.R"),
+        value='ALSSconstraints'
       )
     )
   ),

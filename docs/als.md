@@ -60,14 +60,20 @@ Several tabs enable to fine tune the ALS analysis:
         [`loess`](https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/loess)
         function.
     
-      - `External Spectrum Shape` opens a new control enabling to read a
-        `.csv` file with spectra to be constrained.
+      - `Fix spectral shape(s)` Select a `.csv` file with spectra to 
+        be constrained. The file should be in the same format
+        as the data files (separator, decimal mark) and contain
+        a header with the names of the species. The first column
+        should contain the wavelength. It is possible to load several
+        files. Example: (https://github.com/ppernot/SK-Ana/blob/master/data/spectrum_ABC_Kinet.csv)
         
+        The spectra are interpolated on the wavl grid of the data matrix.
         By default, the spectra are used as such (hard constraint) which
         is often too strong and results in poor solutions. Activating
         `Soft constraint` enables to input a weight for the similarity
         constraint in the loss function of the ALS. The `logWeight`
         slider enables to tune this weight.
+      
 
   - `C const.` tab: constraints on the kinetics vectors
     

@@ -221,10 +221,10 @@
     },
     "dotCall64": {
       "Package": "dotCall64",
-      "Version": "1.0-0",
+      "Version": "1.0-1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "ff2d17af3ab74328428e9eb7ada7255d"
+      "Hash": "d0ef6cd1546530da4d72179b52856e84"
     },
     "ellipsis": {
       "Package": "ellipsis",
@@ -242,10 +242,10 @@
     },
     "expm": {
       "Package": "expm",
-      "Version": "0.999-5",
+      "Version": "0.999-6",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "6da939036c445e851f7ef690e349cc2c"
+      "Hash": "1bb0f92b6125ea03dd7142f8eaf36bf5"
     },
     "fansi": {
       "Package": "fansi",
@@ -270,10 +270,10 @@
     },
     "fields": {
       "Package": "fields",
-      "Version": "11.4",
+      "Version": "12.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "db57ed452daca391fcf3f64417ff61a1"
+      "Hash": "40c466a47268b17ed5a9af42248d86c9"
     },
     "fontawesome": {
       "Package": "fontawesome",
@@ -459,10 +459,10 @@
     },
     "maps": {
       "Package": "maps",
-      "Version": "3.3.0",
+      "Version": "3.4.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "392212982257ea03c37b63547dc871b4"
+      "Hash": "b3d98a967ec17c80f795719529812fa0"
     },
     "markdown": {
       "Package": "markdown",
@@ -487,10 +487,10 @@
     },
     "msm": {
       "Package": "msm",
-      "Version": "1.6.8",
+      "Version": "1.6.9",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "5458188099f0deae645462e550345c8b"
+      "Hash": "3b97f31eb70b6158ab5f993245c17af5"
     },
     "munsell": {
       "Package": "munsell",
@@ -711,10 +711,10 @@
     },
     "spam": {
       "Package": "spam",
-      "Version": "2.5-1",
+      "Version": "2.7-0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "efe6e43f90ee66c765fdaea2bf2cf7e6"
+      "Hash": "1abde1bf414425ea288fd9e277d6e410"
     },
     "stringi": {
       "Package": "stringi",
@@ -732,10 +732,10 @@
     },
     "survival": {
       "Package": "survival",
-      "Version": "3.1-8",
+      "Version": "3.2-13",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "ad25122f95d04988f6f79d69aaadd53d"
+      "Hash": "6f0a0fadc63bc6570fe172770f15bbc4"
     },
     "sys": {
       "Package": "sys",
