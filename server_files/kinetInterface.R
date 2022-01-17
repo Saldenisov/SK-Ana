@@ -114,7 +114,7 @@ plotLofVsSvd <- function(s, opt, lmax = 10) {
   )
   box()
 }
-plotIntKin <- function(opt) {
+plotIntKin <- function(opt, delayTrans = '') {
   # Plot wavelength-integrated kinetic traces
 
   times <- opt$times
@@ -137,14 +137,14 @@ plotIntKin <- function(opt) {
   i0 <- 0
   for (iExp in 1:nExp) {
     sel <- (i0 + 1):startd[iExp]
-    tinteg <- times[sel]
+    tinteg <- opt$xC[sel]
     # tinteg = tinteg-tinteg[1] #+deltaStart[iExp]
     i0 <- startd[iExp]
     dd <- rowSums(mat[sel, ], na.rm = TRUE)
     plot(
       tinteg, dd,
-      xlim = c(0, max(tinteg) / 1),
-      xlab = "Delay",
+      # xlim = c(0, max(tinteg) / 1),
+      xlab = paste0("Delay ",delayTrans),
       # ylim = c(0, max(dd) * 1.1),
       ylab = "Integrated O.D.",
       pch = 16,
@@ -1078,7 +1078,8 @@ output$kinResid      <- renderPlot({
   }
   plotResid(Inputs$delay, Inputs$wavl, mat,
     CS$C[,opt$active], CS$S,
-    main = main
+    main = main,
+    delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)
 output$kinResidAna   <- renderPlot({
@@ -1105,7 +1106,8 @@ output$kinResidAna   <- renderPlot({
   }
   plotResidAna(Inputs$delay, Inputs$wavl, mat,
     CS$C[,opt$active], CS$S,
-    main = main
+    main = main,
+    delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)
 output$kinIntKin     <- renderPlot({
@@ -1113,7 +1115,7 @@ output$kinIntKin     <- renderPlot({
   if (is.null(opt <- doKin())) {
     return(NULL)
   }
-  plotIntKin(opt)
+  plotIntKin(opt, delayTrans=Inputs$delayTrans)
 }, height = plotHeight)
 output$kinLofVsSvd   <- renderPlot({
   # L.o.F comparison with SVD
@@ -1149,7 +1151,8 @@ output$kinDatavsMod  <- renderPlot({
     mat,
     CS$C[,opt$active], CS$S,
     main = main,
-    cont = input$kinContours
+    cont = input$kinContours,
+    delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)
 # Spectra & Kinetics ####
@@ -1163,7 +1166,8 @@ output$kinSpVectors  <- renderPlot({
     ylim = rangesKinSp$y,
     plotUQ = input$plotCSUQ,
     nonnegS = input$nonnegSKinet,
-    cols = 1
+    cols = 1,
+    delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight - 50)
 output$kinKinVectors <- renderPlot({
@@ -1176,7 +1180,8 @@ output$kinKinVectors <- renderPlot({
     ylim = rangesKinKin$y,
     plotUQ = input$plotCSUQ,
     cols = 1,
-    activeOnly = input$activeOnly
+    activeOnly = input$activeOnly,
+    delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight - 50)
 
@@ -1226,7 +1231,8 @@ output$kinContribs   <- renderPlot({
   CS <- reshapeCS(opt$C, opt$S)
   plotConbtribs(
     Inputs$delay, Inputs$wavl, Inputs$mat,
-    CS$C[,opt$active], CS$S
+    CS$C[,opt$active], CS$S,
+    delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)
 

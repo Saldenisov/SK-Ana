@@ -23,7 +23,8 @@ getGlitch <- function(delayMask, wavlMask, mat, level) {
 }
 plotImage <- function(x, y, z, main = "Data", col= imgColors,
                       xlim = NULL, ylim = NULL, zlim = NULL,
-                      colorBar = FALSE, cont = FALSE) {
+                      colorBar = FALSE, cont = FALSE, 
+                      delayTrans = '') {
   # Plot image with masks
 
   if (is.null(xlim)) {
@@ -39,7 +40,8 @@ plotImage <- function(x, y, z, main = "Data", col= imgColors,
   image(
     x, y, z,
     xlim = xlim, ylim = ylim, zlim = zlim,
-    xlab = "Delay", ylab = "Wavelength",
+    xlab = paste0("Delay ",delayTrans),
+    ylab = "Wavelength",
     main = main,
     col  = col
   )
@@ -63,14 +65,15 @@ plotImage <- function(x, y, z, main = "Data", col= imgColors,
       add = TRUE,
       legend.mar = 5,
       legend.shrink = 0.8,
-      xlab = "Delay",
+      xlab = paste0("Delay ",delayTrans),
       ylab = "Wavelength"
     )
   
 }
 plotResid <- function(delay, wavl, mat, C, S,
                       d = rep(1, ncol(C)),
-                      main = "", ...) {
+                      main = "",
+                      delayTrans = '', ...) {
   # Build model matrix
   matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
   for (i in 1:ncol(S))
@@ -89,7 +92,8 @@ plotResid <- function(delay, wavl, mat, C, S,
     main = paste0(
       "Residuals / Lack-of-fit (%) : ",
       signif(vlof, 3)
-    )
+    ),
+    delayTrans = delayTrans
   )
 
   hist(
@@ -113,7 +117,9 @@ plotResid <- function(delay, wavl, mat, C, S,
 }
 plotConbtribs <- function(delay, wavl, mat, C, S,
                           d = rep(1, ncol(C)),
-                          type = "als", ...) {
+                          type = "als", 
+                          delayTrans = '',
+                          ...) {
   # Plot image contribution of indivudual vectors
 
   # Estimate weight of species
@@ -141,14 +147,16 @@ plotConbtribs <- function(delay, wavl, mat, C, S,
       main = paste0(
         colnames(S)[ic], " / wgt. (%) = ",
         signif(cont[ic], 3)
-      )
+      ),
+      delayTrans = delayTrans
     )
   }
 }
 plotDatavsMod <- function(delay, wavl, mat, C, S,
                           d = rep(1, ncol(C)),
                           main = "Data",
-                          cont = FALSE, ...) {
+                          cont = FALSE, 
+                          delayTrans = '', ...) {
   # Build model matrix
   matAls <- rep(0, nrow = nrow(mat), ncol = ncol(mat))
   for (i in 1:ncol(S))
@@ -164,15 +172,16 @@ plotDatavsMod <- function(delay, wavl, mat, C, S,
   plotImage(
     delay, wavl, mat,
     main = "Data",
-    cont = cont
+    cont = cont,
+    delayTrans = delayTrans
   )
 
   # Model
   plotImage(
     delay, wavl, matAls,
     main = paste0("Model ", ncol(S), " species"),
-    cont = cont
-  )
+    cont = cont,
+    delayTrans = delayTrans  )
 }
 
 
@@ -233,7 +242,7 @@ plotSvdLof <- function(s, mat, ...) {
   )
   box()
 }
-plotSVDVecBloc <- function(C, S, axisC, axisS, ...) {
+plotSVDVecBloc <- function(C, S, axisC, axisS, delayTrans = '', ...) {
   par(cex = cex, cex.main = cex)
   nco <- 2
   n <- min(floor(ncol(C) / 2), 5)
@@ -249,7 +258,7 @@ plotSVDVecBloc <- function(C, S, axisC, axisS, ...) {
     for (i in 1:n) {
       if (i == n) {
         xlab1 <- "Wavelength"
-        xlab2 <- "Delay"
+        xlab2 <- paste0("Delay ",delayTrans)
         xaxt <- "s"
         mar1 <- c(4.2, 4, 0, 0)
         mar2 <- c(4.2, 0, 0, 1.2)
@@ -368,7 +377,8 @@ output$svdVec <- renderPlot({
     return(NULL)
   }
   CS <- reshapeCS(s$u, s$v, ncol(s$u))
-  plotSVDVecBloc(CS$C, CS$S, Inputs$delay, Inputs$wavl)
+  plotSVDVecBloc(CS$C, CS$S, Inputs$delay, Inputs$wavl, 
+                 delayTrans = Inputs$delayTrans)
 },
 height = plotHeight
 )
@@ -380,7 +390,8 @@ output$svdResid <- renderPlot({
   CS <- reshapeCS(s$u, s$v, input$nSV)
   plotDatavsMod(Inputs$delay, Inputs$wavl, Inputs$mat,
     CS$C, CS$S,
-    d = s$d
+    d = s$d,
+    delayTrans = Inputs$delayTrans
   )
 },
 height = plotHeight
@@ -394,7 +405,8 @@ output$svdResid1 <- renderPlot({
   plotResid(
     Inputs$delay, Inputs$wavl, Inputs$mat,
     CS$C, CS$S,
-    d = s$d
+    d = s$d,
+    delayTrans = Inputs$delayTrans
   )
 },
 height = plotHeight
@@ -409,7 +421,8 @@ output$svdContribs <- renderPlot({
   plotConbtribs(
     Inputs$delay, Inputs$wavl, Inputs$mat,
     CS$C, CS$S,
-    d = s$d, type = "svd"
+    d = s$d, type = "svd",
+    delayTrans = Inputs$delayTrans
   )
 },
 height = plotHeight

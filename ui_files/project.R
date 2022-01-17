@@ -87,8 +87,8 @@ sidebarLayout(
             12,
             radioButtons(
               inputId = 'transformDelay',
-              label   = 'Transform delay (for single matrix only)',
-              choices = c('No' = 0, 
+              label   = 'Transform delay (for single delay scale)',
+              choices = c('No'    = 0, 
                           'Index' = 1,
                           'Log10' = 2),
               inline  = TRUE 

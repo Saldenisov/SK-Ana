@@ -254,6 +254,7 @@ plotAlsVec <- function(alsOut, type = "Kin",
                        nonnegS = TRUE, 
                        cols = NULL,
                        activeOnly = FALSE,
+                       delayTrans = '',
                        ...) {
   par(
     cex = cex, cex.main = cex, mar = mar,
@@ -322,7 +323,8 @@ plotAlsVec <- function(alsOut, type = "Kin",
       type = ifelse(length(x) > 20, "p", "b"),
       pch = 16, cex = 0.5, lwd = 2, lty = 3,
       col = if(is.null(cols)) colF else colF[sp],
-      xlab = "Delay", ylab = "C",
+      xlab = paste0("Delay ",delayTrans), 
+      ylab = "C",
       xlim = xlim,
       ylim = ylim,
       main = paste0("Kinetics"),
@@ -390,9 +392,11 @@ plotAlsVec <- function(alsOut, type = "Kin",
 }
 plotResidAna <- function(delay, wavl, mat, C, S,
                          d = rep(1, ncol(C)),
-                         main = "Data", ...) {
+                         main = "Data", 
+                         delayTrans = '',
+                         ...) {
   # Compound plot with
-  # - map od weighted residuals
+  # - map of weighted residuals
   # - 2 vectors of SVD decomposition of residuals
   # - Normal QQ-plot of residuals
   
@@ -418,7 +422,8 @@ plotResidAna <- function(delay, wavl, mat, C, S,
     col = resColors,
     main = "Weighted Residuals",
     zlim = c(-3, 3),
-    colorBar = TRUE
+    colorBar = TRUE,
+    delayTrans = delayTrans
   )
   
   matplot(
@@ -439,7 +444,7 @@ plotResidAna <- function(delay, wavl, mat, C, S,
   matplot(
     delay, sv$u,
     type = "l", lwd = 2,
-    xlab = "Delay",
+    xlab = paste0("Delay ",delayTrans),
     ylab = "Sing. Vec.",
     main = "SVD of Residuals",
     col = lineColors[c(6, 3)]
@@ -459,7 +464,9 @@ plotResidAna <- function(delay, wavl, mat, C, S,
 plotAmbVec <- function(alsOut, solutions,
                        type = "Kin",
                        displayLines = FALSE,
-                       xlim = NULL, ylim = NULL, ...) {
+                       xlim = NULL, ylim = NULL, 
+                       delayTrans = '',
+                       ...) {
   par(
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = pty
@@ -573,7 +580,8 @@ plotAmbVec <- function(alsOut, solutions,
       type = "n",
       xlim = xlim, ylim = ylim,
       xaxs = "i", yaxs = "i",
-      main = "Kinetics", xlab = "Delay",
+      main = "Kinetics", 
+      xlab = paste0("Delay ",delayTrans),
       col = cols
     )
     grid()
@@ -927,29 +935,6 @@ output$extSpectraALS <- renderUI({
   }
   ui
 })
-
-# getS0 <- eventReactive(
-#   input$S0File, {
-#     isolate({
-#       # Get all shapes
-#       S0_in <- list()
-#       i <- 0
-#       for (fN in input$S0File$datapath) {
-#         tmp <- read.table(
-#           file = fN,
-#           header = FALSE,
-#           dec = input$dec,
-#           sep = input$sep,
-#           colClasses = "numeric",
-#           stringsAsFactors = FALSE
-#         )
-#         i <- i + 1
-#         S0_in[[i]] <- tmp
-#       }
-#       return(S0_in)
-#     })
-#   }
-# )
 
 showMSE <- function(a, b, c) {
   if (is.null(a)) {
@@ -1326,7 +1311,8 @@ output$alsResid1 <- renderPlot({
   }
   plotDatavsMod(Inputs$delay, Inputs$wavl, mat,
                 CS$C, CS$S,
-                main = main)
+                main = main,
+                delayTrans = Inputs$delayTrans)
 },
 height = plotHeight)
 
@@ -1354,7 +1340,8 @@ output$alsResid3 <- renderPlot({
   }
   plotResid(Inputs$delay, Inputs$wavl, mat,
             CS$C, CS$S,
-            main = main)
+            main = main,
+            delayTrans = Inputs$delayTrans)
 },
 height = plotHeight)
 
@@ -1382,7 +1369,8 @@ output$alsResid2 <- renderPlot({
   }
   plotResidAna(Inputs$delay, Inputs$wavl, mat,
                CS$C, CS$S,
-               main = main)
+               main = main,
+               delayTrans = Inputs$delayTrans)
 },
 height = plotHeight)
 
@@ -1396,7 +1384,8 @@ output$alsKinVectors <- renderPlot(
   plotAlsVec(alsOut,
              type = "Kin",
              xlim = rangesAlsKin$x,
-             ylim = rangesAlsKin$y
+             ylim = rangesAlsKin$y,
+             delayTrans = Inputs$delayTrans
   )
 },
 height = plotHeight
@@ -1424,7 +1413,8 @@ output$alsSpVectors <- renderPlot(
              type = "Sp",
              xlim = rangesAlsSp$x,
              ylim = rangesAlsSp$y,
-             nonnegS = input$nonnegS
+             nonnegS = input$nonnegS,
+             delayTrans = Inputs$delayTrans
   )
 },
 height = plotHeight
@@ -1492,7 +1482,8 @@ output$alsContribs <- renderPlot(
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   plotConbtribs(
     Inputs$delay, Inputs$wavl, Inputs$mat,
-    CS$C, CS$S
+    CS$C, CS$S,
+    delayTrans = Inputs$delayTrans
   )
 },
 height = plotHeight
@@ -1636,7 +1627,8 @@ output$ambSpVectors <- renderPlot(
                  type = "Sp",
                  displayLines = input$ambDisplayLines,
                  xlim = rangesAmbSp$x,
-                 ylim = rangesAmbSp$y
+                 ylim = rangesAmbSp$y,
+                 delayTrans = Inputs$delayTrans
       )
     }
   },
@@ -1669,7 +1661,8 @@ output$ambKinVectors <- renderPlot(
                  type = "Kin",
                  displayLines = input$ambDisplayLines,
                  xlim = rangesAmbKin$x,
-                 ylim = rangesAmbKin$y
+                 ylim = rangesAmbKin$y,
+                 delayTrans = Inputs$delayTrans
       )
     }
   },

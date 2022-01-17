@@ -956,9 +956,8 @@ output$image1 <- renderPlot({
   mat   <- Inputs$mat
   wavl  <- Inputs$wavl
   delay <- Inputs$delay
-  # if(input$useDelayIndex)
-  #   delay = 1:length(delay)
-  
+  trans <- Inputs$delayTrans
+
   validate(
     need(
       is.finite(diff(range(wavl))) &
@@ -988,7 +987,7 @@ output$image1 <- renderPlot({
   
   image(
     delay, wavl, mat,
-    xlab = "Delay", 
+    xlab = paste0("Delay ",trans), 
     ylab = "Wavelength",
     col  = imgColors,
     xlim = xlim,
@@ -1048,6 +1047,7 @@ output$transects <- renderPlot({
   mat <- Inputs$mat
   wavl <- Inputs$wavl
   delay <- Inputs$delay
+  trans <- Inputs$delayTrans
   
   validate(
     need(
@@ -1122,7 +1122,8 @@ output$transects <- renderPlot({
   matplot(
     delay, cutMean,
     type = "l", col = lineColors[6], lwd = 2,
-    xlab = "Delay", ylab = "O.D.",
+    xlab = paste0("Delay ",trans), 
+    ylab = "O.D.",
     xlim = xlim,
     ylim = zlim, 
     yaxs = "i",
@@ -1208,7 +1209,8 @@ output$cutsWl <- renderPlot({
   mat <- Inputs$mat
   wavl <- Inputs$wavl
   delay <- Inputs$delay
-
+  trans <- Inputs$delayTrans
+  
   dCut <- seq(1, length(wavl),
     # by = ifelse(length(wavl ) >= 50 , 10, 1)
     by = max(1, input$stepWlCut)
@@ -1231,7 +1233,8 @@ output$cutsWl <- renderPlot({
     type = "l",
     xlim = rangesWl$x,
     ylim = ylim,
-    xlab = "Delay", ylab = "DO",
+    xlab = paste0("Delay ",trans), 
+    ylab = "DO",
     xaxs = "i", yaxs = "i",
     col  = cutColors[colset]
   )

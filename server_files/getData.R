@@ -1,4 +1,32 @@
 # Functions ####
+transformDelay <- function(delay,trans = 0) {
+  # trans = 0: do nothing
+  # trans = 1: return index
+  # trans = 2: return log10 with management of neg or null values
+  
+  del = delay
+  Inputs$delayTrans <<- ''
+  
+  if(trans == 1) {
+    del = 1:length(del)
+    Inputs$delayTrans <<- 'index'
+    
+  } else if(trans == 2) {
+    minLoc = which(del>0)[1]
+    if(minLoc > 1) {
+      # Compress all points below minLoc 
+      # into ]0,del(minLoc)[ 
+      step   = del[minLoc]/minLoc
+      for(i in 1:minLoc-1) 
+        del[i] = del[minLoc] - (minLoc-i)*step
+    }
+    del = log10(del)
+    Inputs$delayTrans <<- 'log10'
+    
+  }
+  
+  return(del)
+}
 doMeanMatrix  <- function(sel) {
   
   # Assume all matrices are on same grid
@@ -30,7 +58,11 @@ doMeanMatrix  <- function(sel) {
     }
   } 
   matm[!is.finite(matm)] = 0
-  delay = 1:length(delay) # Replace by ordinal scale
+  
+  # Delay transforms for single delay scale
+  if(!is.null(input$transformDelay))
+    delay = transformDelay(delay,input$transformDelay)
+  # delay = 1:length(delay) # Replace by ordinal scale
   
   return(list(mat=matm, wavl=wavl, delay=delay, 
               delaySave=delay, delayId= rep(1,length(delay))))
@@ -65,8 +97,17 @@ doTileMatrix  <- function(sel, tileDel=TRUE) {
         mat  = cbind(mat,mat1)      
       }
     }
-    delay = 1:length(delay) # Replace by ordinal scale
   }
+  
+  if(tileDel) {
+    delay = transformDelay(delay,1) # Convert to index
+  
+  }else{
+    # Delay transforms for single delay scale
+    if(!is.null(input$transformDelay))
+      delay = transformDelay(delay,input$transformDelay)
+  }
+    
   # Order wavl by increasing value
   sel  = order(wavl)
   wavl = wavl[sel]
@@ -87,19 +128,7 @@ combineMatrix <- function(sel){
     
     # Delay transforms for single matrix
     if(!is.null(input$transformDelay))
-      if(input$transformDelay == 1) {
-        del = 1:length(del)
-      } else if(input$transformDelay == 2) {
-        minLoc = which(del>0)[1]
-        if(minLoc > 1) {
-          # Compress all points below minLoc 
-          # into ]0,del(minLoc)[ 
-          step   = del[minLoc]/minLoc
-          for(i in 1:minLoc-1) 
-            del[i] = del[minLoc] - (minLoc-i)*step
-        }
-        del = log10(del)
-      }
+      del = transformDelay(del,input$transformDelay)
     
     list(
       mat       = RawData[[sel]]$mat, 
@@ -213,7 +242,8 @@ finishMatrix  <- reactive({
            ) {
           # Scale factor for neater delay selectors
           dlScaleFac = 1 #10^(floor(log10(diff(range(data$delay)))-1))
-          Inputs$fileOrig       <<- input$dataFile$name[input$rawData_rows_selected]
+          Inputs$fileOrig       <<- 
+            input$dataFile$name[input$rawData_rows_selected]
           Inputs$dlScaleFacOrig <<- dlScaleFac
           Inputs$matOrig        <<- data$mat
           Inputs$wavlOrig       <<- data$wavl

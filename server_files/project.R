@@ -392,11 +392,12 @@ output$projectInfoNew <- renderUI({
   HTML(paste0(
     '<b>Global matrix</b>: ',
     length(Inputs$delay),'x', length(Inputs$wavl),'<br>',
-    'O.D.  range: ',paste0(signif(range(Inputs$mat)      ,2),
+    'O.D.  range  : ',paste0(signif(range(Inputs$mat)      ,2),
                            collapse=', '),'<br>',
-    'Delay range: ',paste0(signif(range(Inputs$delay),4),
+    'Delay range  : ',paste0(signif(range(Inputs$delay),4),
                            collapse=', '),'<br>',
-    'Wavl  range: ',paste0(signif(range(Inputs$wavl), 4),
+    'Delay transfo: ',Inputs$delayTrans,'<br>',
+    'Wavl  range  : ',paste0(signif(range(Inputs$wavl), 4),
                            collapse=', ')
   )
   )
@@ -413,6 +414,7 @@ output$vignette <- renderPlot({
   mat   = Inputs$mat
   wavl  = Inputs$wavl
   delay = Inputs$delay
+  trans = Inputs$delayTrans
   
   if(!is.finite(diff(range(wavl ))) |
      !is.finite(diff(range(delay))) |
@@ -428,7 +430,8 @@ output$vignette <- renderPlot({
   )
   image(
     delay,wavl,mat,
-    xlab = 'Delay',ylab = 'Wavelength',
+    xlab = paste0('Delay ',trans), 
+    ylab = 'Wavelength',
     col  = imgColors, 
     zlim = quantile(mat,probs = c(0.001,0.999),
                     na.rm = TRUE)
