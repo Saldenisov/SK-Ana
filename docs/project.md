@@ -52,6 +52,15 @@ Project definition and data input.
     
       - `Wavl` width (in pixels) of the block in wavelength dimension
 
+  - **Transform delay (for single matrix only)**: when multiple files are
+  assembled (tiled) the delay scale is replaced by an index in the plots
+  to keep an increasing value. When a single matrix is downloaded, the
+  original delay scale is preserved. This can be overridden by choosing
+  either an `index` scale or a `Log10` scale. In the latter case, all data 
+  points with null or negative delays are recast uniformly in the interval
+  $]0, d_{min}[$, where $d_{min}$ is the smallest positive delay.  
+  
+  
   - **`Select data file(s)`**: select one or several files to be
     analyzed. Selecting the files will create new items in the right
     panel:
