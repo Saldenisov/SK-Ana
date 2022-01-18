@@ -319,12 +319,16 @@ doSVD <- reactive({
   if (!checkInputsSanity()) {
     return(NULL)
   }
-
+  
   # Suppress masked areas
   mat <- Inputs$mat
   mat <- mat[!is.na(Inputs$delayMask), ]
   mat <- mat[, !is.na(Inputs$wavlMask) ]
-
+  
+  validate(
+    need(is.finite(diff(range(mat,na.rm = TRUE))),FALSE)
+  )
+  
   # Set max. nb. of SVD vectors
   nsvMax <- min(10, length(Inputs$delay), length(Inputs$wavl))
 
@@ -369,7 +373,7 @@ output$svdSV <- renderPlot({
 
   plotSvdLof(s, mat)
 },
-height = plotHeight
+height = plotHeight, width = 2*plotHeight
 )
 
 output$svdVec <- renderPlot({
@@ -380,7 +384,7 @@ output$svdVec <- renderPlot({
   plotSVDVecBloc(CS$C, CS$S, Inputs$delay, Inputs$wavl, 
                  delayTrans = Inputs$delayTrans)
 },
-height = plotHeight
+height = plotHeight, width = 2*plotHeight
 )
 
 output$svdResid <- renderPlot({
@@ -394,7 +398,7 @@ output$svdResid <- renderPlot({
     delayTrans = Inputs$delayTrans
   )
 },
-height = plotHeight
+height = plotHeight, width = 2*plotHeight
 )
 
 output$svdResid1 <- renderPlot({
@@ -409,7 +413,7 @@ output$svdResid1 <- renderPlot({
     delayTrans = Inputs$delayTrans
   )
 },
-height = plotHeight
+height = plotHeight, width = 2*plotHeight
 )
 
 output$svdContribs <- renderPlot({
@@ -425,7 +429,7 @@ output$svdContribs <- renderPlot({
     delayTrans = Inputs$delayTrans
   )
 },
-height = plotHeight
+height = plotHeight, width = 2*plotHeight
 )
 
 output$svdStat <- DT::renderDataTable({

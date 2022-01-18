@@ -416,25 +416,26 @@ output$vignette <- renderPlot({
   delay = Inputs$delay
   trans = Inputs$delayTrans
   
-  if(!is.finite(diff(range(wavl ))) |
-     !is.finite(diff(range(delay))) |
-     !is.finite(diff(range(mat,na.rm=TRUE)))   ) {
-    plot(1:10,1:10,type='n')
-    text(x=5,y=5,labels='Data not ready...',col=2)
-  }
-  
+  validate(
+    need(
+      is.finite(diff(range(wavl))) &
+        is.finite(diff(range(delay))) &
+        is.finite(diff(range(mat, na.rm = TRUE))),
+      FALSE
+    )
+  )
+
   par(
     mfrow = c(1, 1),
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = pty
   )
   image(
-    delay,wavl,mat,
+    delay, wavl, mat,
     xlab = paste0('Delay ',trans), 
     ylab = 'Wavelength',
     col  = imgColors, 
-    zlim = quantile(mat,probs = c(0.001,0.999),
-                    na.rm = TRUE)
+    zlim = quantile(mat,probs = c(0.001,0.999),na.rm = TRUE)
   )
 })
 

@@ -481,7 +481,6 @@ observeEvent(
 
 selectArea <- reactive({
   if (!checkInputsSanity()) {
-    # print('Bad data...')
     return(NULL)
   }
 
@@ -962,7 +961,8 @@ output$image1 <- renderPlot({
     need(
       is.finite(diff(range(wavl))) &
         is.finite(diff(range(delay))) &
-        is.finite(diff(range(mat, na.rm = TRUE))),
+        is.finite(diff(range(mat, na.rm = TRUE))) &
+        is.finite(diff(doRange())),
       'Data not ready !'
     )
   )
@@ -1023,7 +1023,9 @@ output$image1 <- renderPlot({
   colorizeMask1D(axis = "wavl", dir = "h", ylim = xlim)
   
   box()
-})
+},
+height = plotHeight, width = plotHeight
+)
 outputOptions(output, "image1",
   suspendWhenHidden = FALSE
 )
@@ -1052,11 +1054,13 @@ output$transects <- renderPlot({
   validate(
     need(
       is.finite(diff(range(wavl))) &
-        is.finite(diff(range(wavl))) &
-        is.finite(diff(range(mat, na.rm = TRUE))),
+        is.finite(diff(range(delay))) &
+        is.finite(diff(range(mat, na.rm = TRUE))) &
+        is.finite(diff(doRange())),
       'Data not ready !'
     )
   )
+  
   if (is.null(rangesImage1$x)) {
     xlim <- range(delay)
   } else {
@@ -1141,7 +1145,9 @@ output$transects <- renderPlot({
   colorizeMask1D(axis = "delay", ylim = zlim)
   box()
   
-})
+},
+height = plotHeight, width = plotHeight
+)
 outputOptions(output, "transects",
               suspendWhenHidden = FALSE
 )

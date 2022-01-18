@@ -534,14 +534,15 @@ doKin <- eventReactive(
       add = TRUE
     )
     
-    opt0 <- bmc_hyb(parOpt,
-                    parms = kinParms,
-                    global = global,
-                    niter = niter,
-                    mc = FALSE,
-                    startp = startp,
-                    tol = 10^input$kinThresh,
-                    weighted = input$kinWeighted
+    opt0 <- bmc_hyb(
+      parOpt,
+      parms    = kinParms,
+      global   = global,
+      niter    = niter,
+      mc       = FALSE,
+      startp   = startp,
+      tol      = 10^input$kinThresh,
+      weighted = input$kinWeighted
     )
     
     map <- parExpand(opt0$map, parOpt)
