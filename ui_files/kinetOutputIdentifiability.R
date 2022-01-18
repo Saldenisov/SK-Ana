@@ -3,9 +3,14 @@ tabsetPanel(
     value="kinPriPost",
     title=h5("Densities"), br(),
     # withSpinner(
-      plotOutput("kinPriPost", height=550) #,
+      plotOutput("kinPriPost", height=550),
     #   type=4
-    # )
+    # ),
+    checkboxInput(
+      'logPriPost',
+      label = 'Log parameters',
+      value = TRUE
+    )
   ),
   tabPanel(
     value="kinPriPostSample",

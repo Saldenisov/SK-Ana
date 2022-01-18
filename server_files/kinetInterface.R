@@ -192,12 +192,19 @@ plotPriPost <- function(opt) {
   for (p in names(opt$paropt)) {
     # Marginal prior density
     C <- priorDensity(p, opt$paropt)
+    pname = p
+    if (!input$logPriPost) {
+      C[,1] = 10^C[,1]
+      pname = substr(p,4,nchar(p))      
+    }
     plot(
       C,
       ylim = c(0, 1.1),
       type = "l",
       col = lineColors[6],
-      xlab = p, ylab = "PDF", yaxs = "i"
+      xlab = pname, 
+      ylab = "PDF", 
+      yaxs = "i"
     )
     grid()
     x.poly <- c(C[, 1], C[nrow(C), 1], C[1, 1])
@@ -208,13 +215,20 @@ plotPriPost <- function(opt) {
     m <- map[[p]]
     s <- lSd[p]
     if (is.finite(s)) {
-      C <- curve(
-        exp(-0.5 * (x - m)^2 / s^2),
-        from = m - 6 * s, to = m + 6 * s, n = 500,
-        add = TRUE, col = lineColors[3]
-      )
-      x.poly <- c(C$x, C$x[length(C$x)], C$x[1])
-      y.poly <- c(C$y, 0, 0)
+      x = seq(from = m - 6 * s, to = m + 6 * s, length.out = 500)
+      y = exp(-0.5 * (x - m)^2 / s^2)
+      if (!input$logPriPost)
+        x = 10^x
+      lines(x,y, col = lineColors[3])
+      x.poly <- c(x, x[length(x)], x[1])
+      y.poly <- c(y, 0, 0)
+      # C <- curve(
+      #   exp(-0.5 * (x - m)^2 / s^2),
+      #   from = m - 6 * s, to = m + 6 * s, n = 500,
+      #   add = TRUE, col = lineColors[3]
+      # )
+      # x.poly <- c(C$x, C$x[length(C$x)], C$x[1])
+      # y.poly <- c(C$y, 0, 0)
     } else {
       abline(v = m, col = lineColors[2])
       x.poly <- c(C[1, 1], C[nrow(C), 1], C[nrow(C), 1], C[1, 1])
