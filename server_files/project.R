@@ -239,8 +239,14 @@ observeEvent(
 
 # New project ####
 observeEvent(
-  input$dataFile,
-  getRawData(input$dataFile)
+  input$dataFile,{
+    getRawData(input$dataFile)
+    # # New log files for optimizer
+    # glOptOut <<- tempfile(tmpdir = '/tmp',fileext = '_glob.stdout')
+    # file.create(glOptOut, showWarnings = FALSE)
+    # locOptOut <<- tempfile(tmpdir = '/tmp',fileext = '_loc.stdout')
+    # file.create(locOptOut, showWarnings = FALSE)
+  }
 )
 output$loadMsg <- renderUI({
   if(dataLoaded()) {

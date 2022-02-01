@@ -62,15 +62,23 @@ wellPanel(
     ),
     column(4,
            actionButton("runKin",
-                        strong("Run"),
-                        icon=icon('cog')
+                        label = strong("Run"),
+                        icon  = icon('cog')
            ),
            tags$style(type='text/css', 
                       "#runKin { width:100%; margin-top: 25px;}"
            ),
+           actionButton("killKin", 
+                        label = strong("Stop"), 
+                        icon  = icon("ban")
+           ),
+           tags$style(
+             type='text/css',
+             "#killKin { width:100%; margin-top: 5px;}"
+           ),
            checkboxInput("kinRestart",
-                         label=strong(" Restart"),
-                         value=FALSE
+                         label = strong(" Restart"),
+                         value = FALSE
            )
                         
     )

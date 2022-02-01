@@ -82,12 +82,13 @@ genPriorPDF = function(paropt) {
   priorPDF=parContract(paropt)$priorPDF
   bodyFunc="{logpri = 0\n" 
   for (ip in 1:length(priorPDF)) {
-    add = switch(priorPDF[ip],
-                 # Special arguments for tnorm...
-                 tnorm  = paste0("logpri = logpri + d",priorPDF[ip],
-                                 "(x=x[",ip,"],0,1,lower=-3,upper=3,log=TRUE)\n"),
-                 paste0("logpri = logpri + d",priorPDF[ip],
-                        "(x=x[",ip,"],0,1,log=TRUE)\n")
+    add = switch(
+      priorPDF[ip],
+      # Special arguments for tnorm...
+      tnorm  = paste0("logpri = logpri + msm::d",priorPDF[ip],
+                      "(x=x[",ip,"],0,1,lower=-3,upper=3,log=TRUE)\n"),
+      paste0("logpri = logpri + d",priorPDF[ip],
+             "(x=x[",ip,"],0,1,log=TRUE)\n")
     )  
     bodyFunc = paste0(bodyFunc,add)
   }

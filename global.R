@@ -19,7 +19,7 @@ libs <- c(
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
-  "inlmisc","shinythemes","magrittr"
+  "inlmisc","shinythemes","magrittr","callr","processx"
 )
 for (lib in libs) {
   # # Avoid installing packages because of renv packages management
@@ -32,7 +32,6 @@ for (lib in libs) {
     library(lib, character.only = TRUE, quietly = TRUE)
   # }
 }
-
 
 # Colors ####
 col2tr <- function(col, alpha)

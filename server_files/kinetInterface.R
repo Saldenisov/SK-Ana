@@ -350,6 +350,7 @@ observeEvent(input$kinSigmaIndex, {
   })
 })
 
+# Get external spectra ####
 output$extSpectra <- renderUI({
   req(input$S0KinFile)
 
@@ -402,209 +403,469 @@ output$extSpectra <- renderUI({
 })
 
 
+
+# Manage async process ####
+bgGlobpx = NULL
+
+process_id = function() {
+  if (is.null(bgGlobpx)) return(NA_integer_)
+  bgGlobpx$get_pid()
+}
+process_running = function() {
+  if (is.null(bgGlobpx)) return(NA_integer_)
+  bgGlobpx$is_alive()
+}
+process_exit_status = function() {
+  if (is.null(bgGlobpx)) return(NA_integer_)
+  bgGlobpx$get_exit_status()
+}
+process_status = function() {
+  list(
+    pid = process_id(), 
+    running = process_running(),
+    exit_status = process_exit_status())
+}
+
+bgGlob = reactiveValues(status = process_status())
+
+observe({
+  invalidateLater(millis = 1000)
+  bgGlob$status = process_status()
+  if(!is.na(bgGlob$status$pid))
+    if(is.na(bgGlob$status$exit_status))
+      print(bgGlob$status)
+})
+
+observeEvent(
+  input$killKin,
+  if(!is.null(bgGlobpx))
+    if(bgGlob$status$running) {
+      bgGlobpx$kill()
+      bgGlobpx <- NULL
+    }
+)
+
+# observeEvent(
+#   bgGlob$status,
+#   {
+#   if(!is.null(bgGlobpx))
+#     if(!bgGlob$status$running) 
+#       if(!is.null(bgGlob$status$exit_status)) 
+#         if(bgGlob$status$exit_status == 0) {
+#           res = bgGlobpx$get_results()
+#           print(str(res))
+#         }
+# })
+
+# doKin ####
 doKin <- eventReactive(
   input$runKin, {
-  isolate({
-    kinPrint$glOut <<- NULL
-    kinPrint$optOut <<- NULL
-    
-    # Suppress masked areas
-    mat <- Inputs$mat
-    mat <- mat[!is.na(Inputs$delayMask), ]
-    mat <- mat[, !is.na(Inputs$wavlMask) ]
-    times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
-    delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
-    wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
-    delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
-    
-    # Number of experiments
-    nExp <- 1
-    if (!is.null(input$procMult) &&
-        input$procMult == "tileDel") {
-      nExp <- length(input$rawData_rows_selected)
-    }
-    
-    deltaStart <- rep(0, nExp)
-    startd     <- rep(NA, nExp)
-    for (iExp in 1:(nExp - 1))
-      startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
-    startd[nExp] <- length(delay)
-    
-    parOpt <- list()
-    
-    species <- Scheme$species
-    nbSpecies <- length(species)
-    nbReac <- Scheme$nbReac
-    
-    # Spectral constraints
-    active <- rep(TRUE, nbSpecies)
-    names(active) <- species
-    eps <- rep(0, nbSpecies)
-    names(eps) <- species
-    for (sp in species) {
-      param <- paste0("eps_", sp)
-      eps0 <- input[[param]]
-      eps[sp] <- eps0
+    isolate({
+      kinPrint$glOut <<- NULL
+      kinPrint$optOut <<- NULL
+      updateButton(session, "killKin", value = FALSE)
       
-      param <- paste0("epsF_", sp)
-      epsF <- input[[param]]
+      # Suppress masked areas
+      mat <- Inputs$mat
+      mat <- mat[!is.na(Inputs$delayMask), ]
+      mat <- mat[, !is.na(Inputs$wavlMask) ]
+      times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
+      delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
+      wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+      delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
       
-      if (eps0 == 0) {
-        active[sp] <- FALSE
-      } else
-        if (epsF > 1) {
-          parOpt[[paste0("logeps_", sp)]] <-
-            paste0("tnorm(", log(eps0), ",", log(epsF), ")")
-        }
-    }
-    
-    # Initial concentrations
-    state <- matrix(0, nrow = nbSpecies, ncol = nExp)
-    rownames(state) <- species
-    for (iExp in 1:nExp)
+      # Number of experiments
+      nExp <- 1
+      if (!is.null(input$procMult) &&
+          input$procMult == "tileDel") {
+        nExp <- length(input$rawData_rows_selected)
+      }
+      
+      deltaStart <- rep(0, nExp)
+      startd     <- rep(NA, nExp)
+      for (iExp in 1:(nExp - 1))
+        startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
+      startd[nExp] <- length(delay)
+      
+      parOpt <- list()
+      
+      species <- Scheme$species
+      nbSpecies <- length(species)
+      nbReac <- Scheme$nbReac
+      
+      # Spectral constraints
+      active <- rep(TRUE, nbSpecies)
+      names(active) <- species
+      eps <- rep(0, nbSpecies)
+      names(eps) <- species
       for (sp in species) {
-        param <- paste0("c0_", sp, "_", iExp)
-        c0 <- input[[param]]
-        state[sp, iExp] <- c0 # Nominal value
+        param <- paste0("eps_", sp)
+        eps0 <- input[[param]]
+        eps[sp] <- eps0
         
-        param <- paste0("c0F_", sp, "_", iExp)
-        c0F <- input[[param]]
-        if (c0F > 1) { # Optimize concentration
-          parOpt[[paste0("logc0_", sp, "_", iExp)]] <-
-            paste0("tnorm(", log(c0), ",", log(c0F), ")")
+        param <- paste0("epsF_", sp)
+        epsF <- input[[param]]
+        
+        if (eps0 == 0) {
+          active[sp] <- FALSE
+        } else
+          if (epsF > 1) {
+            parOpt[[paste0("logeps_", sp)]] <-
+              paste0("tnorm(", log(eps0), ",", log(epsF), ")")
+          }
+      }
+      
+      # Initial concentrations
+      state <- matrix(0, nrow = nbSpecies, ncol = nExp)
+      rownames(state) <- species
+      for (iExp in 1:nExp)
+        for (sp in species) {
+          param <- paste0("c0_", sp, "_", iExp)
+          c0 <- input[[param]]
+          state[sp, iExp] <- c0 # Nominal value
+          
+          param <- paste0("c0F_", sp, "_", iExp)
+          c0F <- input[[param]]
+          if (c0F > 1) { # Optimize concentration
+            parOpt[[paste0("logc0_", sp, "_", iExp)]] <-
+              paste0("tnorm(", log(c0), ",", log(c0F), ")")
+          }
+        }
+      
+      # Reaction rates
+      kReac <- c()
+      for (i in 1:nbReac) {
+        param <- paste0("k_", i)
+        k <- input[[param]]
+        # Nominal value
+        kReac[i] <- k
+        param <- paste0("kF_", i)
+        kF <- input[[param]]
+        if (kF > 1) {
+          parOpt[[paste0("logk_", i)]] <-
+            paste0("tnorm(", log(k), ",", log(kF), ")")
         }
       }
-    
-    # Reaction rates
-    kReac <- c()
-    for (i in 1:nbReac) {
-      param <- paste0("k_", i)
-      k <- input[[param]]
-      # Nominal value
-      kReac[i] <- k
-      param <- paste0("kF_", i)
-      kF <- input[[param]]
-      if (kF > 1) {
-        parOpt[[paste0("logk_", i)]] <-
-          paste0("tnorm(", log(k), ",", log(kF), ")")
-      }
-    }
-    
-    # Gather parameters in list
-    kinParms <- list(
-      times = times,
-      delay = delay,
-      wavl = wavl,
-      mat = mat,
-      kReac = kReac,
-      L = Scheme$L,
-      D = Scheme$D,
-      state = state,
-      active = active,
-      startd = startd,
-      deltaStart = deltaStart,
-      sigma   = input$kinSigma,
-      reactants = Scheme$reactants,
-      eps     = eps,
-      uniS    = FALSE,
-      nonnegS = input$nonnegSKinet,
-      smooth  = input$kinSmooth
-    )
-    
-    # External spectrum shapes
-    if (length(externalSpectra) != 0)
-      for(sp in names(externalSpectra)) {
-        pname = paste0('fix_',sp)
-        if( input[[pname]] )
-          kinParms[[sp]] = externalSpectra[[sp]]
-      }
-    
-    # Generate hard-coded prior PDF
-    logPri <<- genPriorPDF(parOpt)
-    
-    startp <-
-      startpInit(
-        map = (
-          if (exists("Restart_Kin") && input$kinRestart) {
-            Restart_Kin$map
-          } else {
-            NULL
-          }),
-        parOpt = parOpt
-      )
-    
-    mc <- FALSE
-    niter  <- input$kinGlobNit
-    global <- input$kinGlobFac * length(startp)
-    
-    id = showNotification(
-      "Running optimizer...", 
-      type = "message",
-      duration = NULL, 
-      closeButton = FALSE
-    )
-    on.exit(
-      removeNotification(id), 
-      add = TRUE
-    )
-    
-    opt0 <- bmc_hyb(
-      parOpt,
-      parms    = kinParms,
-      global   = global,
-      niter    = niter,
-      mc       = FALSE,
-      startp   = startp,
-      tol      = 10^input$kinThresh,
-      weighted = input$kinWeighted
-    )
-    
-    map <- parExpand(opt0$map, parOpt)
-    mod <- model(map, kinParms)
-    C <- kinet(map, kinParms)
-    Ca <- C[, kinParms$active]
-    S <- spectra(Ca, map, kinParms)
-    
-    vlof <- signif(lof(model = mod, data = mat), 3)
-    
-    # Global variable for restart
-    Restart_Kin <<- opt0
-    
-    # Update Reporting
-    todo = c(includeInReport(),'KIN')
-    includeInReport(todo) 
-    updateCheckboxGroupInput(session,
-                             inputId = "inReport",
-                             choices = todo,
-                             selected = todo
-    )
-    
-    return(
-      list(
-        map = opt0$map,
-        hessian = opt0$hessian,
-        parms = kinParms,
-        paropt = parOpt,
-        mat = mat,
-        model = mod,
-        weighted = input$kinWeighted,
-        sigma = input$kinSigma,
-        nExp = nExp,
+      
+      # Gather parameters in list
+      kinParms <- list(
         times = times,
-        xC = delay,
-        xS = wavl,
-        active = kinParms$active,
-        C = C,
-        S = S,
-        lof = vlof,
-        glOut  = opt0$glOut,
-        optOut = opt0$optOut,
-        values = opt0$values,
-        cnv = opt0$cnv
+        delay = delay,
+        wavl = wavl,
+        mat = mat,
+        kReac = kReac,
+        L = Scheme$L,
+        D = Scheme$D,
+        state = state,
+        active = active,
+        startd = startd,
+        deltaStart = deltaStart,
+        sigma   = input$kinSigma,
+        reactants = Scheme$reactants,
+        eps     = eps,
+        uniS    = FALSE,
+        nonnegS = input$nonnegSKinet,
+        smooth  = input$kinSmooth,
+        logPri  = genPriorPDF(parOpt) # Soft-coded prior PDF function
       )
-    )
-  })
-})
+      
+      # External spectrum shapes
+      if (length(externalSpectra) != 0)
+        for(sp in names(externalSpectra)) {
+          pname = paste0('fix_',sp)
+          if( input[[pname]] )
+            kinParms[[sp]] = externalSpectra[[sp]]
+        }
+      
+      startp <-
+        startpInit(
+          map = (
+            if (exists("Restart_Kin") && input$kinRestart) {
+              Restart_Kin$map
+            } else {
+              NULL
+            }),
+          parOpt = parOpt
+        )
+      
+      mc <- FALSE
+      niter  <- input$kinGlobNit
+      global <- input$kinGlobFac * length(startp)
+      
+      id = showNotification(
+        "Running optimizer...", 
+        type = "message",
+        duration = NULL, 
+        closeButton = FALSE
+      )
+      on.exit(
+        removeNotification(id), 
+        add = TRUE
+      )
+      
+      bgGlobpx <<- bmc_glob(
+        parOpt,
+        parms    = kinParms,
+        global   = global,
+        niter    = niter,
+        mc       = FALSE,
+        startp   = startp,
+        tol      = 10^input$kinThresh,
+        weighted = input$kinWeighted
+      )
+      return(NULL)
+      
+      # map <- parExpand(opt0$map, parOpt)
+      # mod <- model(map, kinParms)
+      # C <- kinet(map, kinParms)
+      # Ca <- C[, kinParms$active]
+      # S <- spectra(Ca, map, kinParms)
+      # 
+      # vlof <- signif(lof(model = mod, data = mat), 3)
+      # 
+      # # Global variable for restart
+      # Restart_Kin <<- opt0
+      # 
+      # # Update Reporting
+      # todo = c(includeInReport(),'KIN')
+      # includeInReport(todo) 
+      # updateCheckboxGroupInput(session,
+      #                          inputId = "inReport",
+      #                          choices = todo,
+      #                          selected = todo
+      # )
+      # 
+      # return(
+      #   list(
+      #     map = opt0$map,
+      #     hessian = opt0$hessian,
+      #     parms = kinParms,
+      #     paropt = parOpt,
+      #     mat = mat,
+      #     model = mod,
+      #     weighted = input$kinWeighted,
+      #     sigma = input$kinSigma,
+      #     nExp = nExp,
+      #     times = times,
+      #     xC = delay,
+      #     xS = wavl,
+      #     active = kinParms$active,
+      #     C = C,
+      #     S = S,
+      #     lof = vlof,
+      #     glOut  = opt0$glOut,
+      #     optOut = opt0$optOut,
+      #     values = opt0$values,
+      #     cnv = opt0$cnv
+      #   )
+      # )
+    })
+  }
+)
+
+# doKin_old <- eventReactive(
+#   input$runKin, {
+#   isolate({
+#     kinPrint$glOut <<- NULL
+#     kinPrint$optOut <<- NULL
+#     updateButton(session, "killKin", value = FALSE)
+#     
+#     # Suppress masked areas
+#     mat <- Inputs$mat
+#     mat <- mat[!is.na(Inputs$delayMask), ]
+#     mat <- mat[, !is.na(Inputs$wavlMask) ]
+#     times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
+#     delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
+#     wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+#     delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
+#     
+#     # Number of experiments
+#     nExp <- 1
+#     if (!is.null(input$procMult) &&
+#         input$procMult == "tileDel") {
+#       nExp <- length(input$rawData_rows_selected)
+#     }
+#     
+#     deltaStart <- rep(0, nExp)
+#     startd     <- rep(NA, nExp)
+#     for (iExp in 1:(nExp - 1))
+#       startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
+#     startd[nExp] <- length(delay)
+#     
+#     parOpt <- list()
+#     
+#     species <- Scheme$species
+#     nbSpecies <- length(species)
+#     nbReac <- Scheme$nbReac
+#     
+#     # Spectral constraints
+#     active <- rep(TRUE, nbSpecies)
+#     names(active) <- species
+#     eps <- rep(0, nbSpecies)
+#     names(eps) <- species
+#     for (sp in species) {
+#       param <- paste0("eps_", sp)
+#       eps0 <- input[[param]]
+#       eps[sp] <- eps0
+#       
+#       param <- paste0("epsF_", sp)
+#       epsF <- input[[param]]
+#       
+#       if (eps0 == 0) {
+#         active[sp] <- FALSE
+#       } else
+#         if (epsF > 1) {
+#           parOpt[[paste0("logeps_", sp)]] <-
+#             paste0("tnorm(", log(eps0), ",", log(epsF), ")")
+#         }
+#     }
+#     
+#     # Initial concentrations
+#     state <- matrix(0, nrow = nbSpecies, ncol = nExp)
+#     rownames(state) <- species
+#     for (iExp in 1:nExp)
+#       for (sp in species) {
+#         param <- paste0("c0_", sp, "_", iExp)
+#         c0 <- input[[param]]
+#         state[sp, iExp] <- c0 # Nominal value
+#         
+#         param <- paste0("c0F_", sp, "_", iExp)
+#         c0F <- input[[param]]
+#         if (c0F > 1) { # Optimize concentration
+#           parOpt[[paste0("logc0_", sp, "_", iExp)]] <-
+#             paste0("tnorm(", log(c0), ",", log(c0F), ")")
+#         }
+#       }
+#     
+#     # Reaction rates
+#     kReac <- c()
+#     for (i in 1:nbReac) {
+#       param <- paste0("k_", i)
+#       k <- input[[param]]
+#       # Nominal value
+#       kReac[i] <- k
+#       param <- paste0("kF_", i)
+#       kF <- input[[param]]
+#       if (kF > 1) {
+#         parOpt[[paste0("logk_", i)]] <-
+#           paste0("tnorm(", log(k), ",", log(kF), ")")
+#       }
+#     }
+#     
+#     # Gather parameters in list
+#     kinParms <- list(
+#       times = times,
+#       delay = delay,
+#       wavl = wavl,
+#       mat = mat,
+#       kReac = kReac,
+#       L = Scheme$L,
+#       D = Scheme$D,
+#       state = state,
+#       active = active,
+#       startd = startd,
+#       deltaStart = deltaStart,
+#       sigma   = input$kinSigma,
+#       reactants = Scheme$reactants,
+#       eps     = eps,
+#       uniS    = FALSE,
+#       nonnegS = input$nonnegSKinet,
+#       smooth  = input$kinSmooth,
+#       logPri  = genPriorPDF(parOpt) # Soft-coded prior PDF function
+#     )
+#     
+#     # External spectrum shapes
+#     if (length(externalSpectra) != 0)
+#       for(sp in names(externalSpectra)) {
+#         pname = paste0('fix_',sp)
+#         if( input[[pname]] )
+#           kinParms[[sp]] = externalSpectra[[sp]]
+#       }
+#     
+#     startp <-
+#       startpInit(
+#         map = (
+#           if (exists("Restart_Kin") && input$kinRestart) {
+#             Restart_Kin$map
+#           } else {
+#             NULL
+#           }),
+#         parOpt = parOpt
+#       )
+#     
+#     mc <- FALSE
+#     niter  <- input$kinGlobNit
+#     global <- input$kinGlobFac * length(startp)
+#     
+#     id = showNotification(
+#       "Running optimizer...", 
+#       type = "message",
+#       duration = NULL, 
+#       closeButton = FALSE
+#     )
+#     on.exit(
+#       removeNotification(id), 
+#       add = TRUE
+#     )
+#     
+#     opt0 <- bmc_hyb(
+#       parOpt,
+#       parms    = kinParms,
+#       global   = global,
+#       niter    = niter,
+#       mc       = FALSE,
+#       startp   = startp,
+#       tol      = 10^input$kinThresh,
+#       weighted = input$kinWeighted
+#     )
+# 
+#     
+#     map <- parExpand(opt0$map, parOpt)
+#     mod <- model(map, kinParms)
+#     C <- kinet(map, kinParms)
+#     Ca <- C[, kinParms$active]
+#     S <- spectra(Ca, map, kinParms)
+#     
+#     vlof <- signif(lof(model = mod, data = mat), 3)
+#     
+#     # Global variable for restart
+#     Restart_Kin <<- opt0
+#     
+#     # Update Reporting
+#     todo = c(includeInReport(),'KIN')
+#     includeInReport(todo) 
+#     updateCheckboxGroupInput(session,
+#                              inputId = "inReport",
+#                              choices = todo,
+#                              selected = todo
+#     )
+#     
+#     return(
+#       list(
+#         map = opt0$map,
+#         hessian = opt0$hessian,
+#         parms = kinParms,
+#         paropt = parOpt,
+#         mat = mat,
+#         model = mod,
+#         weighted = input$kinWeighted,
+#         sigma = input$kinSigma,
+#         nExp = nExp,
+#         times = times,
+#         xC = delay,
+#         xS = wavl,
+#         active = kinParms$active,
+#         C = C,
+#         S = S,
+#         lof = vlof,
+#         glOut  = opt0$glOut,
+#         optOut = opt0$optOut,
+#         values = opt0$values,
+#         cnv = opt0$cnv
+#       )
+#     )
+#   })
+# })
 
 output$schemeFileSave<- downloadHandler(
   filename = function() {
@@ -895,9 +1156,24 @@ output$epsilon       <- renderUI({
   ui
 })
 # Trace ####
+# output$kinGlPrint    <- renderPrint({
+#   cat("### GLOBAL OPTIMIZATION ###\n")
+#   gsub("\t", " ", kinPrint$glOut)
+# })
+stdOut = reactiveFileReader(
+  intervalMillis = 500,
+  session  = session,
+  filePath = "/tmp/glob.stdout",
+  readFunc = readLines,
+  warn     = FALSE
+)
 output$kinGlPrint    <- renderPrint({
   cat("### GLOBAL OPTIMIZATION ###\n")
-  gsub("\t", " ", kinPrint$glOut)
+  cat(stdOut(), sep = '\n')
+  # if(!is.null(bgGlob$status$exit_status))
+  #   if(bgGlob$status$exit_status != 0)
+  #     warning('\n >>> Abnormal termination <<< \n',
+  #             call. = FALSE)
 })
 output$kinOptPrint   <- renderPrint({
   cat("### LOCAL OPTIMIZATION ###\n")

@@ -20,10 +20,10 @@ sidebarLayout(
           h4("Best params"),
           source_ui("kinetOutputBestParams.R")
         ),
-        tabPanel(
-          h4("Trace"),
-          source_ui("kinetOutputTrace.R")
-        ),
+        # tabPanel(
+        #   h4("Trace"),
+        #   source_ui("kinetOutputTrace.R")
+        # ),
         tabPanel(
           h4("Identifiability"),
           br(),
