@@ -44,7 +44,7 @@ SAPlot <- function(X, cex = 1) {
 }
 plotLofVsSvd <- function(s, opt, lmax = 10) {
   par(
-    # mfrow = c(1, 1),
+    mfrow = c(1, 2),
     cex = cex, cex.main = cex, mar = mar,
     mgp = mgp, tcl = tcl, pty = "s"
   )
@@ -110,7 +110,7 @@ plotLofVsSvd <- function(s, opt, lmax = 10) {
       "%"
     ),
     col = lineColors[2],
-    pos = 3
+    pos = 1
   )
   box()
 }
@@ -403,265 +403,414 @@ output$extSpectra <- renderUI({
 })
 
 
-
 # Manage async process ####
-bgGlobpx = NULL
+RestartKin = RefineKin = NULL
 
-process_id = function() {
-  if (is.null(bgGlobpx)) return(NA_integer_)
+glOptOut = tempfile(tmpdir = '/tmp',fileext = '_glob.stdout')
+file.create(glOptOut, showWarnings = FALSE)
+locOptOut = tempfile(tmpdir = '/tmp',fileext = '_loc.stdout')
+file.create(locOptOut, showWarnings = FALSE)
+
+## Global Opt. Process ####
+bgGlobpx = NULL
+resGlob  = reactiveValues(results = NULL)
+gl_process_id = function() {
+  if (is.null(bgGlobpx)) return(NULL)
   bgGlobpx$get_pid()
 }
-process_running = function() {
-  if (is.null(bgGlobpx)) return(NA_integer_)
+gl_process_running = function() {
+  if (is.null(bgGlobpx)) return(NULL)
   bgGlobpx$is_alive()
 }
-process_exit_status = function() {
-  if (is.null(bgGlobpx)) return(NA_integer_)
+gl_process_exit_status = function() {
+  if (is.null(bgGlobpx)) return(NULL)
   bgGlobpx$get_exit_status()
 }
-process_status = function() {
-  list(
-    pid = process_id(), 
-    running = process_running(),
-    exit_status = process_exit_status())
+gl_process_result = function() {
+  if (is.null(bgGlobpx)) return(NULL)
+  if (is.null(gl_process_running())) return(NULL)
+  if (gl_process_running()) return(NULL)
+  if (is.null(gl_process_exit_status())) return(NULL)
+  if (gl_process_exit_status() != 0) return(NULL)
+  bgGlobpx$get_result()
 }
+gl_process_status = function() {
+  list(
+    pid         = gl_process_id(), 
+    running     = gl_process_running(),
+    exit_status = gl_process_exit_status(),
+    result      = gl_process_result() 
+  )
+}
+bgGlob = reactiveValues(status = gl_process_status())
+obsGlobStatus = observe({
+  invalidateLater(millis = 500)
+  bgGlob$status = gl_process_status()
+},
+suspended = TRUE)
 
-bgGlob = reactiveValues(status = process_status())
-
-observe({
-  invalidateLater(millis = 1000)
-  bgGlob$status = process_status()
-  if(!is.na(bgGlob$status$pid))
-    if(is.na(bgGlob$status$exit_status))
-      print(bgGlob$status)
-})
-
-observeEvent(
-  input$killKin,
-  if(!is.null(bgGlobpx))
-    if(bgGlob$status$running) {
-      bgGlobpx$kill()
-      bgGlobpx <- NULL
-    }
+## Local Opt. Process ####
+bgLocpx = NULL
+resLoc  = reactiveValues(results = NULL)
+loc_process_id = function() {
+  if (is.null(bgLocpx)) return(NULL)
+  bgLocpx$get_pid()
+}
+loc_process_running = function() {
+  if (is.null(bgLocpx)) return(NULL)
+  bgLocpx$is_alive()
+}
+loc_process_exit_status = function() {
+  if (is.null(bgLocpx)) return(NULL)
+  bgLocpx$get_exit_status()
+}
+loc_process_result = function() {
+  if (is.null(bgLocpx)) return(NULL)
+  if (is.null(loc_process_running())) return(NULL)
+  if (loc_process_running()) return(NULL)
+  if (is.null(loc_process_exit_status())) return(NULL)
+  if (loc_process_exit_status() != 0) return(NULL)
+  bgLocpx$get_result()
+}
+loc_process_status = function() {
+  list(
+    pid         = loc_process_id(), 
+    running     = loc_process_running(),
+    exit_status = loc_process_exit_status(),
+    result      = loc_process_result() 
+  )
+}
+bgLoc = reactiveValues(status = loc_process_status())
+obsLocStatus = observe({
+  invalidateLater(millis = 500)
+  bgLoc$status = loc_process_status()
+},
+suspended = TRUE
 )
 
-# observeEvent(
-#   bgGlob$status,
-#   {
-#   if(!is.null(bgGlobpx))
-#     if(!bgGlob$status$running) 
-#       if(!is.null(bgGlob$status$exit_status)) 
-#         if(bgGlob$status$exit_status == 0) {
-#           res = bgGlobpx$get_results()
-#           print(str(res))
-#         }
-# })
+## Kill current process ####
+observeEvent(
+  input$killKin,
+  isolate({
+    # Is any process running ?
+    req(!is.null(bgGlobpx) | !is.null(bgLocpx))
+
+    # Kill the active one...
+    if(!is.null(bgGlobpx)) {
+      if(!is.null(bgGlob$status$running)) {
+        if(bgGlob$status$running) {
+          bgGlobpx$kill()
+          obsGlobStatus$suspend()
+          file.create(glOptOut, showWarnings = FALSE)
+          file.create(locOptOut, showWarnings = FALSE)
+          # bgGlobpx <- NULL
+        }
+      }
+    } else if(!is.null(bgLocpx)) {
+      if(!is.null(bgLoc$status$running)) {
+        if(bgLoc$status$running) {
+          bgLocpx$kill()
+          obsLocStatus$suspend()
+          file.create(locOptOut, showWarnings = FALSE)
+          # bgLocpx <- NULL
+        }
+      }
+    }
+  })
+)
+
+## Manage results ####
+obsGlob = observeEvent(
+  bgGlob$status$result, 
+  {
+    opt0 = list(
+      map = bgGlob$status$result$map 
+    )
+    RefineKin <<- opt0
+    obsLocStatus$resume()
+    doKinLoc()
+  },
+  ignoreInit = TRUE,
+  ignoreNULL = TRUE
+)
+
+obsLoc =observeEvent(
+  bgLoc$status$result, 
+  {
+    best = bgLoc$status$result
+    opt0 = list(
+      map     = best$pars,
+      hessian = best$hessian,
+      values  = best$values,
+      cnv     = best$convergence
+    )
+    resLoc$results = doKinFinish(opt0)
+  },
+  ignoreInit = TRUE,
+  ignoreNULL = TRUE
+)
 
 # doKin ####
-doKin <- eventReactive(
+observeEvent(
   input$runKin, {
     isolate({
-      kinPrint$glOut <<- NULL
-      kinPrint$optOut <<- NULL
-      updateButton(session, "killKin", value = FALSE)
-      
-      # Suppress masked areas
-      mat <- Inputs$mat
-      mat <- mat[!is.na(Inputs$delayMask), ]
-      mat <- mat[, !is.na(Inputs$wavlMask) ]
-      times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
-      delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
-      wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
-      delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
-      
-      # Number of experiments
-      nExp <- 1
-      if (!is.null(input$procMult) &&
-          input$procMult == "tileDel") {
-        nExp <- length(input$rawData_rows_selected)
+      if(input$kinGlobNit > 0) {
+        obsGlobStatus$resume()
+        doKinGlob()
+      } else {
+        obsLocStatus$resume()
+        doKinLoc()
       }
-      
-      deltaStart <- rep(0, nExp)
-      startd     <- rep(NA, nExp)
-      for (iExp in 1:(nExp - 1))
-        startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
-      startd[nExp] <- length(delay)
-      
-      parOpt <- list()
-      
-      species <- Scheme$species
-      nbSpecies <- length(species)
-      nbReac <- Scheme$nbReac
-      
-      # Spectral constraints
-      active <- rep(TRUE, nbSpecies)
-      names(active) <- species
-      eps <- rep(0, nbSpecies)
-      names(eps) <- species
-      for (sp in species) {
-        param <- paste0("eps_", sp)
-        eps0 <- input[[param]]
-        eps[sp] <- eps0
-        
-        param <- paste0("epsF_", sp)
-        epsF <- input[[param]]
-        
-        if (eps0 == 0) {
-          active[sp] <- FALSE
-        } else
-          if (epsF > 1) {
-            parOpt[[paste0("logeps_", sp)]] <-
-              paste0("tnorm(", log(eps0), ",", log(epsF), ")")
-          }
+    })
+  })
+
+setOptPars  = function() {
+  
+  # Suppress masked areas
+  mat <- Inputs$mat
+  mat <- mat[!is.na(Inputs$delayMask), ]
+  mat <- mat[, !is.na(Inputs$wavlMask) ]
+  times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
+  delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
+  wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+  delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
+  
+  # Number of experiments
+  nExp <- 1
+  if (!is.null(input$procMult) &&
+      input$procMult == "tileDel") {
+    nExp <- length(input$rawData_rows_selected)
+  }
+  
+  deltaStart <- rep(0, nExp)
+  startd     <- rep(NA, nExp)
+  for (iExp in 1:(nExp - 1))
+    startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
+  startd[nExp] <- length(delay)
+  
+  parOpt <- list()
+  
+  species <- Scheme$species
+  nbSpecies <- length(species)
+  nbReac <- Scheme$nbReac
+  
+  # Spectral constraints
+  active <- rep(TRUE, nbSpecies)
+  names(active) <- species
+  eps <- rep(0, nbSpecies)
+  names(eps) <- species
+  for (sp in species) {
+    param <- paste0("eps_", sp)
+    eps0 <- input[[param]]
+    eps[sp] <- eps0
+    
+    param <- paste0("epsF_", sp)
+    epsF <- input[[param]]
+    
+    if (eps0 == 0) {
+      active[sp] <- FALSE
+    } else
+      if (epsF > 1) {
+        parOpt[[paste0("logeps_", sp)]] <-
+          paste0("tnorm(", log(eps0), ",", log(epsF), ")")
       }
+  }
+  
+  # Initial concentrations
+  state <- matrix(0, nrow = nbSpecies, ncol = nExp)
+  rownames(state) <- species
+  for (iExp in 1:nExp)
+    for (sp in species) {
+      param <- paste0("c0_", sp, "_", iExp)
+      c0 <- input[[param]]
+      state[sp, iExp] <- c0 # Nominal value
       
-      # Initial concentrations
-      state <- matrix(0, nrow = nbSpecies, ncol = nExp)
-      rownames(state) <- species
-      for (iExp in 1:nExp)
-        for (sp in species) {
-          param <- paste0("c0_", sp, "_", iExp)
-          c0 <- input[[param]]
-          state[sp, iExp] <- c0 # Nominal value
-          
-          param <- paste0("c0F_", sp, "_", iExp)
-          c0F <- input[[param]]
-          if (c0F > 1) { # Optimize concentration
-            parOpt[[paste0("logc0_", sp, "_", iExp)]] <-
-              paste0("tnorm(", log(c0), ",", log(c0F), ")")
-          }
-        }
-      
-      # Reaction rates
-      kReac <- c()
-      for (i in 1:nbReac) {
-        param <- paste0("k_", i)
-        k <- input[[param]]
-        # Nominal value
-        kReac[i] <- k
-        param <- paste0("kF_", i)
-        kF <- input[[param]]
-        if (kF > 1) {
-          parOpt[[paste0("logk_", i)]] <-
-            paste0("tnorm(", log(k), ",", log(kF), ")")
-        }
+      param <- paste0("c0F_", sp, "_", iExp)
+      c0F <- input[[param]]
+      if (c0F > 1) { # Optimize concentration
+        parOpt[[paste0("logc0_", sp, "_", iExp)]] <-
+          paste0("tnorm(", log(c0), ",", log(c0F), ")")
       }
-      
-      # Gather parameters in list
-      kinParms <- list(
-        times = times,
-        delay = delay,
-        wavl = wavl,
-        mat = mat,
-        kReac = kReac,
-        L = Scheme$L,
-        D = Scheme$D,
-        state = state,
-        active = active,
-        startd = startd,
-        deltaStart = deltaStart,
-        sigma   = input$kinSigma,
-        reactants = Scheme$reactants,
-        eps     = eps,
-        uniS    = FALSE,
-        nonnegS = input$nonnegSKinet,
-        smooth  = input$kinSmooth,
-        logPri  = genPriorPDF(parOpt) # Soft-coded prior PDF function
-      )
-      
-      # External spectrum shapes
-      if (length(externalSpectra) != 0)
-        for(sp in names(externalSpectra)) {
-          pname = paste0('fix_',sp)
-          if( input[[pname]] )
-            kinParms[[sp]] = externalSpectra[[sp]]
+    }
+  
+  # Reaction rates
+  kReac <- c()
+  for (i in 1:nbReac) {
+    param <- paste0("k_", i)
+    k <- input[[param]]
+    # Nominal value
+    kReac[i] <- k
+    param <- paste0("kF_", i)
+    kF <- input[[param]]
+    if (kF > 1) {
+      parOpt[[paste0("logk_", i)]] <-
+        paste0("tnorm(", log(k), ",", log(kF), ")")
+    }
+  }
+  
+  # Gather parameters in list
+  kinParms <- list(
+    times = times,
+    delay = delay,
+    wavl = wavl,
+    mat = mat,
+    nExp = nExp,
+    kReac = kReac,
+    L = Scheme$L,
+    D = Scheme$D,
+    state = state,
+    active = active,
+    startd = startd,
+    deltaStart = deltaStart,
+    sigma   = input$kinSigma,
+    reactants = Scheme$reactants,
+    eps     = eps,
+    uniS    = FALSE,
+    nonnegS = input$nonnegSKinet,
+    smooth  = input$kinSmooth,
+    logPri  = genPriorPDF(parOpt)
+  )
+  
+  # External spectrum shapes
+  if (length(externalSpectra) != 0)
+    for(sp in names(externalSpectra)) {
+      pname = paste0('fix_',sp)
+      if( input[[pname]] )
+        kinParms[[sp]] = externalSpectra[[sp]]
+    }
+  
+  startp <-
+    startpInit(
+      map = (
+        if (!is.null(RestartKin) &
+            input$kinRestart) {
+          RestartKin$map
+        } else if (!is.null(RefineKin)) {
+          RefineKin$map
+        } else {
+          NULL
         }
-      
-      startp <-
-        startpInit(
-          map = (
-            if (exists("Restart_Kin") && input$kinRestart) {
-              Restart_Kin$map
-            } else {
-              NULL
-            }),
-          parOpt = parOpt
-        )
-      
-      mc <- FALSE
-      niter  <- input$kinGlobNit
-      global <- input$kinGlobFac * length(startp)
-      
-      id = showNotification(
-        "Running optimizer...", 
-        type = "message",
-        duration = NULL, 
-        closeButton = FALSE
-      )
-      on.exit(
-        removeNotification(id), 
-        add = TRUE
-      )
-      
-      bgGlobpx <<- bmc_glob(
-        parOpt,
+      ),
+      parOpt = parOpt
+    )
+  
+  mc <- FALSE
+  niter  <- input$kinGlobNit
+  global <- input$kinGlobFac * length(startp)
+  
+  return(
+    list(
+      parOpt   = parOpt,
+      kinParms = kinParms,
+      mc       = mc,
+      global   = global,
+      niter    = niter,
+      startp   = startp
+    )
+  )
+}
+doKinGlob   = function() {
+  bgGlobpx <<- NULL
+  
+  with(
+    setOptPars(),
+    bgGlobpx <<- bmc_glob(
+      paropt   = parOpt,
+      parms    = kinParms,
+      global   = global,
+      niter    = niter,
+      mc       = mc,
+      startp   = startp,
+      tol      = 10^input$kinThresh,
+      weighted = input$kinWeighted
+    )
+  )
+  
+  id = showNotification(
+    "Running global optimizer...",
+    type = "message",
+    duration = 10
+  )
+  
+  return()
+}
+doKinLoc    = function() {
+    bgLocpx <<- NULL
+
+    with(
+      setOptPars(),
+      bgLocpx <<- bmc_loc(
+        paropt   = parOpt,
         parms    = kinParms,
-        global   = global,
-        niter    = niter,
-        mc       = FALSE,
         startp   = startp,
         tol      = 10^input$kinThresh,
         weighted = input$kinWeighted
       )
-      return(NULL)
-      
-      # map <- parExpand(opt0$map, parOpt)
-      # mod <- model(map, kinParms)
-      # C <- kinet(map, kinParms)
-      # Ca <- C[, kinParms$active]
-      # S <- spectra(Ca, map, kinParms)
-      # 
-      # vlof <- signif(lof(model = mod, data = mat), 3)
-      # 
-      # # Global variable for restart
-      # Restart_Kin <<- opt0
-      # 
-      # # Update Reporting
-      # todo = c(includeInReport(),'KIN')
-      # includeInReport(todo) 
-      # updateCheckboxGroupInput(session,
-      #                          inputId = "inReport",
-      #                          choices = todo,
-      #                          selected = todo
-      # )
-      # 
-      # return(
-      #   list(
-      #     map = opt0$map,
-      #     hessian = opt0$hessian,
-      #     parms = kinParms,
-      #     paropt = parOpt,
-      #     mat = mat,
-      #     model = mod,
-      #     weighted = input$kinWeighted,
-      #     sigma = input$kinSigma,
-      #     nExp = nExp,
-      #     times = times,
-      #     xC = delay,
-      #     xS = wavl,
-      #     active = kinParms$active,
-      #     C = C,
-      #     S = S,
-      #     lof = vlof,
-      #     glOut  = opt0$glOut,
-      #     optOut = opt0$optOut,
-      #     values = opt0$values,
-      #     cnv = opt0$cnv
-      #   )
-      # )
-    })
+    )
+    
+    id = showNotification(
+      "Running local optimizer...",
+      type = 'message',
+      duration = 10
+    )
+    
+    return()
+    
   }
-)
+doKinFinish = function (opt0) {
+
+  # Global variable for restart
+  RestartKin <<- opt0
+  
+  # Update Reporting
+  todo = c(includeInReport(),'KIN')
+  includeInReport(todo)
+  updateCheckboxGroupInput(session,
+                           inputId = "inReport",
+                           choices = todo,
+                           selected = todo
+  )
+  
+  # Finalize optimizer outputs
+  with(
+    setOptPars(),
+    {
+      map  = parExpand(opt0$map, parOpt)
+      mod  = model(map, kinParms)
+      C    = kinet(map, kinParms)
+      Ca   = C[, kinParms$active]
+      S    = spectra(Ca, map, kinParms)
+      vlof = signif( lof(model = mod, 
+                         data = kinParms$mat), 
+                     3)
+      
+      return(
+        list(
+          map      = opt0$map,
+          hessian  = opt0$hessian,
+          parms    = kinParms,
+          paropt   = parOpt,
+          mat      = kinParms$mat,
+          model    = mod,
+          weighted = input$kinWeighted,
+          sigma    = input$kinSigma,
+          nExp     = kinParms$nExp,
+          times    = kinParms$times,
+          xC       = kinParms$delay,
+          xS       = kinParms$wavl,
+          active   = kinParms$active,
+          C        = C,
+          S        = S,
+          lof      = vlof,
+          glOut    = opt0$glOut,
+          optOut   = opt0$optOut,
+          values   = opt0$values,
+          cnv      = opt0$cnv
+        )
+      )
+    }
+  )
+}
 
 # doKin_old <- eventReactive(
 #   input$runKin, {
@@ -867,6 +1016,7 @@ doKin <- eventReactive(
 #   })
 # })
 
+# Params Outputs ####
 output$schemeFileSave<- downloadHandler(
   filename = function() {
     paste0(input$schemeFileName, ".in")
@@ -923,7 +1073,6 @@ output$schemeFileSave<- downloadHandler(
 
     sink()
   })
-
 output$scheme        <- DT::renderDataTable({
   if (!Scheme$gotData) {
     return(NULL)
@@ -1155,41 +1304,15 @@ output$epsilon       <- renderUI({
 
   ui
 })
-# Trace ####
-# output$kinGlPrint    <- renderPrint({
-#   cat("### GLOBAL OPTIMIZATION ###\n")
-#   gsub("\t", " ", kinPrint$glOut)
-# })
-stdOut = reactiveFileReader(
-  intervalMillis = 500,
-  session  = session,
-  filePath = "/tmp/glob.stdout",
-  readFunc = readLines,
-  warn     = FALSE
-)
-output$kinGlPrint    <- renderPrint({
-  cat("### GLOBAL OPTIMIZATION ###\n")
-  cat(stdOut(), sep = '\n')
-  # if(!is.null(bgGlob$status$exit_status))
-  #   if(bgGlob$status$exit_status != 0)
-  #     warning('\n >>> Abnormal termination <<< \n',
-  #             call. = FALSE)
-})
-output$kinOptPrint   <- renderPrint({
-  cat("### LOCAL OPTIMIZATION ###\n")
-  gsub("\t", " ", kinPrint$optOut)
-})
-output$kinRes        <- renderUI({
-  if (is.null(opt <- doKin())) {
-    h5('Select options and press "Run"\n')
-    return(NULL)
-  }
-
+# Best Params ####
+output$kinRes <- renderUI({
+  req(resLoc$results)
+  
   out <- list()
-
-  opt <- doKin()
-  paropt <- opt$paropt
-
+  
+  opt    = isolate(resLoc$results)
+  paropt = opt$paropt
+  
   if (opt$cnv == 0) {
     out <- list(out, h4("Optimization done!"))
   } else {
@@ -1198,14 +1321,14 @@ output$kinRes        <- renderUI({
       h4("WARNING: Optimization ended badly (see Trace)!")
     )
   }
-
+  
   out <- list(
     out,
     strong("Lack-of-fit (%) :"),
     signif(opt$lof, 3),
     br(), p()
   )
-
+  
   if (opt$weighted) {
     ndf <- length(opt$mat) - length(opt$map) - length(opt$S)
     chi2 <- sum(((opt$mat - opt$mod) / opt$sigma)^2)
@@ -1222,33 +1345,26 @@ output$kinRes        <- renderUI({
       "Q95=", format(qchisq(0.95, df = ndf), digits = ndig)
     )
   }
-
+  
   return(out)
 })
-output$kinOpt        <- DT::renderDataTable({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
-
+output$kinOpt <- DT::renderDataTable({
+  req(resLoc$results)
+  
+  opt    = isolate(resLoc$results)
   paropt <- opt$paropt
+  
   map <- parExpand(opt$map, paropt)
   names(map) <- names(paropt)
 
   Sigma <- try(solve(opt$hessian), silent = TRUE)
   if (class(Sigma) != "try-error" && opt$cnv == 0) {
     EV <- Re(eigen(Sigma)$values)
-    if (sum(EV < 0) > 0) print("Non-positive definite Covariance matrix")
+    if (sum(EV < 0) > 0) 
+      print("Non-positive definite Covariance matrix")
     Sd <- diag(Sigma)^0.5
     names(Sd) <- names(paropt)
-    # Corr=cov2cor(Sigma)
   } else {
-    # showModal(modalDialog(
-    #   title = ">>>> Numerical problem <<<< ",
-    #   paste0("Singular Hessian: could not compute uncertainties..."),
-    #   easyClose = TRUE,
-    #   footer = modalButton("Close"),
-    #   size = 's'
-    # ))
     Sd <- rep(NA, length(paropt))
     names(Sd) <- names(paropt)
   }
@@ -1276,9 +1392,9 @@ output$kinOpt        <- DT::renderDataTable({
     if (abs(opt$map[item] - LB[item]) < eps) {
       alert[item] <- " *** at min of prior"
     } else
-    if (abs(opt$map[item] - UB[item]) < eps) {
-      alert[item] <- " *** at max of prior"
-    }
+      if (abs(opt$map[item] - UB[item]) < eps) {
+        alert[item] <- " *** at max of prior"
+      }
 
     if (grepl("log", item)) {
       tags[item] <- sub("log", "", item)
@@ -1286,7 +1402,8 @@ output$kinOpt        <- DT::renderDataTable({
       valF[item] <- ifelse(
         !is.finite(lSd[item]),
         "",
-        paste("/*", signif(exp(lSd[item]), digits = 3))
+        # paste("/*", signif(exp(lSd[item]), digits = 3))
+        paste(signif(100*lSd[item], digits = 3),' %')
       )
     } else {
       tags[item] <- item
@@ -1294,17 +1411,18 @@ output$kinOpt        <- DT::renderDataTable({
       valF[item] <- ifelse(
         !is.finite(lSd[item]),
         "",
-        paste("+/-", signif(lSd[item], digits = 3))
+        # paste("+/-", signif(lSd[item], digits = 3))
+        signif(lSd[item], digits = 3)
       )
     }
   }
 
   DT::datatable(
     data.frame(
-      Name = tags,
-      Value = val,
-      Uncert = valF,
-      Comment = alert
+      "Parameter"  = tags,
+      "Best Value" = val,
+      "Std. Unc."  = valF,
+      "Comment"    = alert
     ),
     class = "cell-border stripe",
     rownames = FALSE,
@@ -1318,18 +1436,39 @@ output$kinOpt        <- DT::renderDataTable({
     width = 200
   )
 })
+# Trace ####
+stdGlobOut = reactiveFileReader(
+  intervalMillis = 500,
+  session  = session,
+  filePath = glOptOut,
+  readFunc = readLines,
+  warn     = FALSE
+)
+output$kinGlPrint <- renderPrint({
+  cat("### GLOBAL OPTIMIZATION ###\n")
+  cat(stdGlobOut(), sep = '\n')
+})
+stdLocOut = reactiveFileReader(
+  intervalMillis = 500,
+  session  = session,
+  filePath = locOptOut,
+  readFunc = readLines,
+  warn     = FALSE
+)
+output$kinOptPrint <- renderPrint({
+  cat("### LOCAL OPTIMIZATION ###\n")
+  cat(stdLocOut(), sep = '\n')
+})
+
 #PriPost ####
-output$kinPriPost    <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+output$kinPriPost <- renderPlot({
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
   plotPriPost(opt)
 }, height = plotHeight)
 output$kinParamsSamp <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
-
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
   Sigma <- try(solve(opt$hessian), silent = TRUE)
   if (class(Sigma) == "try-error" || opt$cnv != 0) {
     return(NULL)
@@ -1346,9 +1485,8 @@ output$kinParamsSamp <- renderPlot({
 }, height = plotHeight)
 # Diagnostics ####
 output$kinResid      <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
 
   CS <- reshapeCS(opt$C, opt$S)
 
@@ -1374,9 +1512,8 @@ output$kinResid      <- renderPlot({
   )
 }, height = plotHeight)
 output$kinResidAna   <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
 
   CS <- reshapeCS(opt$C, opt$S)
 
@@ -1403,22 +1540,20 @@ output$kinResidAna   <- renderPlot({
 }, height = plotHeight)
 output$kinIntKin     <- renderPlot({
   # Integrated kinetics
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
   plotIntKin(opt, delayTrans=Inputs$delayTrans)
 }, height = plotHeight)
 output$kinLofVsSvd   <- renderPlot({
   # L.o.F comparison with SVD
-  if (is.null(opt <- doKin()) || is.null(s <- doSVD())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt = isolate(resLoc$results)
+  s   = doSVD()
   plotLofVsSvd(s, opt)
 }, height = plotHeight)
 output$kinDatavsMod  <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
 
   CS <- reshapeCS(opt$C, opt$S)
 
@@ -1448,9 +1583,8 @@ output$kinDatavsMod  <- renderPlot({
 }, height = plotHeight)
 # Spectra & Kinetics ####
 output$kinSpVectors  <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
   plotAlsVec(opt,
     type = "Sp",
     xlim = rangesKinSp$x,
@@ -1462,9 +1596,8 @@ output$kinSpVectors  <- renderPlot({
   )
 }, height = plotHeight - 50)
 output$kinKinVectors <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
   plotAlsVec(opt,
     type = "Kin",
     xlim = rangesKinKin$x,
@@ -1479,9 +1612,8 @@ output$kinKinVectors <- renderPlot({
 observeEvent(
   input$kinSpKinSave,
   isolate({
-    if (is.null(opt <- doKin())) {
-      return(NULL)
-    }
+    req(resLoc$results)
+    opt    = isolate(resLoc$results)
     
     CS <- reshapeCS(opt$C, opt$S)
     
@@ -1516,9 +1648,8 @@ observeEvent(
 
 # Contribs ####
 output$kinContribs   <- renderPlot({
-  if (is.null(opt <- doKin())) {
-    return(NULL)
-  }
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
   CS <- reshapeCS(opt$C, opt$S)
   plotConbtribs(
     Inputs$delay, Inputs$wavl, Inputs$mat,
