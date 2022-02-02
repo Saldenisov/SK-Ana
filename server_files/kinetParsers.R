@@ -7,8 +7,8 @@ kinParse = function(scheme) {
     if(m[[1]][1] != -1)
       parts = rbind(parts,unlist(regmatches(reac,m))[2:5])
   }
-  parts=data.frame(parts,stringsAsFactors=FALSE)
-  names(parts)=c("reactants","products","rateConstant")
+  parts = data.frame(parts, stringsAsFactors = FALSE)
+  names(parts) = c("reactants", "products", "rateConstant")
   nbReac = nrow(parts)
   
   reactants = products = list()

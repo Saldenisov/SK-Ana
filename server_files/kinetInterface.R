@@ -242,328 +242,63 @@ plotPriPost <- function(opt) {
 parseScheme <- function(scheme) {
   # Parse Scheme
   
-  kinList <- kinParse(scheme)
-  Scheme[["scheme"]] <<- scheme
-  Scheme[["nbReac"]] <<- kinList$nbReac
-  Scheme[["nbSpecies"]] <<- kinList$nbSpecies
-  Scheme[["D"]] <<- kinList$D
-  Scheme[["L"]] <<- kinList$L
-  Scheme[["kReac"]] <<- kinList$kReac
-  Scheme[["kReacF"]] <<- kinList$kReacF
-  Scheme[["species"]] <<- kinList$species
-  Scheme[["reactants"]] <<- kinList$reactants
-  Scheme[["products"]] <<- kinList$products
-  Scheme[["tags"]] <<- kinList$tags
-  
-  c0List <- c0Parse(scheme)
-  Scheme[["c0"]] <<- c0List$c0
-  Scheme[["c0F"]] <<- c0List$c0F
-  
-  epsList <- epsParse(scheme)
-  Scheme[["eps"]] <<- epsList$eps
-  Scheme[["epsF"]] <<- epsList$epsF
-  
-  Scheme$gotData <<- TRUE
-}
-
-# Interactive ####
-kinPrint        <- reactiveValues(glOut = NULL, optOut = NULL)
-Scheme          <- reactiveValues(gotData = FALSE)
-rangesKinSp     <- reactiveValues(x = NULL, y = NULL)
-rangesKinKin    <- reactiveValues(x = NULL, y = NULL)
-externalSpectra <- list()
-
-observeEvent(input$kinSp_dblclick, {
-  brush <- input$kinSp_brush
-  if (!is.null(brush)) {
-    rangesKinSp$x <- c(brush$xmin, brush$xmax)
-    rangesKinSp$y <- c(brush$ymin, brush$ymax)
+  kinList = try(kinParse(scheme),silent = TRUE)
+  if(class(kinList) == 'try-error') {
+    gotKin = FALSE
   } else {
-    rangesKinSp$x <- NULL
-    rangesKinSp$y <- NULL
+    Scheme[["scheme"]] <<- scheme
+    Scheme[["nbReac"]] <<- kinList$nbReac
+    Scheme[["nbSpecies"]] <<- kinList$nbSpecies
+    Scheme[["D"]] <<- kinList$D
+    Scheme[["L"]] <<- kinList$L
+    Scheme[["kReac"]] <<- kinList$kReac
+    Scheme[["kReacF"]] <<- kinList$kReacF
+    Scheme[["species"]] <<- kinList$species
+    Scheme[["reactants"]] <<- kinList$reactants
+    Scheme[["products"]] <<- kinList$products
+    Scheme[["tags"]] <<- kinList$tags
+    gotKin = TRUE
   }
-})
-observeEvent(input$kinKin_dblclick, {
-  brush <- input$kinKin_brush
-  if (!is.null(brush)) {
-    rangesKinKin$x <- c(brush$xmin, brush$xmax)
-    rangesKinKin$y <- c(brush$ymin, brush$ymax)
+  
+  c0List = try(c0Parse(scheme),silent = TRUE)
+  if(class(c0List) == 'try-error') {
+    gotC0 = FALSE
   } else {
-    rangesKinKin$x <- NULL
-    rangesKinKin$y <- NULL
+    Scheme[["c0"]] <<- c0List$c0
+    Scheme[["c0F"]] <<- c0List$c0F
+    gotC0 = TRUE
   }
-})
-observeEvent(input$schemeFile, {
-  if (is.null(inFile <- input$schemeFile)) {
-    return(NULL)
+  
+  epsList = try(epsParse(scheme),silent = TRUE)
+  if(class(epsList) == 'try-error') {
+    gotEps = FALSE
+  } else {
+    Scheme[["eps"]] <<- epsList$eps
+    Scheme[["epsF"]] <<- epsList$epsF
+    gotEps = TRUE
   }
-  scheme <- scan(
-    file = inFile$datapath,
-    what = "character",
-    sep = "%", comment.char = "#",
-    blank.lines.skip = TRUE,
-    quiet = TRUE
-  )
-  parseScheme(scheme)
-  updateTextAreaInput(session,
-                      inputId = "schemeScript",
-                      value = paste(scheme, collapse = "\n")
-  )
-})
-observeEvent(input$update_tS, isolate({
-    if (is.null(scheme <- input$schemeScript)) {
-      return(NULL)
-    } else {
-      parseScheme(scan(text = scheme, what = "character", sep = "\n"))
-    }
-  }))
-observeEvent(input$clear_tS, {
-    updateTextAreaInput(session,
-                        inputId = "schemeScript",
-                        value = ""
+  
+  gotData = gotKin & gotC0 & gotEps
+  
+  if(!gotData) {
+    msg = c()
+    if(!gotKin) msg = c(msg,'reac.') 
+    if(!gotC0)  msg = c(msg,'conc.') 
+    if(!gotEps) msg = c(msg,'eps.') 
+    id = showNotification(
+      paste0(
+        'Problem with scheme file: ',
+        paste(msg,collapse = ', ')
+      ),
+      type = 'error',
+      duration = NULL
     )
-    Scheme$gotData <<- FALSE
-  })
-observeEvent(input$kinSigmaIndex, {
-  isolate({
-    if (input$kinSigmaIndex == 0) {
-      updateNumericInput(session,
-                         inputId = "kinSigma",
-                         value = 1
-      )
-    } else {
-      if (!is.null(s <- doSVD())) {
-        mat <- Inputs$mat
-        mat <- mat[!is.na(Inputs$delayMask), ]
-        mat <- mat[, !is.na(Inputs$wavlMask)]
-        mat1 <- rep(0, nrow = nrow(s$u), ncol = ncol(s$v))
-        for (i in 1:input$kinSigmaIndex)
-          mat1 <- mat1 + s$u[, i] %o% s$v[, i] * s$d[i]
-        resid <- mat - mat1
-        val <- signif(sd(resid), 2)
-        updateNumericInput(session,
-                           inputId = "kinSigma",
-                           value = val
-        )
-      }
-    }
-  })
-})
-
-# Get external spectra ####
-output$extSpectra <- renderUI({
-  req(input$S0KinFile)
-
-  wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
-  # species <- Scheme$species
-
-  fixWidth = 1
-  spWidth  = 3  
-  ui <- list(
-    h4('Fix spectra shapes'),
-    hr(style = "border-color: #666;")
-  )
-  # Get all shapes
-  isp = 0
-  for (i in seq_along(input$S0KinFile$datapath)) {
-    fname = input$S0KinFile[i,'name']
-    fN    = input$S0KinFile[i,'datapath']
-    tmp <- read.table(
-      file   = fN,
-      header = TRUE,
-      dec    = inputStyle$dec,
-      sep    = inputStyle$sep,
-      colClasses = "numeric",
-      stringsAsFactors = FALSE
-    )
-    for (k in 2:ncol(tmp)) {
-      isp = isp + 1
-      sp = colnames(tmp)[k]
-      
-      # Interpolate on wavl grid
-      S0 = spline(tmp[, 1], tmp[, k], xout = wavl)$y
-      
-      # Normalize
-      S0 = S0 / max(S0)
-      
-      # Store in global list
-      externalSpectra[[paste0("S_",sp)]] <<- S0
-      
-      # Generate selection control
-      ui[[isp +2]] <-
-        checkboxInput(
-          inputId = paste0('fix_S_',sp),
-          label   = paste0(sp,' (orig: ',fname,')'),
-          value   = FALSE
-        )
-      
-    }
   }
-  ui
-})
-
-
-# Manage async process ####
-RestartKin = RefineKin = NULL
-
-glOptOut = tempfile(tmpdir = '/tmp',fileext = '_glob.stdout')
-file.create(glOptOut, showWarnings = FALSE)
-locOptOut = tempfile(tmpdir = '/tmp',fileext = '_loc.stdout')
-file.create(locOptOut, showWarnings = FALSE)
-
-## Global Opt. Process ####
-bgGlobpx = NULL
-resGlob  = reactiveValues(results = NULL)
-gl_process_id = function() {
-  if (is.null(bgGlobpx)) return(NULL)
-  bgGlobpx$get_pid()
+  
+  Scheme$gotData <<- gotData
+  
+  
 }
-gl_process_running = function() {
-  if (is.null(bgGlobpx)) return(NULL)
-  bgGlobpx$is_alive()
-}
-gl_process_exit_status = function() {
-  if (is.null(bgGlobpx)) return(NULL)
-  bgGlobpx$get_exit_status()
-}
-gl_process_result = function() {
-  if (is.null(bgGlobpx)) return(NULL)
-  if (is.null(gl_process_running())) return(NULL)
-  if (gl_process_running()) return(NULL)
-  if (is.null(gl_process_exit_status())) return(NULL)
-  if (gl_process_exit_status() != 0) return(NULL)
-  bgGlobpx$get_result()
-}
-gl_process_status = function() {
-  list(
-    pid         = gl_process_id(), 
-    running     = gl_process_running(),
-    exit_status = gl_process_exit_status(),
-    result      = gl_process_result() 
-  )
-}
-bgGlob = reactiveValues(status = gl_process_status())
-obsGlobStatus = observe({
-  invalidateLater(millis = 500)
-  bgGlob$status = gl_process_status()
-},
-suspended = TRUE)
-
-## Local Opt. Process ####
-bgLocpx = NULL
-resLoc  = reactiveValues(results = NULL)
-loc_process_id = function() {
-  if (is.null(bgLocpx)) return(NULL)
-  bgLocpx$get_pid()
-}
-loc_process_running = function() {
-  if (is.null(bgLocpx)) return(NULL)
-  bgLocpx$is_alive()
-}
-loc_process_exit_status = function() {
-  if (is.null(bgLocpx)) return(NULL)
-  bgLocpx$get_exit_status()
-}
-loc_process_result = function() {
-  if (is.null(bgLocpx)) return(NULL)
-  if (is.null(loc_process_running())) return(NULL)
-  if (loc_process_running()) return(NULL)
-  if (is.null(loc_process_exit_status())) return(NULL)
-  if (loc_process_exit_status() != 0) return(NULL)
-  bgLocpx$get_result()
-}
-loc_process_status = function() {
-  list(
-    pid         = loc_process_id(), 
-    running     = loc_process_running(),
-    exit_status = loc_process_exit_status(),
-    result      = loc_process_result() 
-  )
-}
-bgLoc = reactiveValues(status = loc_process_status())
-obsLocStatus = observe({
-  invalidateLater(millis = 500)
-  bgLoc$status = loc_process_status()
-},
-suspended = TRUE
-)
-
-## Kill current process ####
-observeEvent(
-  input$killKin,
-  isolate({
-    # Is any process running ?
-    req(!is.null(bgGlobpx) | !is.null(bgLocpx))
-
-    # Kill the active one...
-    if(!is.null(bgGlobpx)) {
-      if(!is.null(bgGlob$status$running)) {
-        if(bgGlob$status$running) {
-          bgGlobpx$kill()
-          obsGlobStatus$suspend()
-          file.create(glOptOut, showWarnings = FALSE)
-          file.create(locOptOut, showWarnings = FALSE)
-          # bgGlobpx <- NULL
-        }
-      }
-    } else if(!is.null(bgLocpx)) {
-      if(!is.null(bgLoc$status$running)) {
-        if(bgLoc$status$running) {
-          bgLocpx$kill()
-          obsLocStatus$suspend()
-          file.create(locOptOut, showWarnings = FALSE)
-          # bgLocpx <- NULL
-        }
-      }
-    }
-  })
-)
-
-## Manage results ####
-obsGlob = observeEvent(
-  bgGlob$status$result, 
-  {
-    opt0 = list(
-      map = bgGlob$status$result$map 
-    )
-    RefineKin <<- opt0
-    obsLocStatus$resume()
-    doKinLoc()
-  },
-  ignoreInit = TRUE,
-  ignoreNULL = TRUE
-)
-
-obsLoc =observeEvent(
-  bgLoc$status$result, 
-  {
-    best = bgLoc$status$result
-    opt0 = list(
-      map     = best$pars,
-      hessian = best$hessian,
-      values  = best$values,
-      cnv     = best$convergence
-    )
-    resLoc$results = doKinFinish(opt0)
-  },
-  ignoreInit = TRUE,
-  ignoreNULL = TRUE
-)
-
-# doKin ####
-observeEvent(
-  input$runKin, {
-    isolate({
-      if(input$kinGlobNit > 0) {
-        obsGlobStatus$resume()
-        doKinGlob()
-      } else {
-        obsLocStatus$resume()
-        doKinLoc()
-      }
-    })
-  })
-
 setOptPars  = function() {
   
   # Suppress masked areas
@@ -735,30 +470,30 @@ doKinGlob   = function() {
   return()
 }
 doKinLoc    = function() {
-    bgLocpx <<- NULL
-
-    with(
-      setOptPars(),
-      bgLocpx <<- bmc_loc(
-        paropt   = parOpt,
-        parms    = kinParms,
-        startp   = startp,
-        tol      = 10^input$kinThresh,
-        weighted = input$kinWeighted
-      )
+  bgLocpx <<- NULL
+  
+  with(
+    setOptPars(),
+    bgLocpx <<- bmc_loc(
+      paropt   = parOpt,
+      parms    = kinParms,
+      startp   = startp,
+      tol      = 10^input$kinThresh,
+      weighted = input$kinWeighted
     )
-    
-    id = showNotification(
-      "Running local optimizer...",
-      type = 'message',
-      duration = 10
-    )
-    
-    return()
-    
-  }
+  )
+  
+  id = showNotification(
+    "Running local optimizer...",
+    type = 'message',
+    duration = 10
+  )
+  
+  return()
+  
+}
 doKinFinish = function (opt0) {
-
+  
   # Global variable for restart
   RestartKin <<- opt0
   
@@ -812,209 +547,231 @@ doKinFinish = function (opt0) {
   )
 }
 
-# doKin_old <- eventReactive(
-#   input$runKin, {
-#   isolate({
-#     kinPrint$glOut <<- NULL
-#     kinPrint$optOut <<- NULL
-#     updateButton(session, "killKin", value = FALSE)
-#     
-#     # Suppress masked areas
-#     mat <- Inputs$mat
-#     mat <- mat[!is.na(Inputs$delayMask), ]
-#     mat <- mat[, !is.na(Inputs$wavlMask) ]
-#     times   <- Inputs$delaySave[!is.na(Inputs$delayMask)]
-#     delay   <- Inputs$delay[!is.na(Inputs$delayMask)]
-#     wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
-#     delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
-#     
-#     # Number of experiments
-#     nExp <- 1
-#     if (!is.null(input$procMult) &&
-#         input$procMult == "tileDel") {
-#       nExp <- length(input$rawData_rows_selected)
-#     }
-#     
-#     deltaStart <- rep(0, nExp)
-#     startd     <- rep(NA, nExp)
-#     for (iExp in 1:(nExp - 1))
-#       startd[iExp] <- which(delayId == (iExp + 1))[1] - 1
-#     startd[nExp] <- length(delay)
-#     
-#     parOpt <- list()
-#     
-#     species <- Scheme$species
-#     nbSpecies <- length(species)
-#     nbReac <- Scheme$nbReac
-#     
-#     # Spectral constraints
-#     active <- rep(TRUE, nbSpecies)
-#     names(active) <- species
-#     eps <- rep(0, nbSpecies)
-#     names(eps) <- species
-#     for (sp in species) {
-#       param <- paste0("eps_", sp)
-#       eps0 <- input[[param]]
-#       eps[sp] <- eps0
-#       
-#       param <- paste0("epsF_", sp)
-#       epsF <- input[[param]]
-#       
-#       if (eps0 == 0) {
-#         active[sp] <- FALSE
-#       } else
-#         if (epsF > 1) {
-#           parOpt[[paste0("logeps_", sp)]] <-
-#             paste0("tnorm(", log(eps0), ",", log(epsF), ")")
-#         }
-#     }
-#     
-#     # Initial concentrations
-#     state <- matrix(0, nrow = nbSpecies, ncol = nExp)
-#     rownames(state) <- species
-#     for (iExp in 1:nExp)
-#       for (sp in species) {
-#         param <- paste0("c0_", sp, "_", iExp)
-#         c0 <- input[[param]]
-#         state[sp, iExp] <- c0 # Nominal value
-#         
-#         param <- paste0("c0F_", sp, "_", iExp)
-#         c0F <- input[[param]]
-#         if (c0F > 1) { # Optimize concentration
-#           parOpt[[paste0("logc0_", sp, "_", iExp)]] <-
-#             paste0("tnorm(", log(c0), ",", log(c0F), ")")
-#         }
-#       }
-#     
-#     # Reaction rates
-#     kReac <- c()
-#     for (i in 1:nbReac) {
-#       param <- paste0("k_", i)
-#       k <- input[[param]]
-#       # Nominal value
-#       kReac[i] <- k
-#       param <- paste0("kF_", i)
-#       kF <- input[[param]]
-#       if (kF > 1) {
-#         parOpt[[paste0("logk_", i)]] <-
-#           paste0("tnorm(", log(k), ",", log(kF), ")")
-#       }
-#     }
-#     
-#     # Gather parameters in list
-#     kinParms <- list(
-#       times = times,
-#       delay = delay,
-#       wavl = wavl,
-#       mat = mat,
-#       kReac = kReac,
-#       L = Scheme$L,
-#       D = Scheme$D,
-#       state = state,
-#       active = active,
-#       startd = startd,
-#       deltaStart = deltaStart,
-#       sigma   = input$kinSigma,
-#       reactants = Scheme$reactants,
-#       eps     = eps,
-#       uniS    = FALSE,
-#       nonnegS = input$nonnegSKinet,
-#       smooth  = input$kinSmooth,
-#       logPri  = genPriorPDF(parOpt) # Soft-coded prior PDF function
-#     )
-#     
-#     # External spectrum shapes
-#     if (length(externalSpectra) != 0)
-#       for(sp in names(externalSpectra)) {
-#         pname = paste0('fix_',sp)
-#         if( input[[pname]] )
-#           kinParms[[sp]] = externalSpectra[[sp]]
-#       }
-#     
-#     startp <-
-#       startpInit(
-#         map = (
-#           if (exists("Restart_Kin") && input$kinRestart) {
-#             Restart_Kin$map
-#           } else {
-#             NULL
-#           }),
-#         parOpt = parOpt
-#       )
-#     
-#     mc <- FALSE
-#     niter  <- input$kinGlobNit
-#     global <- input$kinGlobFac * length(startp)
-#     
-#     id = showNotification(
-#       "Running optimizer...", 
-#       type = "message",
-#       duration = NULL, 
-#       closeButton = FALSE
-#     )
-#     on.exit(
-#       removeNotification(id), 
-#       add = TRUE
-#     )
-#     
-#     opt0 <- bmc_hyb(
-#       parOpt,
-#       parms    = kinParms,
-#       global   = global,
-#       niter    = niter,
-#       mc       = FALSE,
-#       startp   = startp,
-#       tol      = 10^input$kinThresh,
-#       weighted = input$kinWeighted
-#     )
-# 
-#     
-#     map <- parExpand(opt0$map, parOpt)
-#     mod <- model(map, kinParms)
-#     C <- kinet(map, kinParms)
-#     Ca <- C[, kinParms$active]
-#     S <- spectra(Ca, map, kinParms)
-#     
-#     vlof <- signif(lof(model = mod, data = mat), 3)
-#     
-#     # Global variable for restart
-#     Restart_Kin <<- opt0
-#     
-#     # Update Reporting
-#     todo = c(includeInReport(),'KIN')
-#     includeInReport(todo) 
-#     updateCheckboxGroupInput(session,
-#                              inputId = "inReport",
-#                              choices = todo,
-#                              selected = todo
-#     )
-#     
-#     return(
-#       list(
-#         map = opt0$map,
-#         hessian = opt0$hessian,
-#         parms = kinParms,
-#         paropt = parOpt,
-#         mat = mat,
-#         model = mod,
-#         weighted = input$kinWeighted,
-#         sigma = input$kinSigma,
-#         nExp = nExp,
-#         times = times,
-#         xC = delay,
-#         xS = wavl,
-#         active = kinParms$active,
-#         C = C,
-#         S = S,
-#         lof = vlof,
-#         glOut  = opt0$glOut,
-#         optOut = opt0$optOut,
-#         values = opt0$values,
-#         cnv = opt0$cnv
-#       )
-#     )
-#   })
-# })
+# Interactive ####
+kinPrint        <- reactiveValues(glOut = NULL, optOut = NULL)
+Scheme          <- reactiveValues(gotData = FALSE)
+rangesKinSp     <- reactiveValues(x = NULL, y = NULL)
+rangesKinKin    <- reactiveValues(x = NULL, y = NULL)
+externalSpectra <- list()
+
+observeEvent(input$kinSp_dblclick, {
+  brush <- input$kinSp_brush
+  if (!is.null(brush)) {
+    rangesKinSp$x <- c(brush$xmin, brush$xmax)
+    rangesKinSp$y <- c(brush$ymin, brush$ymax)
+  } else {
+    rangesKinSp$x <- NULL
+    rangesKinSp$y <- NULL
+  }
+})
+observeEvent(input$kinKin_dblclick, {
+  brush <- input$kinKin_brush
+  if (!is.null(brush)) {
+    rangesKinKin$x <- c(brush$xmin, brush$xmax)
+    rangesKinKin$y <- c(brush$ymin, brush$ymax)
+  } else {
+    rangesKinKin$x <- NULL
+    rangesKinKin$y <- NULL
+  }
+})
+observeEvent(input$schemeFile, {
+  if (is.null(inFile <- input$schemeFile)) {
+    return(NULL)
+  }
+  scheme = try(
+    scan(
+      file = inFile$datapath,
+      what = "character",
+      sep = "%",
+      comment.char = "#",
+      blank.lines.skip = TRUE,
+      quiet = TRUE
+    ),
+    silent = TRUE
+  )
+  if(class(scheme) == 'try-error') {
+    id = showNotification(
+      paste0('Error while reading file :',inFile$name),
+      type = "error",
+      duration = NULL
+    )
+  } else {
+    parseScheme(scheme)
+    updateTextAreaInput(
+      session,
+      inputId = "schemeScript",
+      value = paste(scheme, collapse = "\n")
+    )
+  }
+})
+observeEvent(
+  input$update_tS, 
+  isolate({
+    if (is.null(scheme <- input$schemeScript)) {
+      return(NULL)
+    } else {
+      parseScheme(scan(text = scheme, what = "character", sep = "\n"))
+    }
+  })
+)
+observeEvent(input$clear_tS, {
+    updateTextAreaInput(session,
+                        inputId = "schemeScript",
+                        value = ""
+    )
+    Scheme$gotData <<- FALSE
+  })
+observeEvent(input$kinSigmaIndex, {
+  isolate({
+    if (input$kinSigmaIndex == 0) {
+      updateNumericInput(session,
+                         inputId = "kinSigma",
+                         value = 1
+      )
+    } else {
+      if (!is.null(s <- doSVD())) {
+        mat <- Inputs$mat
+        mat <- mat[!is.na(Inputs$delayMask), ]
+        mat <- mat[, !is.na(Inputs$wavlMask)]
+        mat1 <- rep(0, nrow = nrow(s$u), ncol = ncol(s$v))
+        for (i in 1:input$kinSigmaIndex)
+          mat1 <- mat1 + s$u[, i] %o% s$v[, i] * s$d[i]
+        resid <- mat - mat1
+        val <- signif(sd(resid), 2)
+        updateNumericInput(session,
+                           inputId = "kinSigma",
+                           value = val
+        )
+      }
+    }
+  })
+})
+
+# Get external spectra ####
+output$extSpectra <- renderUI({
+  req(input$S0KinFile)
+
+  wavl    <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+  ui <- list(
+    h4('Fix spectra shapes'),
+    hr(style = "border-color: #666;")
+  )
+  res = getExternalSpectra(
+    ui         = ui,
+    inputFile  = input$S0KinFile, 
+    wavl       = wavl,
+    tag        = 'fix_S_')
+  
+  externalSpectra <<- res$extSpectra
+  res$ui
+})
+
+
+# Manage async optimization processes ####
+RestartKin = RefineKin = NULL
+
+## Global Opt. Process ####
+bgGlobpx = NULL
+glOptOut = tempfile(tmpdir = '/tmp',fileext = '_glob.stdout')
+file.create(glOptOut, showWarnings = FALSE)
+resGlob  = reactiveValues(results = NULL)
+bgGlob   = reactiveValues(status = process_status(bgGlobpx))
+obsGlobStatus = observe(
+  {
+    invalidateLater(millis = 500)
+    bgGlob$status = process_status(bgGlobpx)
+  },
+  suspended = TRUE
+)
+
+## Local Opt. Process ####
+bgLocpx   = NULL
+locOptOut = tempfile(tmpdir = '/tmp',fileext = '_loc.stdout')
+file.create(locOptOut, showWarnings = FALSE)
+resLoc  = reactiveValues(results = NULL)
+bgLoc   = reactiveValues(status = process_status(bgLocpx))
+obsLocStatus = observe(
+  {
+    invalidateLater(millis = 500)
+    bgLoc$status = process_status(bgLocpx)
+  },
+  suspended = TRUE
+)
+
+## Kill current process ####
+observeEvent(
+  input$killKin,
+  isolate({
+    # Is any process running ?
+    req(!is.null(bgGlobpx) | !is.null(bgLocpx))
+
+    # Kill the active one...
+    if(!is.null(bgGlobpx)) {
+      if(!is.null(bgGlob$status$running)) {
+        if(bgGlob$status$running) {
+          bgGlobpx$kill()
+          obsGlobStatus$suspend()
+          file.create(glOptOut, showWarnings = FALSE)
+          file.create(locOptOut, showWarnings = FALSE)
+        }
+      }
+    } else if(!is.null(bgLocpx)) {
+      if(!is.null(bgLoc$status$running)) {
+        if(bgLoc$status$running) {
+          bgLocpx$kill()
+          obsLocStatus$suspend()
+          file.create(locOptOut, showWarnings = FALSE)
+        }
+      }
+    }
+  })
+)
+
+## Manage results ####
+obsGlob = observeEvent(
+  bgGlob$status$result, 
+  {
+    # Store optimum for refining by local optim.
+    RefineKin <<- list(
+      map = bgGlob$status$result$map 
+    )
+    # Do refine
+    obsLocStatus$resume()
+    doKinLoc()
+  },
+  ignoreInit = TRUE,
+  ignoreNULL = TRUE
+)
+obsLoc =observeEvent(
+  bgLoc$status$result, 
+  {
+    # Post-reat optimal parameters
+    best = bgLoc$status$result
+    opt0 = list(
+      map     = best$pars,
+      hessian = best$hessian,
+      values  = best$values,
+      cnv     = best$convergence
+    )
+    resLoc$results = doKinFinish(opt0)
+  },
+  ignoreInit = TRUE,
+  ignoreNULL = TRUE
+)
+
+# doKin ####
+observeEvent(
+  input$runKin, {
+    isolate({
+      if(input$kinGlobNit > 0) {
+        obsGlobStatus$resume()
+        doKinGlob()
+      } else {
+        obsLocStatus$resume()
+        doKinLoc()
+      }
+    })
+  })
 
 # Params Outputs ####
 output$schemeFileSave<- downloadHandler(

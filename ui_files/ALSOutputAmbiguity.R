@@ -53,13 +53,10 @@ fluidRow(
           type='text/css',
           "#runALSAmb { width:100%; margin-top: 0px;}"
         ),
-        shinyBS::bsButton(
-          "killALSAmb", 
-          label = "Stop",
-          type  = "toggle", 
-          value = FALSE, 
-          size  = "default", 
-          icon  = icon("ban")
+        actionButton(
+          "killALSAmb",
+          strong("Stop"),
+          icon=icon("ban")
         ),
         tags$style(
           type='text/css',

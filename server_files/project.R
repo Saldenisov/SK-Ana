@@ -128,7 +128,6 @@ getOneMatrix  <- function(dataFile) {
   # Transpose if necessary
   # if(inputStyle$datStr != 'dxw') {
   if(input$datStr != 'dxw') {
-    print('Transpose')
     mat   = t(mat)
     tmp   = delay
     delay = wavl
