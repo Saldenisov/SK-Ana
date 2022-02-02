@@ -1606,6 +1606,7 @@ observeEvent(
             type = "warning",
             duration = 5
           )
+          resAmb$results = NULL
         }
       }
     } 
@@ -1685,14 +1686,14 @@ doAmbRot <- observeEvent(
       ),
       package = TRUE
     )
-    
+    resAmb$results = NULL
     obsAmbStatus$resume()
     bgAmbpx <<- rx
     
     id = showNotification(
       "Running ambiguity explorer...",
       type = "message",
-      duration = 10
+      duration = 5
     )
 
   }
