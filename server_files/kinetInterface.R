@@ -1148,11 +1148,10 @@ output$kinOpt <- DT::renderDataTable({
     # Detect params close to priors limits
     if (abs(opt$map[item] - LB[item]) < eps) {
       alert[item] <- " *** at min of prior"
-    } else
-      if (abs(opt$map[item] - UB[item]) < eps) {
-        alert[item] <- " *** at max of prior"
-      }
-
+    } else if (abs(opt$map[item] - UB[item]) < eps) {
+      alert[item] <- " *** at max of prior"
+    }
+    
     if (grepl("log", item)) {
       tags[item] <- sub("log", "", item)
       val[item] <- signif(exp(map[[item]]), digits = 2)

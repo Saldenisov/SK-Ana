@@ -41,7 +41,6 @@ __Wavelength range__ : `r signif(range(Inputs$wavl),3)`
 
 __Delay range__ : `r signif(range(Inputs$delay),3)`
 
-
 ```{r image, echo=FALSE}
 par(
   cex = cex, cex.main = cex, mar = mar,
@@ -49,7 +48,6 @@ par(
 )
 plotImage(Inputs$delay,Inputs$wavl,Inputs$mat)
 ```
-
 
 ```{r svd, results='asis', echo=FALSE}
 if('SVD' %in% input$inReport){
@@ -79,7 +77,6 @@ if('SVD' %in% input$inReport) {
 }
 ```
 
-
 ```{r als, results='asis', echo=FALSE}
 if ('ALS' %in% input$inReport) {
   cat("# ALS Decomposition\n\n")
@@ -92,13 +89,11 @@ if ('ALS' %in% input$inReport) {
 }
 ```
 
-
 ```{r als2, results='asis', echo=FALSE}
-if('ALS' %in% input$inReport){
-  cat ('## Spectra and Kinetics')
-}
+if('ALS' %in% input$inReport)
+  if (!is.null(alsOut))
+    cat ('## Spectra and Kinetics')
 ```
-
 
 ```{r als3, echo=FALSE}
 if('ALS' %in% input$inReport) {
@@ -111,46 +106,72 @@ if('ALS' %in% input$inReport) {
 ```
 
 ```{r als4, results='asis', echo=FALSE}
-if('ALS' %in% input$inReport){
-  cat ('## Residuals')
-}
+if('ALS' %in% input$inReport)
+   if (!is.null(alsOut))
+     cat ('## Residuals')
 ```
 
-
 ```{r als5, echo=FALSE}
-if('ALS' %in% input$inReport) {
-  if (!is.null(alsOut)){
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
-              CS$C,CS$S,cex=scale)
-  }
-}
+if('ALS' %in% input$inReport) 
+  if (!is.null(alsOut))
+    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S,cex=scale)
 ```
 
 ```{r als6, results='asis', echo=FALSE}
-if('ALS' %in% input$inReport){
-  cat ('## Contributions')
-}
+if('ALS' %in% input$inReport)
+   if (!is.null(alsOut))
+     cat ('## Contributions')
 ```
 
 ```{r als7, echo=FALSE, fig.height=7}
+if('ALS' %in% input$inReport)
+  if (!is.null(alsOut))
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S,cex=scale)
+```
+
+```{r als8, results='asis', echo=FALSE}
+if('ALS' %in% input$inReport)
+   if (!is.null(alsOut) & !is.null(resAmb$results))
+     cat ('## Ambiguity')
+```
+
+```{r als9, echo=FALSE, fig.height=5}
 if('ALS' %in% input$inReport) {
-  if (!is.null(alsOut)){
-    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
-                  CS$C,CS$S,cex=scale)
+  if (!is.null(alsOut) & !is.null(resAmb$results)) {
+    par(mfrow = c(1,2))
+    plotAmbVec(
+      alsOut <- doALS(), 
+      resAmb$results$solutions,
+      type = "Sp",
+      displayLines = input$ambDisplayLines,
+      xlim = rangesAmbSp$x,
+      ylim = rangesAmbSp$y,
+      delayTrans = Inputs$delayTrans,
+      cex = scale
+    )
+    plotAmbVec(
+      alsOut <- doALS(), 
+      resAmb$results$solutions,
+      type = "Kin",
+      displayLines = input$ambDisplayLines,
+      xlim = rangesAmbKin$x,
+      ylim = rangesAmbKin$y,
+      delayTrans = Inputs$delayTrans,
+      cex = scale
+    )
   }
 }
 ```
 
 ```{r kin, results='asis', echo=FALSE}
-if ('KIN' %in% input$inReport) {
+if ('KIN' %in% input$inReport)
   cat('# Kinetic modeling')
-}
+
 ```
 
 ```{r kincs, results='asis', echo=FALSE}
-if ('KIN' %in% input$inReport) {
+if ('KIN' %in% input$inReport)
   cat('## Chemical scheme and initial parameters values')
-}
 ```
 
 ```{r kincs.1, results='asis', comment='',echo=FALSE}
@@ -160,35 +181,32 @@ if ('KIN' %in% input$inReport) {
 ```
 
 ```{r kinop, results='asis', echo=FALSE}
-if ('KIN' %in% input$inReport) {
-  cat('## Optimization')
-}
+if ('KIN' %in% input$inReport) 
+  if (!is.null(kinOut <-resLoc$results))
+    cat('## Optimization')
 ```
 
 ```{r kinop.1, results='markup', comment='', echo=FALSE}
 if ('KIN' %in% input$inReport) {
-  if (!is.null(kinOut <- doKin())) {
-    if(!is.null(kinPrint$glOut)) {
+  if (!is.null(kinOut <-resLoc$results)) {
+    if(!is.null(resGlob$results)) {
       cat('GLOBAL OPTIMIZATION:\n')
-      print(gsub("\t", " ", kinPrint$glOut))
+      cat(stdGlobOut(), sep = '\n')
       cat('\n')
     }
     cat('LOCAL OPTIMIZATION:\n')
-    print(gsub("\t", " ", kinPrint$optOut))
+    cat(stdLocOut(), sep = '\n')
     cat('\n')
     if (kinOut$cnv != 0) {
       cat('WARNING: Optimization ended badly !\n')
     }
-    # cat('Lack-of-fit (%) :',signif(kinOut$lof, 3),'\n')
-    
-    CS <- reshapeCS(kinOut$C, kinOut$S)
   }
 }
 ```
 
 ```{r kinop.2, results = 'asis', echo=FALSE}
 if ('KIN' %in% input$inReport) {
-  if (!is.null(kinOut <- doKin())) {
+  if (!is.null(kinOut <-resLoc$results)) {
     cat('## Optimal parameters\n\n')
     paropt <- kinOut$paropt
     map <- parExpand(kinOut$map, paropt)
@@ -227,28 +245,27 @@ if ('KIN' %in% input$inReport) {
       # Detect params close to priors limits
       if (abs(kinOut$map[item] - LB[item]) < eps) {
         alert[item] <- " *** at min of prior"
-      } else
-        if (abs(kinOut$map[item] - UB[item]) < eps) {
-          alert[item] <- " *** at max of prior"
-        }
+      } else if (abs(kinOut$map[item] - UB[item]) < eps) {
+        alert[item] <- " *** at max of prior"
+      }
       
       if (grepl("log", item)) {
-        tags[item] <- sub("log", "", item)
-        val[item] <- signif(exp(map[[item]]), digits = 2)
-        valF[item] <- ifelse(
-          !is.finite(lSd[item]),
-          "",
-          paste("/*", signif(exp(lSd[item]), digits = 3))
-        )
-      } else {
-        tags[item] <- item
-        val[item] <- signif(map[item], digits = 2)
-        valF[item] <- ifelse(
-          !is.finite(lSd[item]),
-          "",
-          paste("+/-", signif(lSd[item], digits = 3))
-        )
-      }
+      tags[item] <- sub("log", "", item)
+      val[item] <- signif(exp(map[[item]]), digits = 2)
+      valF[item] <- ifelse(
+        !is.finite(lSd[item]),
+        "",
+        paste(signif(100*lSd[item], digits = 3),' %')
+      )
+    } else {
+      tags[item] <- item
+      val[item] <- signif(map[item], digits = 2)
+      valF[item] <- ifelse(
+        !is.finite(lSd[item]),
+        "",
+        signif(lSd[item], digits = 3)
+      )
+    }
     }
     
     knitr::kable(
@@ -264,90 +281,77 @@ if ('KIN' %in% input$inReport) {
 }
 ```
 
-
 ```{r kinLOF, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## L.o.f. vs. SVD and Integrated Kinetics')
-}
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results))
+    cat ('## L.o.f. vs. SVD and Integrated Kinetics')
 ```
-
 
 ```{r kinLOF.1, echo=FALSE}
-if('KIN' %in% input$inReport) {
-  if (!is.null(opt <- doKin()) & !is.null(s <- doSVD())) {
-    par(mfrow=c(1,2)) # Does not work... !?!?!?
-    plotLofVsSvd(s, opt)
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results)) {
+    plotLofVsSvd(s <- doSVD(), opt)
     plotIntKin(opt)
   }
-}
 ```
-
 
 ```{r kinPD, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## Parameters densities')
-}
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results))
+    cat ('## Parameters densities')
 ```
-
 
 ```{r kinPD.1, echo=FALSE}
-if('KIN' %in% input$inReport) {
-  if (!is.null(kinOut)){
-    plotPriPost(kinOut)
-  }
-}
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results))
+    plotPriPost(opt)
 ```
-
 
 ```{r kinRes, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## Residuals')
-}
+if('KIN' %in% input$inReport)
+    if (!is.null(opt <-resLoc$results))
+      cat ('## Residuals')
 ```
-
 
 ```{r kinRes.1, echo=FALSE}
 if('KIN' %in% input$inReport) {
-  if (!is.null(kinOut)){
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,
-              CS$C,CS$S,cex=scale)
-    plotResidAna(Inputs$delay,Inputs$wavl,Inputs$mat,
-                 CS$C,CS$S,cex=scale)
+  if (!is.null(opt <-resLoc$results)) {
+    CS <- reshapeCS(opt$C, opt$S)
+    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S,cex=scale)
+    plotResidAna(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S,cex=scale)
   }
 }
 ```
 
-
 ```{r kinSC, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## Spectra and Kinetics')
-}
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results))
+    cat ('## Spectra and Kinetics')
+
 ```
 
 ```{r kinSC.1, echo=FALSE}
 if('KIN' %in% input$inReport) {
-  if (!is.null(kinOut)){
+  if (!is.null(opt <-resLoc$results)) {
     par(mfrow=c(1,2))
-    plotAlsVec(kinOut,type="Sp" ,cex=scale)
-    plotAlsVec(kinOut,type="Kin",cex=scale)
+    plotAlsVec(opt,type="Sp" ,cex=scale)
+    plotAlsVec(opt,type="Kin",cex=scale)
   }
 }
 ```
 
-
 ```{r kinCont, results='asis', echo=FALSE}
-if('KIN' %in% input$inReport){
-  cat ('## Contributions')
-}
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results))
+    cat ('## Contributions')
 ```
 
 ```{r kinCont.1, echo=FALSE, fig.height=7}
-if('KIN' %in% input$inReport) {
-  if (!is.null(kinOut)){
-     plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,
-                   CS$C,CS$S)
+if('KIN' %in% input$inReport)
+  if (!is.null(opt <-resLoc$results)){
+    CS <- reshapeCS(opt$C, opt$S)
+    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S)
   }
-}
 ```
 
 
