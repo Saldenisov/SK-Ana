@@ -42,15 +42,13 @@ sidebarLayout(
     wellPanel(
       tabsetPanel(
         tabPanel(
-          value="alsOptTab",
-          title=h4("Alternated Least Squares"),
+          value = "alsOptTab",
+          title = h4("Alternated Least Squares"),
           style = "overflow-y:scroll; max-height: 600px",
           br(),
-          lapply(1:10, function(i) {
-            uiOutput(paste0('iter', i))
-          }),
+          htmlOutput('alsPrint'),
           htmlOutput("alsOpt")
-        ),
+        ), 
         tabPanel(
           title=h4("Diagnostics"),
           br(),

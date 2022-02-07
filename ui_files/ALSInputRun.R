@@ -33,6 +33,15 @@ fluidRow(
     tags$style(
       type='text/css', 
       "#runALS { width:100%; margin-top: 25px;}"
+    ),
+    actionButton(
+      "killALS",
+      strong("Stop"),
+      icon=icon("ban")
+    ),
+    tags$style(
+      type='text/css',
+      "#killALS { width:100%; margin-top: 5px;}"
     )
   )
 )

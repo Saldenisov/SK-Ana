@@ -19,7 +19,7 @@ getC <- function(S, data, C, nonnegC = TRUE,
   
   for (i in 1:nrow(data)) {
     if (nonnegC) {
-      cc <- try(nnls(S, data[i, ]))
+      cc <- try(nnls::nnls(S, data[i, ]))
     } else {
       cc <- try(qr.coef(qr(S), data[i, ]))
     }
@@ -142,6 +142,72 @@ getS <- function(C, data, S, xS, nonnegS, uniS,
   
   return(S)
 }
+als <- function(
+  delay, delayId, wavl, mat, nullC, S, C,
+  nAls    = 2, 
+  nStart  = 2,
+  S0      = NULL,
+  maxiter = 100,
+  uniS    = NA,
+  nonnegS = NA,
+  nonnegC = NA,
+  thresh  = NA,
+  normS   = NA,
+  hardS0  = NA,
+  wHardS0 = NA,
+  optS1st = NA,
+  smooth  = FALSE,
+  SumS    = NA,
+  closeC  = NA,
+  wCloseC = NA) {
+  
+  # Interface to the core ALS code (myals)
+  # Implements sequential dimension growth...
+  
+  # Run
+  res <- list()
+  for (n in nStart:nAls) { 
+    
+    cat(paste0('Running ALS (dim = ', n,')<br/>'))
+    
+    res[[n]] <- myals(
+      C = C, Psi = mat, S = S, xC = delay, xS = wavl,
+      maxiter = maxiter,
+      uniS = uniS,
+      nonnegS = nonnegS,
+      nonnegC = nonnegC,
+      thresh = thresh,
+      normS = normS,
+      S0 = S0,
+      hardS0 = hardS0,
+      wHardS0 = wHardS0,
+      optS1st = optS1st,
+      smooth = smooth,
+      SumS = SumS,
+      nullC = nullC,
+      closeC = closeC,
+      wCloseC = wCloseC,
+      silent = FALSE
+    )
+    res[[n]]$hessian <- NA # Compatibility with Kinet
+    
+    if (n < nAls) {
+      # Prepare next iteration
+      S <- res[[n]]$S
+      C <- res[[n]]$C
+      S <- cbind(S, 1)
+      C <- cbind(C, 1)
+    }
+  }
+  
+  colnames(res[[nAls]]$S) <- paste0("S_", 1:nAls)
+  colnames(res[[nAls]]$C) <- paste0("C_", 1:nAls)
+  
+  res[[nAls]]$nullC <- nullC
+  
+  return(res[[nAls]])
+  
+}
 myals <- function(C, Psi, S,
                   thresh = 0.001,
                   maxiter = 100,
@@ -151,8 +217,7 @@ myals <- function(C, Psi, S,
                   normS = TRUE, uniS = FALSE, S0 = NULL, smooth = 0,
                   silent = TRUE, SumS = FALSE, hardS0 = TRUE,
                   wHardS0 = 1.0,
-                  nullC = NA, closeC = FALSE, wCloseC = 0,
-                  updateProgress = NULL) {
+                  nullC = NA, closeC = FALSE, wCloseC = 0) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
@@ -184,9 +249,9 @@ myals <- function(C, Psi, S,
     }
   }
   
-  if (!silent) {
-    cat("Initial RSS", initialrss, "\n")
-  }
+  if (!silent) 
+    cat("Initial RSS = ", initialrss, "<br/>")
+  
   b <- ifelse(optS1st, 1, 0)
   iter <- 0
   oneMore <- TRUE
@@ -211,33 +276,27 @@ myals <- function(C, Psi, S,
     RD <- ((oldrss - rss) / oldrss)
     oldrss <- rss
     
-    msg <- paste0(
-      "Iter. (opt. ",
-      ifelse(iter %% 2 == b, "S", "C"), "): ", iter,
-      ", |RD| : ", signif(abs(RD), 3), " > ", thresh
-    )
-    
-    if (!silent) {
-      cat(msg, "\n")
-    }
-    if (is.function(updateProgress)) {
-      updateProgress(
-        value = iter / maxiter,
-        detail = msg
+    if ( !silent & iter%%10 == 1 ) {
+      msg <- paste0(
+        "Iter. (opt. ",
+        ifelse(iter %% 2 == b, "S", "C"), "): ", iter,
+        ", |RD| : ", signif(abs(RD), 3), " > ", thresh
       )
+      cat(msg, "<br/>")
     }
     
     oneMore <- ((iter %% 2 != b) && maxiter != 1 && iter <= 2)
   }
+  
   vlof <- lof(model = mod, data = Psi)
-  msg <- HTML(paste0(
-    "|RD| : ", signif(abs(RD), 3), " <= ", thresh,
+  msg <- shiny::HTML(paste0(
+    "Dimension :", ncol(S),
+    "<br/>|RD| : ", signif(abs(RD), 3), " <= ", thresh,
     "<br/> Lack-of-fit (%) : ", signif(vlof, 3)
   ))
   
-  if (!silent) {
-    cat(msg)
-  }
+  # if (!silent)
+  #   cat(msg)
   
   return(
     list(
@@ -247,7 +306,6 @@ myals <- function(C, Psi, S,
     )
   )
 }
-
 plotAlsVec <- function(alsOut, type = "Kin",
                        xlim = NULL, ylim = NULL,
                        plotUQ = FALSE, nMC = 100, 
@@ -1136,207 +1194,244 @@ observe({
 })
 
 ## ALS ####
-als <- function() {
-  nAls <- input$nALS
-  
-  # (Re)-init output
-  lapply(1:10, function(n) {
-    output[[paste0("iter", n)]] <<- renderUI({
-      list()
-    })
-  })
-  
-  # Reinit ambRot vector selection
-  updateCheckboxGroupInput(
-    session,
-    inputId = "vecsToRotate",
-    selected = c(1, 2)
-  )
-  
-  # Suppress masked areas from coordinates
-  delay <- Inputs$delay[!is.na(Inputs$delayMask)]
-  delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
-  wavl <- Inputs$wavl[!is.na(Inputs$wavlMask)]
-  
-  if (input$useFiltered) {
-    # Choose SVD filtered matrix
-    s <- doSVD()
-    mat <- matrix(0, nrow = length(delay), ncol = length(wavl))
-    for (ic in 1:input$nSV)
-      mat <- mat + s$u[, ic] %o% s$v[, ic] * s$d[ic]
-  } else {
-    mat <- Inputs$mat
-    mat <- mat[!is.na(Inputs$delayMask), ]
-    mat <- mat[, !is.na(Inputs$wavlMask) ]
-  }
-  
-  # External spectrum shapes
-  S0 <- NULL
-  if (length(externalSpectraALS) != 0)
-    for(sp in names(externalSpectraALS)) {
-      pname = paste0('fixALS_',sp)
-      if( input[[pname]] )
-        S0 = cbind(S0, externalSpectraALS[[sp]])
-    }
-  
-  # Null C constraints
-  nullC <- NA
-  if (!anyNA(Inputs$maskSpExp)) {
-    nullC <- matrix(1, nrow = length(delayId), ncol = nAls)
-    for (i in 1:nAls) {
-      for (j in 1:nrow(Inputs$maskSpExp)) {
-        if (Inputs$maskSpExp[j, i] == 0) {
-          sel <- which(delayId == j)
-          nullC[sel, i] <- 0
+
+### Asynchronous Process ####
+bgALSpx = NULL
+resALS  = reactiveValues(results = NULL)
+bgALS   = reactiveValues(status = process_status(bgALSpx))
+alsStdOut = tempfile(tmpdir = '/tmp',fileext = '_als.stdout')
+file.create(alsStdOut, showWarnings = FALSE)
+obsALSStatus = observe(
+  {
+    invalidateLater(millis = 500)
+    bgALS$status = process_status(bgALSpx)
+  },
+  suspended = TRUE
+)
+
+### Kill current process ####
+observeEvent(
+  input$killALS,
+  isolate({
+    if(!is.null(bgALSpx)) {
+      if(!is.null(bgALS$status$running)) {
+        if(bgALS$status$running) {
+          bgALSpx$kill()
+          nclicks(0)
+          obsALSStatus$suspend()
+          id = showNotification(
+            "ALS stopped !",
+            type = "warning",
+            duration = 5
+          )
+          resALS$results = NULL
         }
       }
-    }
-  }
-  
-  progress <- shiny::Progress$new(style = "notification")
-  on.exit(progress$close())
-  updateProgress <- function(value = NULL, detail = NULL) {
-    progress$set(value = value, detail = detail)
-  }
-  
-  if (input$initALS == "seq") {
-    nStart <- 2
-  } else {
-    nStart <- nAls
-  }
-  
-  if (input$initALS == "SVD" || input$initALS == "seq") {
-    # initialize with abs(SVD)
-    if (is.null(s <- doSVD())) {
-      return(NULL)
-    }
-    
-    S <- matrix(abs(s$v[, 1:nStart]), ncol = nStart)
-    C <- matrix(abs(s$u[, 1:nStart]), ncol = nStart)
-  } else if (input$initALS == "NMF") {
-    # initialize with SVD + NMF
-    if (is.null(s <- doSVD())) {
-      return(NULL)
-    }
-    
-    progress$set(message = "Running NMF ", value = 0)
-    
-    # 1/ filter matrix to avoid negative values (noise)
-    fMat <- rep(0, nrow = nrow(data), ncol = ncol(data))
-    for (i in 1:nStart)
-      fMat <- fMat + s$u[, i] %o% s$v[, i] * s$d[i]
-    # 2/ NMF
-    # res  = NMF::nmf(abs(fMat), rank=nStart, method='lee')
-    # C = NMF::basis(res)
-    # S = t(NMF::coef(res))
-    res <- NMFN::nnmf(abs(fMat),
-                      k = nStart,
-                      method = "nnmf_als",
-                      eps = 1e-8)
-    C <- res$W
-    S <- t(res$H)
-  } else {
-    # restart from existing solution
-    if (!exists("RES")) {
-      return(NULL)
-    }
-    S <- RES$S[, 1:nStart]
-    C <- RES$C[, 1:nStart]
-  }
-  
-  # Progress bar
-  progress$set(message = "Running ALS ", value = 0)
-  
-  # Run
-  res <- list()
-  for (n in nStart:nAls) {
-    progress$set(message = paste0("Running ALS ", n), value = 0)
-    res[[n]] <- myals(
-      C = C, Psi = mat, S = S, xC = delay, xS = wavl,
-      maxiter = input$maxiter,
-      uniS = input$uniS,
-      nonnegS = input$nonnegS,
-      nonnegC = input$nonnegC,
-      thresh = 10^input$alsThresh,
-      normS = input$normS,
-      S0 = S0,
-      hardS0 = !input$softS0,
-      wHardS0 = 10^input$wSoftS0,
-      optS1st = input$optS1st,
-      smooth = input$smooth,
-      SumS = input$SumS,
-      updateProgress = updateProgress,
-      nullC = nullC,
-      closeC = input$closeC,
-      wCloseC = 10^input$wCloseC
-    )
-    res[[n]]$hessian <- NA # Compatibility with Kinet
-    
-    if (n < nAls) {
-      # Prepare next iteration
-      S <- res[[n]]$S
-      C <- res[[n]]$C
-      S <- cbind(S, 1)
-      C <- cbind(C, 1)
-    }
-    RES <<- res[[n]]
-  }
-  
-  lapply(nStart:nAls, function(n) {
-    output[[paste0("iter", n)]] <<- renderUI({
-      list(
-        h4(n, " species"),
-        h5("Terminated in ", res[[n]]$iter, " iterations"),
-        res[[n]]$msg,
-        br()
-      )
-    })
+    } 
   })
-  
-  colnames(res[[nAls]]$S) <- paste0("S_", 1:nAls)
-  colnames(res[[nAls]]$C) <- paste0("C_", 1:nAls)
-  
-  # Update Reporting
-  todo = c(includeInReport(),'ALS')
-  includeInReport(todo) 
-  updateCheckboxGroupInput(session,
-                           inputId = "inReport",
-                           choices = todo,
-                           selected = todo
-  )
-  
-  res[[nAls]]$nullC <- nullC
-  
-  return(res[[nAls]])
-}
+)
 
-doALS <- eventReactive(
+### Manage results ####
+obsALS = observeEvent(
+  bgALS$status$result, 
+  {
+    obsALSStatus$suspend()
+    nclicks(0)
+    resALS$results = bgALS$status$result
+    
+    # Update Reporting
+    if(! 'ALS' %in% includeInReport()) {
+      todo = c(includeInReport(),'ALS')
+      includeInReport(todo) 
+      updateCheckboxGroupInput(session,
+                               inputId = "inReport",
+                               choices = todo,
+                               selected = todo
+      )
+    }
+
+  },
+  ignoreInit = TRUE,
+  ignoreNULL = TRUE
+)
+
+nclicks <- reactiveVal(0)
+
+doALS <- observeEvent(
   input$runALS, {
     if (isolate(!checkInputsSanity())) {
       return(NULL)
     }
-    return(als())
+    if(nclicks() != 0){
+      showNotification("Already running ALS")
+      return(NULL)
+    }
+
+    # Increment clicks and prevent concurrent analyses
+    nclicks(nclicks() + 1)
+
+    
+    # Reinit ambRot vector selection
+    updateCheckboxGroupInput(
+      session,
+      inputId = "vecsToRotate",
+      selected = c(1, 2)
+    )
+    
+    nAls = input$nALS
+    
+    # Suppress masked areas from coordinates
+    delay <- Inputs$delay[!is.na(Inputs$delayMask)]
+    delayId <- Inputs$delayId[!is.na(Inputs$delayMask)]
+    wavl <- Inputs$wavl[!is.na(Inputs$wavlMask)]
+    
+    if (input$useFiltered) {
+      # Choose SVD filtered matrix
+      svdRES = doSVD()
+      mat <- matrix(0, nrow = length(delay), ncol = length(wavl))
+      for (ic in 1:input$nSV)
+        mat <- mat + svdRES$u[, ic] %o% svdRES$v[, ic] * svdRES$d[ic]
+    } else {
+      mat <- Inputs$mat
+      mat <- mat[!is.na(Inputs$delayMask), ]
+      mat <- mat[, !is.na(Inputs$wavlMask) ]
+    }
+    
+    # Null C constraints
+    nullC <- NA
+    if (!anyNA(Inputs$maskSpExp)) {
+      nullC <- matrix(1, nrow = length(delayId), ncol = nAls)
+      for (i in 1:nAls) {
+        for (j in 1:nrow(Inputs$maskSpExp)) {
+          if (Inputs$maskSpExp[j, i] == 0) {
+            sel <- which(delayId == j)
+            nullC[sel, i] <- 0
+          }
+        }
+      }
+    }
+    
+    # External spectrum shapes
+    S0 <- NULL
+    if (length(externalSpectraALS) != 0)
+      for(sp in names(externalSpectraALS)) {
+        pname = paste0('fixALS_',sp)
+        if( input[[pname]] )
+          S0 = cbind(S0, externalSpectraALS[[sp]])
+      }
+     
+    # S-C Vectors init values
+    initALS = input$initALS
+    if (initALS == "seq") {
+      nStart = 2
+    } else {
+      nStart = nAls
+    }
+
+    if (initALS == "SVD" | initALS == "seq") {
+      # Initialize with abs(SVD)
+      if (is.null(svdRES <- doSVD()))
+        return(NULL)
+
+      S = matrix(abs(svdRES$v[, 1:nStart]), ncol = nStart)
+      C = matrix(abs(svdRES$u[, 1:nStart]), ncol = nStart)
+
+    } else if (initALS == "NMF") {
+      # initialize with SVD + NMF
+      if (is.null(svdRES <- doSVD()))
+        return(NULL)
+
+      # 1/ filter matrix to avoid negative values (noise)
+      fMat = rep(0, nrow = nrow(data), ncol = ncol(data))
+      for (i in 1:nStart)
+        fMat = fMat + svdRES$u[, i] %o% svdRES$v[, i] * svdRES$d[i]
+      # 2/ NMF
+      res = NMFN::nnmf(
+        abs(fMat),
+        k = nStart,
+        method = "nnmf_als",
+        eps = 1e-8)
+      C = res$W
+      S = t(res$H)
+
+    } else {
+
+      RES = resALS$results
+      # restart from existing solution
+      if (is.null(RES))
+        return(NULL)
+
+      S <- RES$S[, 1:nStart]
+      C <- RES$C[, 1:nStart]
+    }
+    
+    id = showNotification(
+      "Running ALS...",
+      type = "message",
+      duration = 5
+    )
+    
+    rx = callr::r_bg(
+      als,
+      args = list(
+        delay, delayId, wavl, mat, nullC, S, C,
+        nAls    = nAls,
+        nStart  = nStart,
+        S0      = S0,
+        maxiter = input$maxiter,
+        uniS    = input$uniS,
+        nonnegS = input$nonnegS,
+        nonnegC = input$nonnegC,
+        thresh  = 10^input$alsThresh,
+        normS   = input$normS,
+        hardS0  = !input$softS0,
+        wHardS0 = 10^input$wSoftS0,
+        optS1st = input$optS1st,
+        smooth  = input$smooth,
+        SumS    = input$SumS,
+        closeC  = input$closeC,
+        wCloseC = 10^input$wCloseC
+      ),
+      package = TRUE,
+      stdout = alsStdOut,
+      stderr = alsStdOut
+    )
+    resALS$results = NULL
+    obsALSStatus$resume()
+    bgALSpx <<- rx
+    
   }
 )
 
-## Outputs ####
+### Outputs ####
+stdALSOut = reactiveFileReader(
+  intervalMillis = 500,
+  session  = session,
+  filePath = alsStdOut,
+  readFunc = readLines,
+  warn     = FALSE
+)
+output$alsPrint <- renderPrint({
+  cat(stdALSOut(), sep = '\n')
+})
 output$alsOpt <- renderUI({
-  if (input$runALS == 0) {
-    h5('Select ALS options and press "Run"\n')
+  if (is.null(alsOut <- resALS$results)) {
+    if(is.null(bgALSpx))
+      h5('Select ALS options and press "Run"\n')
+    
   } else {
-    alsOut <- doALS()
-    h5("ALS done")
-    isolate({
-      if (alsOut$iter >= input$maxiter) {
-        strong("Warning : maxiter limit reached !!!")
-      }
-    })
+    list(
+      h4(">>> ALS done <<<"),
+      # h5(n, " species")
+      h5("Terminated in ", alsOut$iter, " iterations"),
+      if (alsOut$iter >= input$maxiter)
+        strong("Warning : maxiter limit reached !!!"),
+      h5(alsOut$msg)
+    )
   }
 })
 output$alsResid1 <- renderPlot({
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+  req(alsOut <- resALS$results)
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   
@@ -1362,9 +1457,7 @@ output$alsResid1 <- renderPlot({
 },
 height = plotHeight)
 output$alsResid3 <- renderPlot({
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+  req(alsOut <- resALS$results)
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   
@@ -1390,9 +1483,7 @@ output$alsResid3 <- renderPlot({
 },
 height = plotHeight)
 output$alsResid2 <- renderPlot({
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+  req(alsOut <- resALS$results)
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   
@@ -1420,11 +1511,9 @@ height = plotHeight)
 
 rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
 
-output$alsKinVectors <- renderPlot(
-  {
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+output$alsKinVectors <- renderPlot({
+  req(alsOut <- resALS$results)
+  
   plotAlsVec(alsOut,
              type = "Kin",
              xlim = rangesAlsKin$x,
@@ -1448,11 +1537,9 @@ observeEvent(input$alsKin_dblclick, {
 
 rangesAlsSp <- reactiveValues(x = NULL, y = NULL)
 
-output$alsSpVectors <- renderPlot(
-  {
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+output$alsSpVectors <- renderPlot({
+  req(alsOut <- resALS$results)
+  
   plotAlsVec(alsOut,
              type = "Sp",
              xlim = rangesAlsSp$x,
@@ -1478,9 +1565,7 @@ observeEvent(input$alsSp_dblclick, {
 observeEvent(
   input$alsSpKinSave,
   isolate({
-    if (is.null(alsOut <- doALS())) {
-      return(NULL)
-    }
+    req(alsOut <- resALS$results)
     
     CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
     
@@ -1518,11 +1603,9 @@ observeEvent(
   })
 )
 
-output$alsContribs <- renderPlot(
-  {
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+output$alsContribs <- renderPlot({
+  req(alsOut <- resALS$results)
+  
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
   plotConbtribs(
     Inputs$delay, Inputs$wavl, Inputs$mat,
@@ -1536,9 +1619,7 @@ height = plotHeight
 ## Ambiguity ####
 ### UI ####
 output$selAmbParams <- renderUI({
-  if (is.null(alsOut <- doALS())) {
-    return(NULL)
-  }
+  req(alsOut <- resALS$results)
   
   lv <- list()
   for (i in 1:input$nALS)
@@ -1649,8 +1730,8 @@ obsAmb = observeEvent(
 ### Run ####
 doAmbRot <- observeEvent(
   input$runALSAmb, {
-    req(alsOut <- doALS())
-    
+    req(alsOut <- resALS$results)
+
     isolate({
       rotVec <- as.numeric(unlist(input$vecsToRotate))
       eps <- input$alsRotAmbEps
@@ -1671,6 +1752,12 @@ doAmbRot <- observeEvent(
     S0 <- alsOut$S
     nullC <- alsOut$nullC
     
+    id = showNotification(
+      "Running ambiguity explorer...",
+      type = "message",
+      duration = 5
+    )
+    
     fun = get(paste0('rotAmb',length(rotVec)))
     rx <- callr::r_bg(
       fun,
@@ -1690,11 +1777,7 @@ doAmbRot <- observeEvent(
     obsAmbStatus$resume()
     bgAmbpx <<- rx
     
-    id = showNotification(
-      "Running ambiguity explorer...",
-      type = "message",
-      duration = 5
-    )
+    
 
   }
 )
@@ -1704,8 +1787,10 @@ rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
 
 output$ambSpVectors <- renderPlot({
   req(resAmb$results)    
+  req(alsOut <- resALS$results)
+  
   plotAmbVec(
-    alsOut <- doALS(), 
+    alsOut, 
     resAmb$results$solutions,
     type = "Sp",
     displayLines = input$ambDisplayLines,
@@ -1732,8 +1817,10 @@ rangesAmbKin <- reactiveValues(x = NULL, y = NULL)
 
 output$ambKinVectors <- renderPlot({
   req(resAmb$results)    
+  req(alsOut <- resALS$results)
+  
   plotAmbVec(
-    alsOut <- doALS(), 
+    alsOut, 
     resAmb$results$solutions,
     type = "Kin",
     displayLines = input$ambDisplayLines,

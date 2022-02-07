@@ -620,7 +620,7 @@ rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
   S <- S0[, rotVec]
   C <- C0[, rotVec]
   
-  ttry <- function(i) dens * i
+  ttry <- function(i) {dens * i}
   
   ikeep <- 0
   solutions <- list()
@@ -644,9 +644,7 @@ rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
           OK2 <- FALSE
           
           iter <- iter + 1
-          # if(!is.null(updateProgress))
-          #   updateProgress(value = iter / 100)
-          
+
           # Transformation matrix
           R <- matrix(c(
             1, t12,
@@ -671,7 +669,6 @@ rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
               C1[, i] <- C1[, i] * n
             }
             
-            
             if (!anyNA(nullC)) {
               C1 <- C1 * nullC[, rotVec]
             }
@@ -691,19 +688,19 @@ rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
             }
           }
           
-          httpuv::service()
-          if (input$killALSAmb) { # Get out of here
-            if (length(solutions) != 0) {
-              solutions$rotVec <- rotVec
-              solutions$eps <- eps
-            }
-            return(
-              list(
-                solutions = solutions,
-                finished = FALSE
-              )
-            )
-          }
+          # httpuv::service()
+          # if (input$killALSAmb) { # Get out of here
+          #   if (length(solutions) != 0) {
+          #     solutions$rotVec <- rotVec
+          #     solutions$eps <- eps
+          #   }
+          #   return(
+          #     list(
+          #       solutions = solutions,
+          #       finished = FALSE
+          #     )
+          #   )
+          # }
         }
         if (s12 == 0) OK1 <- FALSE
       }
@@ -729,7 +726,7 @@ rotAmb3 <- function(C0, S0, data, rotVec = 1:3,
   S <- S0[, rotVec]
   C <- C0[, rotVec]
   
-  ttry <- function(i) dens * i
+  ttry <- function(i) {dens * i}
   
   ikeep <- 0
   solutions <- list()
@@ -835,20 +832,20 @@ rotAmb3 <- function(C0, S0, data, rotVec = 1:3,
                               if (s31 == 0) OK6 <- FALSE
                             }
                           }
-                          httpuv::service()
-                          if (input$killALSAmb) { # Get out of here
-                            # print(length(solutions))
-                            if (length(solutions) != 0) {
-                              solutions$rotVec <- rotVec
-                              solutions$eps <- eps
-                            }
-                            return(
-                              list(
-                                solutions = solutions,
-                                finished = FALSE
-                              )
-                            )
-                          }
+                          # httpuv::service()
+                          # if (input$killALSAmb) { # Get out of here
+                          #   # print(length(solutions))
+                          #   if (length(solutions) != 0) {
+                          #     solutions$rotVec <- rotVec
+                          #     solutions$eps <- eps
+                          #   }
+                          #   return(
+                          #     list(
+                          #       solutions = solutions,
+                          #       finished = FALSE
+                          #     )
+                          #   )
+                          # }
                         }
                         if (s13 == 0) OK5 <- FALSE
                       }
@@ -947,6 +944,35 @@ getExternalSpectra <- function(ui, inputFile, wavl, tag) {
   }
   return(list(ui = ui, extSpectra = extSpectra))
 }
+process_id = function(px) {
+  if (is.null(px)) return(NULL)
+  px$get_pid()
+}
+process_running = function(px) {
+  if (is.null(px)) return(NULL)
+  px$is_alive()
+}
+process_exit_status = function(px) {
+  if (is.null(px)) return(NULL)
+  px$get_exit_status()
+}
+process_result = function(px) {
+  if (is.null(px)) return(NULL)
+  if (is.null(process_running(px))) return(NULL)
+  if (process_running(px)) return(NULL)
+  if (is.null(process_exit_status(px))) return(NULL)
+  if (process_exit_status(px) != 0) return(NULL)
+  px$get_result()
+}
+process_status = function(px) {
+  list(
+    pid         = process_id(px), 
+    running     = process_running(px),
+    exit_status = process_exit_status(px),
+    result      = process_result(px) 
+  )
+}
+
 # Interactive ####
 
 ## Get external spectra #### 
@@ -1508,6 +1534,7 @@ height = plotHeight
 )
 
 ## Ambiguity ####
+### UI ####
 output$selAmbParams <- renderUI({
   if (is.null(alsOut <- doALS())) {
     return(NULL)
@@ -1553,15 +1580,76 @@ output$selAmbParams <- renderUI({
   )
 })
 
+### Asynchronous Process ####
+bgAmbpx = NULL
+resAmb  = reactiveValues(results = NULL)
+bgAmb   = reactiveValues(status = process_status(bgAmbpx))
+obsAmbStatus = observe(
+  {
+    invalidateLater(millis = 500)
+    bgAmb$status = process_status(bgAmbpx)
+  },
+  suspended = TRUE
+)
 
+### Kill current process ####
+observeEvent(
+  input$killALSAmb,
+  isolate({
+    if(!is.null(bgAmbpx)) {
+      if(!is.null(bgAmb$status$running)) {
+        if(bgAmb$status$running) {
+          bgAmbpx$kill()
+          obsAmbStatus$suspend()
+          id = showNotification(
+            "Ambiguity explorer stopped !",
+            type = "warning",
+            duration = 5
+          )
+          resAmb$results = NULL
+        }
+      }
+    } 
+  })
+)
 
-doAmbRot <- eventReactive(
-  input$runALSAmb, {
-    if (is.null(alsOut <- doALS())) {
-      return(NULL)
+### Manage results ####
+obsAmb = observeEvent(
+  bgAmb$status$result, 
+  {
+    sol = bgAmb$status$result
+    if (length(sol$solutions) == 0) {
+      if (sol$finished) {
+        showModal(modalDialog(
+          title = ">>>> No Solution Found <<<< ",
+          paste0(
+            "Try to decrease the exploration step ",
+            "and/or the relative positivity threshold!"
+          ),
+          easyClose = TRUE,
+          footer = modalButton("Close"),
+          size = "s"
+        ))
+      } else {
+        showModal(modalDialog(
+          title = ">>>> No Solution Found <<<< ",
+          paste0("Try to let the algorithm run for a longer time!"),
+          easyClose = TRUE,
+          footer = modalButton("Close"),
+          size = "s"
+        ))
+      }
     }
-    
-    updateButton(session, "killALSAmb", value = FALSE)
+    resAmb$results = sol
+  },
+  ignoreInit = TRUE,
+  ignoreNULL = TRUE
+)
+
+### Run ####
+doAmbRot <- observeEvent(
+  input$runALSAmb, {
+    req(alsOut <- doALS())
     
     isolate({
       rotVec <- as.numeric(unlist(input$vecsToRotate))
@@ -1583,75 +1671,50 @@ doAmbRot <- eventReactive(
     S0 <- alsOut$S
     nullC <- alsOut$nullC
     
-    solutions <- NULL
-    finished <- FALSE
-    if (length(rotVec) == 2) {
-      sol <- rotAmb2(C0, S0,
-                     data = Inputs$mat, nullC = nullC,
-                     rotVec = rotVec, dens = dens, eps = eps,
-                     updateProgress = NULL
-      )
-      solutions <- sol$solutions
-      finished <- sol$finished
-    }
-    else if (length(rotVec) == 3) {
-      sol <- rotAmb3(C0, S0,
-                     data = Inputs$mat, nullC = nullC,
-                     rotVec = rotVec, dens = dens, eps = eps,
-                     updateProgress = updateProgress
-      )
-      solutions <- sol$solutions
-      finished <- sol$finished
-    }
+    fun = get(paste0('rotAmb',length(rotVec)))
+    rx <- callr::r_bg(
+      fun,
+      args = list(
+        C0 = C0, 
+        S0 = S0,
+        data = Inputs$mat, 
+        nullC = nullC,
+        rotVec = rotVec, 
+        dens = dens, 
+        eps = eps,
+        updateProgress = NULL
+      ),
+      package = TRUE
+    )
+    resAmb$results = NULL
+    obsAmbStatus$resume()
+    bgAmbpx <<- rx
     
-    if (length(solutions) == 0) {
-      if (finished) {
-        showModal(modalDialog(
-          title = ">>>> No Solution Found <<<< ",
-          paste0(
-            "Try to decrease the exploration step ",
-            "and/or the relative positivity threshold!"
-          ),
-          easyClose = TRUE,
-          footer = modalButton("Close"),
-          size = "s"
-        ))
-      } else {
-        showModal(modalDialog(
-          title = ">>>> No Solution Found <<<< ",
-          paste0("Try to let the algorithm run for a longer time!"),
-          easyClose = TRUE,
-          footer = modalButton("Close"),
-          size = "s"
-        ))
-      }
-    }
-    
-    return(solutions)
+    id = showNotification(
+      "Running ambiguity explorer...",
+      type = "message",
+      duration = 5
+    )
+
   }
 )
 
 
 rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
 
-output$ambSpVectors <- renderPlot(
-  {
-    if (is.null(alsOut <- doALS())) {
-      return(NULL)
-    }
-    if (!is.list(solutions <- doAmbRot())) {
-      cat(paste0("No solutions found \n"))
-    } else {
-      plotAmbVec(alsOut, solutions,
-                 type = "Sp",
-                 displayLines = input$ambDisplayLines,
-                 xlim = rangesAmbSp$x,
-                 ylim = rangesAmbSp$y,
-                 delayTrans = Inputs$delayTrans
-      )
-    }
-  },
-  height = plotHeight - 100
+output$ambSpVectors <- renderPlot({
+  req(resAmb$results)    
+  plotAmbVec(
+    alsOut <- doALS(), 
+    resAmb$results$solutions,
+    type = "Sp",
+    displayLines = input$ambDisplayLines,
+    xlim = rangesAmbSp$x,
+    ylim = rangesAmbSp$y,
+    delayTrans = Inputs$delayTrans
+  )
+},
+height = plotHeight - 100
 )
 
 observeEvent(input$ambSp_dblclick, {
@@ -1667,25 +1730,19 @@ observeEvent(input$ambSp_dblclick, {
 
 rangesAmbKin <- reactiveValues(x = NULL, y = NULL)
 
-output$ambKinVectors <- renderPlot(
-  {
-    if (is.null(alsOut <- doALS())) {
-      return(NULL)
-    }
-    
-    if (!is.list(solutions <- doAmbRot())) {
-      cat(paste0("No solutions found \n"))
-    } else {
-      plotAmbVec(alsOut, solutions,
-                 type = "Kin",
-                 displayLines = input$ambDisplayLines,
-                 xlim = rangesAmbKin$x,
-                 ylim = rangesAmbKin$y,
-                 delayTrans = Inputs$delayTrans
-      )
-    }
-  },
-  height = plotHeight - 100
+output$ambKinVectors <- renderPlot({
+  req(resAmb$results)    
+  plotAmbVec(
+    alsOut <- doALS(), 
+    resAmb$results$solutions,
+    type = "Kin",
+    displayLines = input$ambDisplayLines,
+    xlim = rangesAmbKin$x,
+    ylim = rangesAmbKin$y,
+    delayTrans = Inputs$delayTrans
+  )
+},
+height = plotHeight - 100
 )
 
 observeEvent(input$ambKin_dblclick, {

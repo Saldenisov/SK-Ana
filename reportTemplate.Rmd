@@ -80,7 +80,7 @@ if('SVD' %in% input$inReport) {
 ```{r als, results='asis', echo=FALSE}
 if ('ALS' %in% input$inReport) {
   cat("# ALS Decomposition\n\n")
-  if (!is.null(alsOut <- doALS())) {
+  if (!is.null(alsOut <- resALS$results)) {
     cat("__Number of components__ : ", input$nALS, "\n\n")
     cat("__Results__ after ", alsOut$iter, " iterations\n\n")
     cat(alsOut$msg)
