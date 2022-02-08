@@ -140,7 +140,7 @@ if('ALS' %in% input$inReport) {
   if (!is.null(alsOut) & !is.null(resAmb$results)) {
     par(mfrow = c(1,2))
     plotAmbVec(
-      alsOut <- doALS(), 
+      alsOut, 
       resAmb$results$solutions,
       type = "Sp",
       displayLines = input$ambDisplayLines,
@@ -150,7 +150,7 @@ if('ALS' %in% input$inReport) {
       cex = scale
     )
     plotAmbVec(
-      alsOut <- doALS(), 
+      alsOut, 
       resAmb$results$solutions,
       type = "Kin",
       displayLines = input$ambDisplayLines,

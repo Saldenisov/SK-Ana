@@ -1698,6 +1698,7 @@ observeEvent(
 obsAmb = observeEvent(
   bgAmb$status$result, 
   {
+    obsAmbStatus$suspend()
     sol = bgAmb$status$result
     if (length(sol$solutions) == 0) {
       if (sol$finished) {

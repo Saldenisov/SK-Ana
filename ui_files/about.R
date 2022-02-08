@@ -3,7 +3,7 @@ sidebarPanel(
   h5("Author      : P. Pernot"),
   h5("Affiliation : CNRS"),
   h5("Version     : 3.4.2"),
-  h5("Date        : 2022/02/07"),
+  h5("Date        : 2022/02/08"),
   hr( style="border-color: #666;"),
   a(href="https://github.com/ppernot/SK-Ana","How to cite..."),
   br(),

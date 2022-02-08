@@ -736,6 +736,7 @@ obsGlob = observeEvent(
       map = bgGlob$status$result$map 
     )
     # Do refine
+    obsGlobStatus$suspend()
     obsLocStatus$resume()
     doKinLoc()
   },
@@ -754,6 +755,7 @@ obsLoc =observeEvent(
       cnv     = best$convergence
     )
     resLoc$results = doKinFinish(opt0)
+    obsLocStatus$suspend()
   },
   ignoreInit = TRUE,
   ignoreNULL = TRUE
