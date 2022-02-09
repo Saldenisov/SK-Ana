@@ -65,6 +65,10 @@ getS <- function(C, data, S, xS, nonnegS, uniS,
   if (!is.null(S0)) {
     nS0 <- ncol(S0)
     if (hardS0) {
+      
+      if(ncol(S) == nS0)
+        return(S0) # Nothing left to optimize...
+      
       # Enforce equality to external spectrum by direct elimination
       C0 <- matrix(C[, 1:nS0], ncol = nS0)
       C <- matrix(C[, (nS0 + 1):ncol(C)], ncol = ncol(C) - nS0)
@@ -171,7 +175,8 @@ als <- function(
     cat(paste0('Running ALS (dim = ', n,')<br/>'))
     
     res[[n]] <- myals(
-      C = C, Psi = mat, S = S, xC = delay, xS = wavl,
+      C = C, Psi = mat, S = S, 
+      xC = delay, xS = wavl,
       maxiter = maxiter,
       uniS = uniS,
       nonnegS = nonnegS,
@@ -189,6 +194,9 @@ als <- function(
       wCloseC = wCloseC,
       silent = FALSE
     )
+    if(is.null(res[[n]]))
+      return(NULL)
+    
     res[[n]]$hessian <- NA # Compatibility with Kinet
     
     if (n < nAls) {
@@ -274,6 +282,8 @@ myals <- function(C, Psi, S,
     
     rss <- sum(resid^2) / sum(Psi^2)
     RD <- ((oldrss - rss) / oldrss)
+    if(!is.finite(RD))
+      return(NULL)
     oldrss <- rss
     
     if ( !silent & iter%%10 == 1 ) {
@@ -675,6 +685,8 @@ rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
                     dens = 0.05, eps = -0.01,
                     updateProgress = NULL,
                     nullC = NA) {
+  # TBD: account for externalSpectra...
+  
   S <- S0[, rotVec]
   C <- C0[, rotVec]
   
@@ -745,20 +757,6 @@ rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
               if (s21 == 0) OK2 <- FALSE
             }
           }
-          
-          # httpuv::service()
-          # if (input$killALSAmb) { # Get out of here
-          #   if (length(solutions) != 0) {
-          #     solutions$rotVec <- rotVec
-          #     solutions$eps <- eps
-          #   }
-          #   return(
-          #     list(
-          #       solutions = solutions,
-          #       finished = FALSE
-          #     )
-          #   )
-          # }
         }
         if (s12 == 0) OK1 <- FALSE
       }
@@ -1249,7 +1247,6 @@ obsALS = observeEvent(
                                selected = todo
       )
     }
-
   },
   ignoreInit = TRUE,
   ignoreNULL = TRUE
@@ -1733,6 +1730,8 @@ doAmbRot <- observeEvent(
   input$runALSAmb, {
     req(alsOut <- resALS$results)
 
+    # TBD manage externalSpectra...
+    
     isolate({
       rotVec <- as.numeric(unlist(input$vecsToRotate))
       eps <- input$alsRotAmbEps

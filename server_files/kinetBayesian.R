@@ -59,6 +59,7 @@ bmc_glob = function(
       boundary.enforcement = 2
     ),
     stdout  = glOptOut,
+    stderr  = glOptOut,
     package = TRUE
   )
   
@@ -78,12 +79,12 @@ bmc_loc = function(
   # small perturbation to force hessian calculation 
   # (solnp does not estimate hessian when starting at
   # the solution...)
-  best = best * rlnorm(best,0,0.01)
+  best = best * rlnorm(best,0,0.005)
   
   rx <- callr::r_bg(
     Rsolnp::solnp,
     args = list(
-      best,
+      pars = best,
       fun = ifelse(weighted, mwlogP, mulogP),
       LB = pars$LB,
       UB = pars$UB,
@@ -92,6 +93,7 @@ bmc_loc = function(
       paropt = paropt
     ),
     stdout = locOptOut,
+    stderr = locOptOut,
     package = TRUE
   )
   

@@ -42,7 +42,7 @@ SAPlot <- function(X, cex = 1) {
     lower.panel = panel.smooth
   )
 }
-plotLofVsSvd <- function(s, opt, lmax = 10) {
+plotLofVsSvd <- function(s, opt, lmax = 10,...) {
   par(
     mfrow = c(1, 2),
     cex = cex, cex.main = cex, mar = mar,
@@ -114,7 +114,7 @@ plotLofVsSvd <- function(s, opt, lmax = 10) {
   )
   box()
 }
-plotIntKin <- function(opt, delayTrans = '') {
+plotIntKin <- function(opt, delayTrans = '',...) {
   # Plot wavelength-integrated kinetic traces
 
   times <- opt$times
@@ -161,8 +161,8 @@ plotIntKin <- function(opt, delayTrans = '') {
     box()
   }
 }
-plotPriPost <- function(opt) {
-  # PLot marginal prior and psoterior distributions
+plotPriPost <- function(opt, cex = 1, ...) {
+  # PLot marginal prior and posterior distributions
   # with Laplace approximation
 
   map <- parExpand(opt$map, opt$paropt)
@@ -413,22 +413,16 @@ setOptPars  = function() {
       if( input[[pname]] )
         kinParms[[sp]] = externalSpectra[[sp]]
     }
-  
-  startp <-
-    startpInit(
-      map = (
-        if (!is.null(RestartKin) &
-            input$kinRestart) {
-          RestartKin$map
-        } else if (!is.null(RefineKin)) {
-          RefineKin$map
-        } else {
-          NULL
-        }
-      ),
-      parOpt = parOpt
-    )
-  
+
+  map = NULL
+  if (!is.null(RestartKin$map) &
+      input$kinRestart) {
+      map = RestartKin$map
+  } else if (!is.null(RefineKin$map)) {
+      map = RefineKin$map
+  } 
+  startp = startpInit(map, parOpt = parOpt)
+
   mc <- FALSE
   niter  <- input$kinGlobNit
   global <- input$kinGlobFac * length(startp)
@@ -447,6 +441,12 @@ setOptPars  = function() {
 doKinGlob   = function() {
   bgGlobpx <<- NULL
   
+  id = showNotification(
+    "Running global optimizer...",
+    type = "message",
+    duration = 10
+  )
+  
   with(
     setOptPars(),
     bgGlobpx <<- bmc_glob(
@@ -461,17 +461,17 @@ doKinGlob   = function() {
     )
   )
   
-  id = showNotification(
-    "Running global optimizer...",
-    type = "message",
-    duration = 10
-  )
-  
   return()
 }
 doKinLoc    = function() {
   bgLocpx <<- NULL
   
+  id = showNotification(
+    "Running local optimizer...",
+    type = 'message',
+    duration = 10
+  )
+
   with(
     setOptPars(),
     bgLocpx <<- bmc_loc(
@@ -483,28 +483,24 @@ doKinLoc    = function() {
     )
   )
   
-  id = showNotification(
-    "Running local optimizer...",
-    type = 'message',
-    duration = 10
-  )
-  
   return()
   
 }
 doKinFinish = function (opt0) {
   
   # Global variable for restart
-  RestartKin <<- opt0
+  RestartKin$map <<- opt0$map
   
   # Update Reporting
-  todo = c(includeInReport(),'KIN')
-  includeInReport(todo)
-  updateCheckboxGroupInput(session,
-                           inputId = "inReport",
-                           choices = todo,
-                           selected = todo
-  )
+  if(! 'KIN' %in% includeInReport()) {
+    todo = c(includeInReport(),'KIN')
+    includeInReport(todo)
+    updateCheckboxGroupInput(session,
+                             inputId = "inReport",
+                             choices = todo,
+                             selected = todo
+    )
+  }
   
   # Finalize optimizer outputs
   with(
@@ -668,7 +664,9 @@ output$extSpectra <- renderUI({
 
 
 # Manage async optimization processes ####
-RestartKin = RefineKin = NULL
+
+RestartKin = reactiveValues(map=NULL) 
+RefineKin  = reactiveValues(map=NULL) 
 
 ## Global Opt. Process ####
 bgGlobpx = NULL
@@ -732,9 +730,11 @@ obsGlob = observeEvent(
   bgGlob$status$result, 
   {
     # Store optimum for refining by local optim.
-    RefineKin <<- list(
-      map = bgGlob$status$result$map 
-    )
+    pnames        = parContract(setOptPars()$parOpt)$names
+    map           = bgGlob$status$result$par 
+    names(map)    = pnames
+    RefineKin$map = map
+    
     # Do refine
     obsGlobStatus$suspend()
     obsLocStatus$resume()
@@ -748,8 +748,12 @@ obsLoc =observeEvent(
   {
     # Post-reat optimal parameters
     best = bgLoc$status$result
+    pnames         = parContract(setOptPars()$parOpt)$names
+    map            = best$pars 
+    names(map)     = pnames
+    
     opt0 = list(
-      map     = best$pars,
+      map     = map,
       hessian = best$hessian,
       values  = best$values,
       cnv     = best$convergence

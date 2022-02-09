@@ -290,8 +290,8 @@ if('KIN' %in% input$inReport)
 ```{r kinLOF.1, echo=FALSE}
 if('KIN' %in% input$inReport)
   if (!is.null(opt <-resLoc$results)) {
-    plotLofVsSvd(s <- doSVD(), opt)
-    plotIntKin(opt)
+    plotLofVsSvd(s <- doSVD(), opt,cex = scale)
+    plotIntKin(opt,cex = scale)
   }
 ```
 
@@ -301,24 +301,61 @@ if('KIN' %in% input$inReport)
     cat ('## Parameters densities')
 ```
 
-```{r kinPD.1, echo=FALSE}
+```{r kinPD.1, echo=FALSE, fig.height=7}
 if('KIN' %in% input$inReport)
-  if (!is.null(opt <-resLoc$results))
-    plotPriPost(opt)
+  if (!is.null(opt <- resLoc$results))
+    plotPriPost(opt, cex = scale)
 ```
 
 ```{r kinRes, results='asis', echo=FALSE}
 if('KIN' %in% input$inReport)
-    if (!is.null(opt <-resLoc$results))
+    if (!is.null(opt <- resLoc$results))
       cat ('## Residuals')
 ```
 
 ```{r kinRes.1, echo=FALSE}
 if('KIN' %in% input$inReport) {
-  if (!is.null(opt <-resLoc$results)) {
+  if (!is.null(opt <- resLoc$results)) {
     CS <- reshapeCS(opt$C, opt$S)
-    plotResid(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S,cex=scale)
-    plotResidAna(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S,cex=scale)
+    
+    if (isolate(input$useFiltered)) {
+      # Choose SVD filtered matrix
+      s <- doSVD()
+      CS1 <- reshapeCS(s$u, s$v, input$nSV)
+      mat <- matrix(0,
+                    nrow = length(Inputs$delay),
+                    ncol = length(Inputs$wavl))
+      for (ic in 1:input$nSV)
+        mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
+      
+      main <- "SVD-filtered data"
+      
+    } else {
+      mat <- Inputs$mat
+      main <- "Raw data"
+    }
+    
+    plotResid(
+      Inputs$delay,
+      Inputs$wavl,
+      mat,
+      CS$C[, opt$active],
+      CS$S,
+      main = main,
+      delayTrans = Inputs$delayTrans,
+      cex = scale
+    )
+    
+    plotResidAna(
+      Inputs$delay,
+      Inputs$wavl,
+      mat,
+      CS$C[, opt$active],
+      CS$S,
+      main = main,
+      delayTrans = Inputs$delayTrans,
+      cex = scale
+    )
   }
 }
 ```
@@ -334,8 +371,26 @@ if('KIN' %in% input$inReport)
 if('KIN' %in% input$inReport) {
   if (!is.null(opt <-resLoc$results)) {
     par(mfrow=c(1,2))
-    plotAlsVec(opt,type="Sp" ,cex=scale)
-    plotAlsVec(opt,type="Kin",cex=scale)
+    # plotAlsVec(opt,type="Sp" ,cex=scale)
+    plotAlsVec(opt,
+               type = "Sp",
+               xlim = rangesKinSp$x,
+               ylim = rangesKinSp$y,
+               plotUQ = input$plotCSUQ,
+               nonnegS = input$nonnegSKinet,
+               cols = 1,
+               delayTrans = Inputs$delayTrans
+    )
+    # plotAlsVec(opt,type="Kin",cex=scale)
+    plotAlsVec(opt,
+               type = "Kin",
+               xlim = rangesKinKin$x,
+               ylim = rangesKinKin$y,
+               plotUQ = input$plotCSUQ,
+               cols = 1,
+               activeOnly = input$activeOnly,
+               delayTrans = Inputs$delayTrans
+    )
   }
 }
 ```
@@ -348,9 +403,14 @@ if('KIN' %in% input$inReport)
 
 ```{r kinCont.1, echo=FALSE, fig.height=7}
 if('KIN' %in% input$inReport)
-  if (!is.null(opt <-resLoc$results)){
+  if (!is.null(opt <- resLoc$results)) {
     CS <- reshapeCS(opt$C, opt$S)
-    plotConbtribs(Inputs$delay,Inputs$wavl,Inputs$mat,CS$C,CS$S)
+    plotConbtribs(Inputs$delay,
+                  Inputs$wavl,
+                  Inputs$mat,
+                  CS$C[, opt$active],
+                  CS$S,
+                  delayTrans = Inputs$delayTrans)
   }
 ```
 
