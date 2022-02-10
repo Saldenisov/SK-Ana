@@ -413,7 +413,7 @@ plotAlsVec <- function(alsOut, type = "Kin",
     legend(
       "topright",
       legend = sp,
-      lty = 3, lwd = 3, 
+      lty = 1, lwd = 3, 
       col = if(is.null(cols)) colF else colF[sp],
     )
     colorizeMask1D(axis = "delay", ylim = ylim)
@@ -620,6 +620,7 @@ plotAmbVec <- function(alsOut, solutions,
     }
     colorizeMask1D(axis = "wavl", ylim = ylim)
     box()
+    
   } else {
     # Estimate ranges of C
     C1 <- C[, sel]
@@ -676,7 +677,12 @@ plotAmbVec <- function(alsOut, solutions,
         }    
     }
     colorizeMask1D(axis = "delay", ylim = ylim)
-    
+    legend(
+      "topright",
+      legend = colnames(C),
+      lty = 1, lwd = 3, 
+      col = cols
+    )
     box()
   }
 }
@@ -1252,8 +1258,9 @@ obsALS = observeEvent(
   ignoreNULL = TRUE
 )
 
-nclicks <- reactiveVal(0)
 
+### Run ####
+nclicks <- reactiveVal(0)
 doALS <- observeEvent(
   input$runALS, {
     if (isolate(!checkInputsSanity())) {
@@ -1267,12 +1274,10 @@ doALS <- observeEvent(
     # Increment clicks and prevent concurrent analyses
     nclicks(nclicks() + 1)
 
-    
-    # Reinit ambRot vector selection
-    updateCheckboxGroupInput(
-      session,
-      inputId = "vecsToRotate",
-      selected = c(1, 2)
+    id = showNotification(
+      "Running ALS...",
+      type = "message",
+      duration = 10
     )
     
     nAls = input$nALS
@@ -1362,11 +1367,7 @@ doALS <- observeEvent(
       C <- RES$C[, 1:nStart]
     }
     
-    id = showNotification(
-      "Running ALS...",
-      type = "message",
-      duration = 5
-    )
+    
     
     rx = callr::r_bg(
       als,
@@ -1394,6 +1395,7 @@ doALS <- observeEvent(
       stderr = alsStdOut
     )
     resALS$results = NULL
+    resAmb$results = NULL
     obsALSStatus$resume()
     bgALSpx <<- rx
     
@@ -1618,18 +1620,49 @@ height = plotHeight
 output$selAmbParams <- renderUI({
   req(alsOut <- resALS$results)
   
+  # Init ambRot vector selection
+  isolate({
+    # TBD manage externalSpectra...
+    nS0 = 0
+    if(!input$softS0) {
+      S0 <- NULL
+      if (length(externalSpectraALS) != 0)
+        for(sp in names(externalSpectraALS)) {
+          pname = paste0('fixALS_',sp)
+          if( input[[pname]] )
+            S0 = cbind(S0, externalSpectraALS[[sp]])
+        }
+      if(!is.null(S0))
+        nS0 = ncol(S0) 
+    }
+    
+    if(nS0 > ncol(alsOut$S)-2) {
+      id = showNotification(
+        "No ambiguity: too many spectra fixed",
+        type = "warning",
+        duration = 10
+      )
+      req(NULL)
+    }
+  })
+
   lv <- list()
-  for (i in 1:input$nALS)
-    lv[[i]] <- i
+  for (i in (nS0+1):input$nALS)
+    lv[[i-nS0]] <- i
+  
+  if(length(lv) > 2)
+    label = "Select 2 (or 3) vectors"
+  else
+    label = "Select 2 vectors"
   
   list(
     fluidRow(
       column(
         4,
         checkboxGroupInput("vecsToRotate",
-                           label = "Pick 2 (or 3) vectors",
+                           label = label,
                            choices = lv,
-                           selected = c(1, 2)
+                           selected = c(lv[[1]],lv[[2]])
         )
       ),
       column(
@@ -1730,7 +1763,30 @@ doAmbRot <- observeEvent(
   input$runALSAmb, {
     req(alsOut <- resALS$results)
 
-    # TBD manage externalSpectra...
+    isolate({
+      # TBD manage externalSpectra...
+      nS0 = 0
+      if(!input$softS0) {
+        S0 <- NULL
+        if (length(externalSpectraALS) != 0)
+          for(sp in names(externalSpectraALS)) {
+            pname = paste0('fixALS_',sp)
+            if( input[[pname]] )
+              S0 = cbind(S0, externalSpectraALS[[sp]])
+          }
+        if(!is.null(S0))
+          nS0 = ncol(S0) 
+      }
+      
+      if(nS0 > ncol(alsOut$S)-2) {
+        id = showNotification(
+          "No ambiguity: too many spectra fixed",
+          type = "warning",
+          duration = 10
+        )
+        req(NULL)
+      }
+    })
     
     isolate({
       rotVec <- as.numeric(unlist(input$vecsToRotate))
@@ -1777,8 +1833,6 @@ doAmbRot <- observeEvent(
     obsAmbStatus$resume()
     bgAmbpx <<- rx
     
-    
-
   }
 )
 
