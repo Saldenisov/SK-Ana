@@ -1040,7 +1040,7 @@ observeEvent(input$image1_dblclick, {
     rangesImage1$y <- NULL
   }
 })
-
+### Transects ####
 output$transects <- renderPlot({
   if (is.null(selectArea())) {
     return(NULL)

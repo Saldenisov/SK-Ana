@@ -138,14 +138,11 @@ plotIntKin <- function(opt, delayTrans = '',...) {
   for (iExp in 1:nExp) {
     sel <- (i0 + 1):startd[iExp]
     tinteg <- opt$xC[sel]
-    # tinteg = tinteg-tinteg[1] #+deltaStart[iExp]
     i0 <- startd[iExp]
     dd <- rowSums(mat[sel, ], na.rm = TRUE)
     plot(
       tinteg, dd,
-      # xlim = c(0, max(tinteg) / 1),
       xlab = paste0("Delay ",delayTrans),
-      # ylim = c(0, max(dd) * 1.1),
       ylab = "Integrated O.D.",
       pch = 16,
       col = lineColors[3],
@@ -490,6 +487,8 @@ doKinFinish = function (opt0) {
   
   # Global variable for restart
   RestartKin$map <<- opt0$map
+  
+  updateSlider("keepWlCutKin", range(Inputs$wavl), mean(Inputs$wavl), 500)
   
   # Update Reporting
   if(! 'KIN' %in% includeInReport()) {
@@ -1306,6 +1305,75 @@ output$kinIntKin     <- renderPlot({
   opt    = isolate(resLoc$results)
   plotIntKin(opt, delayTrans=Inputs$delayTrans)
 }, height = plotHeight)
+### Transects ####
+wlCutKin   = reactive({input$keepWlCutKin}) %>% debounce(debounceDelay/2)
+output$transectsKin <- renderPlot({
+  req(resLoc$results)
+  opt    = isolate(resLoc$results)
+  
+  times <- opt$times
+  mat   <- opt$mat
+  mod   <- opt$mod
+  nExp  <- opt$nExp
+  wavl  <- Inputs$wavl
+  trans <- Inputs$delayTrans
+
+  dCut <- wlCutKin()
+  iCut <- indxCuts(dCut, wavl)
+  indx <- iCut$indx
+  delta <- iCut$delta
+  
+  # ncol <- max(2, min(5, nExp))
+  # nrow <- floor(nExp / ncol)
+  # if (nrow * ncol != nExp) nrow <- nrow + 1
+  
+  par(
+    mfrow = c(1, 1),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = "s"
+  )
+  
+  startd <- opt$parms[["startd"]]
+  i0 <- 0
+  for (iExp in 1:nExp) {
+    sel <- (i0 + 1):startd[iExp]
+    tinteg <- opt$xC[sel]
+    i0 <- startd[iExp]
+    if (length(indx) == 1) {
+      cutMean = mat[sel, indx]
+      cutMod  = mod[sel, indx]
+    } else {
+      cutMean = rowMeans(mat[sel, indx])
+      cutMod  = rowMeans(mod[sel, indx])
+    }
+    if (all(is.na(cutMean))) cutMean = cutMean * 0
+    if (all(is.na(cutMod)))  cutMod  = cutMod  * 0
+    plot(
+      tinteg, cutMean,
+      xlab = paste0("Delay ",trans),
+      ylab = "O.D.",
+      pch = 16,
+      col = lineColors[3],
+      main = paste0(
+        "Mean O.D. at wavl: ", signif(mean(wavl[indx]), 3),
+        ifelse(delta == 0,
+               "",
+               paste0(" +/- ", signif(delta / 2, 2))
+        )
+      )
+    )
+    grid()
+    lines(
+      tinteg,
+      cutMod,
+      col = lineColors[6],
+      lwd = 2
+    )
+    box()
+  }
+},
+height = plotHeight, width = plotHeight
+)
 output$kinLofVsSvd   <- renderPlot({
   # L.o.F comparison with SVD
   req(resLoc$results)

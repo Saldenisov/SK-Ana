@@ -8,6 +8,20 @@ tabsetPanel(
     # )
   ),
   tabPanel(
+    value="kinResid1_6",
+    title=h5("Kinet. cuts"), br(),
+    plotOutput("transectsKin", height=550),
+    sliderInput(
+      "keepWlCutKin",
+      "Reference wavelength",
+      min = 0,
+      max = 1,
+      value = 0.5,
+      sep = "",
+      width = '50%'
+    )
+  ),
+  tabPanel(
     value="kinResid1_3",
     title=h5("Integ. kinet."), br(),
     # withSpinner(
