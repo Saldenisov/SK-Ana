@@ -1374,6 +1374,64 @@ output$transectsKin <- renderPlot({
 },
 height = plotHeight, width = plotHeight
 )
+observeEvent(
+  input$transKinSave,
+  isolate({
+    req(resLoc$results)
+    opt    = isolate(resLoc$results)
+    
+    times <- opt$times
+    mat   <- opt$mat
+    mod   <- opt$mod
+    nExp  <- opt$nExp
+    wavl  <- Inputs$wavl
+    trans <- Inputs$delayTrans
+    
+    dCut <- wlCutKin()
+    iCut <- indxCuts(dCut, wavl)
+    indx <- iCut$indx
+    delta <- iCut$delta
+    
+    startd <- opt$parms[["startd"]]
+    i0 <- 0
+    for (iExp in 1:nExp) {
+      sel <- (i0 + 1):startd[iExp]
+      tinteg <- opt$xC[sel]
+      i0 <- startd[iExp]
+      if (length(indx) == 1) {
+        cutMean = mat[sel, indx]
+        cutMod  = mod[sel, indx]
+      } else {
+        cutMean = rowMeans(mat[sel, indx])
+        cutMod  = rowMeans(mod[sel, indx])
+      }
+      if (all(is.na(cutMean))) cutMean = cutMean * 0
+      if (all(is.na(cutMod)))  cutMod  = cutMod  * 0
+      
+      dat = cbind(tinteg, cutMean, cutMod)
+      colnames(dat) <- c("delay", "Data", "Model")
+      
+      wv = signif(mean(wavl[indx]), 3)
+      if(nExp == 1)
+        fileName = paste0("_transKin_wvl=",wv,".csv")
+      else
+        fileName = paste0("_transKin_wvl=",wv,"_exp=",iExp,".csv")
+      
+      write.csv(
+        dat,
+        file = file.path(
+          "outputDir",
+          paste0(
+            input$projectTag,
+            fileName
+          )
+        ),
+        row.names = FALSE
+      )
+    }
+  })
+)
+## Lof ####
 output$kinLofVsSvd   <- renderPlot({
   # L.o.F comparison with SVD
   req(resLoc$results)
@@ -1381,6 +1439,7 @@ output$kinLofVsSvd   <- renderPlot({
   s   = doSVD()
   plotLofVsSvd(s, opt)
 }, height = plotHeight)
+## Data vs model ####
 output$kinDatavsMod  <- renderPlot({
   req(resLoc$results)
   opt    = isolate(resLoc$results)

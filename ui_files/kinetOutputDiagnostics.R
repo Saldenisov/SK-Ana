@@ -11,14 +11,26 @@ tabsetPanel(
     value="kinResid1_6",
     title=h5("Kinet. cuts"), br(),
     plotOutput("transectsKin", height=550),
-    sliderInput(
-      "keepWlCutKin",
-      "Reference wavelength",
-      min = 0,
-      max = 1,
-      value = 0.5,
-      sep = "",
-      width = '50%'
+    fluidRow(
+      column(
+        6,
+        sliderInput(
+          "keepWlCutKin",
+          "Reference wavelength",
+          min = 0,
+          max = 1,
+          value = 0.5,
+          sep = "",
+          width = '100%'
+        )
+      ),
+      column(
+        6,
+        actionButton(
+          "transKinSave",
+          "Save",
+          icon     = icon('save'))
+      )
     )
   ),
   tabPanel(
