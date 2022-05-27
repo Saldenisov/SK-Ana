@@ -119,7 +119,7 @@ spectra = function (C,pars,parms) {
   } else {
     for (i in 1:ncol(M)) {
       if (parms$nonnegS) {
-        s <- try(nnls(C[,freeS],M[,i]))
+        s <- try(nnls::nnls(C[,freeS],M[,i]))
       }
       else
         s <- try(qr.coef(qr(C[,freeS]), M[,i]))
@@ -154,7 +154,6 @@ spectra = function (C,pars,parms) {
   
   # Amplitude constraints    
   for (spec in colnames(S))
-    # S[,spec] = (S[,spec]/max(S[,spec])) * eps[spec]
     S[,spec] = (S[,spec]/max(abs(S[,spec]))) * eps[spec]
   
   return(S)
