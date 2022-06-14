@@ -1470,6 +1470,52 @@ output$kinDatavsMod  <- renderPlot({
     delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)
+observeEvent(
+  input$modelKinSave,
+  isolate({
+    req(resLoc$results)
+    opt    = isolate(resLoc$results)
+    
+    mod   <- opt$mod
+    nExp  <- opt$nExp
+    wavl  <- Inputs$wavl
+
+    startd <- opt$parms[["startd"]]
+    i0 <- 0
+    for (iExp in 1:nExp) {
+      sel <- (i0 + 1):startd[iExp]
+      tinteg <- opt$xC[sel]
+      i0 <- startd[iExp]
+      
+      dat = rbind(
+        c(0,wavl),
+        cbind(tinteg,mod[sel,])
+      )
+      if(input$datStr != 'dxw') 
+        dat = t(dat)
+      
+      if(nExp == 1)
+        fileName = paste0("_model.csv")
+      else
+        fileName = paste0("_model_exp=",iExp,".csv")
+      
+      write.table(
+        dat,
+        file = file.path(
+          "outputDir",
+          paste0(
+            input$projectTag,
+            fileName
+          )
+        ),
+        row.names = FALSE, 
+        col.names = FALSE,
+        sep = ','
+      )
+    }
+  })
+)
+
 # Spectra & Kinetics ####
 output$kinSpVectors  <- renderPlot({
   req(resLoc$results)

@@ -50,11 +50,20 @@ tabsetPanel(
     # ),
     wellPanel(
       fluidRow(
-        column(4,
-               checkboxInput("kinContours",
-                             label = "Add contours",
-                             value = FALSE),
-               offset = 8
+        column(
+          6,
+          actionButton(
+            "modelKinSave",
+            "Save Model",
+            icon     = icon('save'))
+        ),
+        column(
+          6,
+          checkboxInput(
+            "kinContours",
+            label = "Add contours",
+            value = FALSE),
+          offset = 0
         )
       )
     )
