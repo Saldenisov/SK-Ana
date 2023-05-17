@@ -1,12 +1,13 @@
 updateSlider <- function (inputId, range, value, nsteps) {
   # Wrapper for generic function
+  step    = signif(diff(range)/nsteps, 3)
   updateSliderInput(
     session,
     inputId = inputId,
     min     = range[1],
     max     = range[2],
     value   = value,
-    step    = signif(diff(range)/nsteps, 3)
+    step    = step
   )
 }
 
