@@ -1,3 +1,6 @@
+Version = "3.4.6"
+DateVersion = "2023-05-22"
+
 # enableBookmarking("server")
 
 Sys.setlocale(category = "LC_NUMERIC", locale = "C")
