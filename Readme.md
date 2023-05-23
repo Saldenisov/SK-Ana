@@ -2,7 +2,7 @@
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
 
 
-**SK-Ana**: **S**pectro**K**inetic **Ana**lysis
+# **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
 `Shiny` interface for the analysis of spectrokinetic matrices:
 
@@ -19,6 +19,7 @@
 
 __New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
 
+<!--
 ## Local install 
 
 * Download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest) 
@@ -49,8 +50,12 @@ the code will install a set of packages, if they are not installed already:
 `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, 
 `msm`, and `xtable`. 
 Depending on your OS, you might have to install them manually.
+-->
 
 ## Docker container
+
+For cross-plateform compatibility issues, the preferred installation
+method is through a docker container.
 
 The [skana](https://hub.docker.com/repository/docker/ppernot1/skana)
 [Docker](https://www.docker.com/) container has all elements preinstalled.
@@ -76,10 +81,16 @@ docker kill skana
 docker restart skana
 ```
 
-4. To cleanup
+5. To cleanup
 ```
 docker remove -v skana
 ```
+
+6. To get the latest version
+```
+docker pull ppernot1/skana
+```      
+
 
 ## How to cite SK-Ana
 
@@ -103,18 +114,44 @@ chimie sous rayonnement_. Action Nationale de Formation CNRS "Chimie sous
 Rayonnement et Radiochimie" (Oléron, 2017/09) 
 [PDF](http://pagesperso.lcp.u-psud.fr/pernot/Downloads/2017_ANF_Oleron_Pernot.pdf)
 
-### Applications
 
-* R. Kaczmarek, S. Ward, D. Debnath, T. Jacobs, A. D. Stark, D. Korczyński, A. Kumar, M. D. Sevilla, S. A. Denisov, V. Shcherbakov, P. Pernot, M. Mostafavi, R. Dembinski, A. Adhikary, "One Way Traffic: Base-to-backbone Hole Transfer in Nucleoside Phosphorodithioates", Chemistry – A European Journal, vol. 26, 2020, pp. 9495–9505. (http://dx.doi.org/10.1002/chem.202000247)
+### Works using SK-Ana (please let me know of any missing reference)
 
-* F. Wang, P. Pernot, J. Marignier, P. Archirel, M. Mostafavi, "Mechanism of (SCN)$^2.-$ Formation and Decay in Neutral and Basic $KSCN$ Solution Under Irradiation from Pico to Microsecond Range", The Journal of Physical Chemistry B, vol. 123, 2019, pp. 6599-6608. (http://dx.doi.org/10.1021/acs.jpcb.9b05560)
+* D.H. Cruz Neto, J. Soto, N. Maity, Ch. Lefumeux, T. Nguyen, P. Pernot, K. Steenkeste, D. Peláez, M.-H. Ha-Thi and Th. Pino (2023) _J. Phys. Chem. Letters_ __14__:4789–4795.
+(https://doi.org/10.1021/acs.jpclett.3c00594)
 
-* F. Wang, G. P. Horne, P. Pernot, P. Archirel, M. Mostafavi, "Picosecond Pulse Radiolysis Study on the Radiation Induced Reactions in Neat Tributyl Phosphate", J. Phys. Chem. B, vol. 122, 2018, pp. 7134-7142. (http://dx.doi.org/10.1021/acs.jpcb.8b03715)
+* M. Knezevic, V.-D. Quach, I. Lampre, M. Erard, P. Pernot, D. Berardan, Ch. Colbeau-Justin and M.N. Ghazzal (2023) _J. Mater. Chem. A_ __11__:6226-6236. (https://doi.org/10.1039/D2TA09920A)
 
-* J. Ma, S. A. Denisov, J. Marignier, P. Pernot, A. Adhikary, S. Seki, M. Mostafavi, "Ultrafast Electron Attachment and Hole Transfer Following Ionizing Radiation of Aqueous Uridine Monophosphate", J. Phys. Chem. Lett., vol. 9, 2018, pp. 5105-5109. (http://dx.doi.org/10.1021/acs.jpclett.8b02170)
+* K. Iwamatsu, R. Gakhar, Ph. Halstenberg, B. Layne, S.M. Pimblott and J.F. Wishart (2022) _Phys. Chem. Chem. Phys._ __24__:25088-25098. (https://doi.org/10.1039/D2CP01194H)
 
-* J. Ma, J. Marignier, P. Pernot, C. Houée-Levin, A. Kumar, M. D. Sevilla, A. Adhikary, M. Mostafavi, "Direct observation of the oxidation of DNA bases by phosphate radicals formed under radiation: a model of the backbone-to-base hole transfer", Phys. Chem. Chem. Phys., vol. 20, 2018, pp. 14927-14937. (http://dx.doi.org/10.1039/C8CP00352A)
+* C. Shang and P.E. Reiller (2021) _Dalton Trans._  __50__:17165-17180. (https://doi.org/10.1039/D1DT03204F)
 
-* J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër, M. Mostafavi, "Identification of Transient Radical Anions (LiClO4)n (n= 1-3) in THF Solutions: Experimental and Theoretical Investigation on Electron Localization in Oligomers", J. Phys. Chem. B, vol. 120, 2016, pp. 773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
+* M. Puget, V. Shcherbakov, S. Denisov, P. Moreau, J.-P. Dognon, M. Mostafavi and S. Le Caër (2021) _Chem. Eur. J._  __27__:8185. (https://doi.org/10.1002/chem.202100562) 
 
-* J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot, M. Mostafavi, "Reduction of Earth Alkaline Metal Salts in THF Solution Studied by Picosecond Pulse Radiolysis", J. Phys. Chem. A, vol. 117, 2013, pp. 14048–14055. (http://dx.doi.org/10.1021/jp410598y)
+* R. Kaczmarek, S. Ward, D. Debnath, T. Jacobs, A. D. Stark, D. Korczyński, A. Kumar, M. D. Sevilla, S. A. Denisov, V. Shcherbakov, P. Pernot, M. Mostafavi, R. Dembinski and A. Adhikary (2020) _Chemistry – A European Journal_ __26__:9495–9505. (http://dx.doi.org/10.1002/chem.202000247)
+
+* S. Al Gharib, J.-L. Marignier, A.K. El Omar, A. Naja, S. Le Caer, M. Mostafavi and J. Belloni (2019) _J. Phys. Chem. C_  __123__:22624-22633. (http://dx.doi.org/10.1021/acs.jpcc.9b06090)
+
+* F. Wang, P. Pernot, J.-L. Marignier, P. Archirel and M. Mostafavi (2019) _J. Phys. Chem. B_ __123_, 2019, pp. __:6599-6608. (http://dx.doi.org/10.1021/acs.jpcb.9b05560)
+
+* F. Wang, G.P. Horne, P. Pernot, P. Archirel and M. Mostafavi (2018) _J. Phys. Chem. B_  __122_, 2018, pp. __:7134-7142. (http://dx.doi.org/10.1021/acs.jpcb.8b03715)
+
+* J. Ma, A. Kumar, Y. Muroya, S. Yamashita, T. Sakurai, S.A. Denisov, M.D. Sevilla, A. Adhikary, S. Seki and M. Mostafavi (2019) _Nat. Commun._ __10__:102. (https://doi.org/10.1038/s41467-018-08005-z)
+
+* J. Ma, S. A. Denisov, J. Marignier, P. Pernot, A. Adhikary, S. Seki and M. Mostafavi (2018) _J. Phys. Chem. Lett._  __9__:5105-5109. (http://dx.doi.org/10.1021/acs.jpclett.8b02170)
+
+* J. Ma, J. Marignier, P. Pernot, C. Houée-Levin, A. Kumar, M. D. Sevilla, A. Adhikary and M. Mostafavi (2018) _Phys. Chem. Chem. Phys._  __20__:14927-14937. (http://dx.doi.org/10.1039/C8CP00352A)
+
+* J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
+
+* J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
+
+
+
+
+
+
+
+
+
+
