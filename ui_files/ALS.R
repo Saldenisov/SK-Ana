@@ -16,6 +16,7 @@ sidebarLayout(
       )
     ),
     br(),
+    shinyCopy2clipboard::use_copy(),
     tabsetPanel(
       tabPanel(
         title=h4("Options"),

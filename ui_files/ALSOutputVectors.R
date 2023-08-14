@@ -28,6 +28,20 @@ fluidRow(
     width=12,
     h5('Save ALS spectra and kinetics'),
     actionButton("alsSpKinSave","Save",
-                 icon     = icon('save'))
+                 icon     = icon('save'),
+                 class = "btn-primary",
+                 width = "150px"),
+    shinyCopy2clipboard::CopyButton("copybtn_ALS_Kin", 
+               label = "Copy Kinetics",
+               icon  = icon("pause"),
+               text  = "Empty",
+               class = "btn-primary",
+               width = "150px"),
+    shinyCopy2clipboard::CopyButton("copybtn_ALS_Sp", 
+               label = "Copy Spectra",
+               icon  = icon("pause"),
+               text  = "Empty",
+               class = "btn-primary",
+               width = "150px")
   )
 )

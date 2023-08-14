@@ -1,3 +1,5 @@
+
+
 # Functions ####
 
 getC <- function(S, data, C, nonnegC = TRUE,
@@ -1559,6 +1561,36 @@ observeEvent(input$alsSp_dblclick, {
     rangesAlsSp$x <- NULL
     rangesAlsSp$y <- NULL
   }
+})
+
+#### Copy buttons ####
+observe({
+  # req(input$copybtn_ALS_Kin)
+  req(alsOut <- resALS$results)
+  C <- cbind(Inputs$delaySave, reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))$C)
+  colnames(C) <- c("delay", colnames(alsOut$C))
+  txt = readr::format_csv(as.data.frame(C), eol = "\r\n")
+  shinyCopy2clipboard::CopyButtonUpdate(
+    session,
+    id    = "copybtn_ALS_Kin",
+    label = "Copy Kinetics",
+    icon  = icon("copy"),
+    text  = txt 
+  )
+})
+observe({
+  # req(input$copybtn_ALS_Sp)
+  req(alsOut <- resALS$results)
+  S <- cbind(Inputs$wavl, reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))$S)
+  colnames(S) <- c("wavl", colnames(alsOut$S))
+  txt = readr::format_csv(as.data.frame(S), eol = "\r\n")
+  shinyCopy2clipboard::CopyButtonUpdate(
+    session,
+    id    = "copybtn_ALS_Sp",
+    label = "Copy Spectra",
+    icon  = icon("copy"),
+    text  = txt 
+  )
 })
 
 observeEvent(

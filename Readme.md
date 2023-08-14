@@ -64,7 +64,7 @@ To run the container:
 
 0. Install [Docker](https://www.docker.com/products/docker-desktop)
 
-1. Type the following commands in a terminal
+1. Type the following command in a terminal
 ```
 docker run -d -p 3840:3840 --name skana ppernot1/skana
 ```      

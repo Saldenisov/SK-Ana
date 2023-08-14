@@ -1,5 +1,5 @@
-Version = "3.4.6"
-DateVersion = "2023-05-22"
+Version = "3.4.7"
+DateVersion = "2023-08-14"
 
 # enableBookmarking("server")
 
@@ -22,8 +22,10 @@ libs <- c(
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
-  "inlmisc","shinythemes","magrittr","callr","processx"
+  "inlmisc","shinythemes","magrittr","callr","processx",
+  "shinyCopy2clipboard","readr"
 )
+#remotes::install_github("deepanshu88/shinyCopy2clipboard")
 for (lib in libs) {
   # # Avoid installing packages because of renv packages management
   # if (!require(lib, character.only = TRUE, quietly = TRUE)) {
@@ -32,7 +34,7 @@ for (lib in libs) {
   #     dependencies = TRUE,
   #     repos = "https://cran.univ-paris1.fr"
   #   )
-    library(lib, character.only = TRUE, quietly = TRUE)
+  library(lib, character.only = TRUE, quietly = TRUE)
   # }
 }
 
