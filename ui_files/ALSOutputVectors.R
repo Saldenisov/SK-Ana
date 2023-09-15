@@ -31,17 +31,19 @@ fluidRow(
                  icon     = icon('save'),
                  class = "btn-primary",
                  width = "150px"),
-    shinyCopy2clipboard::CopyButton("copybtn_ALS_Kin", 
-               label = "Copy Kinetics",
-               icon  = icon("pause"),
-               text  = "Empty",
-               class = "btn-primary",
-               width = "150px"),
+   
     shinyCopy2clipboard::CopyButton("copybtn_ALS_Sp", 
-               label = "Copy Spectra",
-               icon  = icon("pause"),
-               text  = "Empty",
-               class = "btn-primary",
-               width = "150px")
+                                    label = "Copy Spectra",
+                                    icon  = icon("pause"),
+                                    text  = "Empty",
+                                    class = "btn-primary",
+                                    width = "150px"),
+    
+    shinyCopy2clipboard::CopyButton("copybtn_ALS_Kin", 
+                                    label = "Copy Kinetics",
+                                    icon  = icon("pause"),
+                                    text  = "Empty",
+                                    class = "btn-primary",
+                                    width = "150px")
   )
 )

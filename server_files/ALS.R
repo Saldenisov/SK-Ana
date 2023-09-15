@@ -1569,7 +1569,7 @@ observe({
   req(alsOut <- resALS$results)
   C <- cbind(Inputs$delaySave, reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))$C)
   colnames(C) <- c("delay", colnames(alsOut$C))
-  txt = readr::format_csv(as.data.frame(C), eol = "\r\n")
+  txt = readr::format_tsv(as.data.frame(C), eol = "\r\n")
   shinyCopy2clipboard::CopyButtonUpdate(
     session,
     id    = "copybtn_ALS_Kin",
@@ -1583,7 +1583,7 @@ observe({
   req(alsOut <- resALS$results)
   S <- cbind(Inputs$wavl, reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))$S)
   colnames(S) <- c("wavl", colnames(alsOut$S))
-  txt = readr::format_csv(as.data.frame(S), eol = "\r\n")
+  txt = readr::format_tsv(as.data.frame(S), eol = "\r\n")
   shinyCopy2clipboard::CopyButtonUpdate(
     session,
     id    = "copybtn_ALS_Sp",

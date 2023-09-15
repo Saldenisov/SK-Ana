@@ -1321,6 +1321,50 @@ observeEvent(
   })
 )
 
+#### Copy buttons ####
+observe({
+  req(Inputs$mat)
+  req(input$stepWlCut)
+  mat <- Inputs$mat
+  wavl <- Inputs$wavl
+  delay <- Inputs$delaySave
+  indx <- seq(1, length(wavl),
+              by = max(1, input$stepWlCut)
+  )
+  mat = mat[,indx]
+  wavl = c("delay",paste0(wavl[indx]))
+  C = cbind(delay, mat)
+  txt = readr::format_tsv(as.data.frame(C), eol = "\r\n")
+  shinyCopy2clipboard::CopyButtonUpdate(
+    session,
+    id    = "copybtn_dlCut",
+    label = "Copy",
+    icon  = icon("copy"),
+    text  = txt 
+  )
+})
+observe({
+  req(Inputs$mat)
+  req(input$stepDlCut)
+  mat <- Inputs$mat
+  wavl <- Inputs$wavl
+  delay <- Inputs$delaySave
+  indx <- seq(1, length(delay),
+              by = max(1, input$stepDlCut)
+  )
+  mat = mat[indx,]
+  delay = c("wavl",paste0(delay[indx]))
+  S = cbind(wavl, t(mat))
+  txt = readr::format_tsv(as.data.frame(S), eol = "\r\n")
+  shinyCopy2clipboard::CopyButtonUpdate(
+    session,
+    id    = "copybtn_wlCut",
+    label = "Copy",
+    icon  = icon("copy"),
+    text  = txt 
+  )
+})
+
 observeEvent(
   input$wavlStepCutSave,
   isolate({

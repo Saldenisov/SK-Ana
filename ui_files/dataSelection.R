@@ -191,7 +191,8 @@ sidebarLayout(
                     3,
                     actionButton(
                       "delayCutSave", "Save",
-                      icon = icon('save')
+                      icon = icon('save'),
+                      class = "btn-primary"
                     ),
                     tags$style(
                       type = 'text/css',
@@ -225,7 +226,8 @@ sidebarLayout(
                     3,
                     actionButton(
                       "wavlCutSave", "Save",
-                      icon = icon('save')
+                      icon = icon('save'),
+                      class = "btn-primary"
                     ),
                     tags$style(
                       type = 'text/css',
@@ -272,12 +274,20 @@ sidebarLayout(
                     3,
                     actionButton(
                       "delayStepCutSave", "Save",
-                      icon = icon('save')
+                      icon = icon('save'),
+                      class = "btn-primary",
+                      width = "75px"
                     ),
                     tags$style(
                       type = 'text/css',
                       "#delayStepCutSave { width:100%; margin-top: 30px;}"
-                    )
+                    ),
+                    shinyCopy2clipboard::CopyButton("copybtn_dlCut", 
+                                                    label = "Copy",
+                                                    icon  = icon("pause"),
+                                                    text  = "Empty",
+                                                    class = "btn-primary",
+                                                    width = "75px")
                   )
                 )
               )
@@ -312,12 +322,21 @@ sidebarLayout(
                     3,
                     actionButton(
                       "wavlStepCutSave", "Save",
-                      icon = icon('save')
+                      icon = icon('save'),
+                      class = "btn-primary",
+                      width = "75px"
                     ),
                     tags$style(
                       type = 'text/css',
                       "#wavlStepCutSave { width:100%; margin-top: 30px;}"
-                    )
+                    ),
+                    shinyCopy2clipboard::CopyButton("copybtn_wlCut", 
+                                                     label = "Copy",
+                                                     icon  = icon("pause"),
+                                                     text  = "Empty",
+                                                     class = "btn-primary",
+                                                    width = "75px")
+                    
                   )
                 )
               )
