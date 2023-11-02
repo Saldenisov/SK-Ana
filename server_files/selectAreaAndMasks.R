@@ -39,10 +39,14 @@ autoDlMask <- function(mat, nmat) {
     method = "SegNeigh",
     Q = 2 + max(1, 2 * (nmat - 1))
   )
-  if (nmat == 1) {
-    chp <- cpts(ans)[2]
-  } else {
-    chp <- cpts(ans)
+
+  chp = NULL
+  if(length(cpts(ans)) >= 2) {
+    if (nmat == 1) {
+      chp <- cpts(ans)[2]
+    } else {
+      chp <- cpts(ans)
+    }
   }
 
   return(chp)
@@ -533,11 +537,16 @@ selectArea <- reactive({
   subX <- delay >= xlim[1] & delay <= xlim[2]
   subY <- wavl  >= ylim[1] & wavl  <= ylim[2]
 
-  delay   <- delay[subX]
-  delayId <- delayId[subX]
-  wavl    <- wavl[subY]
-  mat     <- mat[subX, subY]
-  delaySave <- delaySave[subX]
+  if(sum(subX) >= 2 & sum(subY) >= 2) {
+    delay   <- delay[subX]
+    delayId <- delayId[subX]
+    wavl    <- wavl[subY]
+    mat     <- mat[subX, subY]
+    delaySave <- delaySave[subX]
+  } else {
+    subX = rep(TRUE, length(delay))
+    subY = rep(TRUE, length(wavl))
+  }
 
   Inputs$delay <<- delay
   Inputs$delayId <<- delayId

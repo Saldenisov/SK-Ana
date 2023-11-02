@@ -80,7 +80,7 @@ getOneMatrix  <- function(dataFile) {
   )
   if(class(wavl) == 'try-error' | length(wavl) == 0) 
     return(NULL) 
-  
+
   mat = try(
     read.table(
       dataFile, 
@@ -133,7 +133,7 @@ getOneMatrix  <- function(dataFile) {
     delay = wavl
     wavl  = tmp
   }
-  
+
   return(list(mat=mat, wavl=wavl, delay=delay, 
               delaySave=delay, delayId= rep(1,length(delay))))
   

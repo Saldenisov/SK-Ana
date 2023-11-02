@@ -1,5 +1,5 @@
-Version = "3.4.7a"
-DateVersion = "2023-09-11"
+Version = "3.4.7b"
+DateVersion = "2023-11-02"
 
 # enableBookmarking("server")
 
