@@ -202,10 +202,11 @@ plotSvdLof <- function(s, mat, ...) {
   grid()
 
   # Trend line for noise
-  x <- 10:20
+  xmax = min(20,length(s$d))
+  x <- 10:xmax
   y <- s$d[x]
   reg <- lm(y ~ x)
-  xpred <- 1:20
+  xpred <- 1:xmax
   ypred <- predict(reg, newdata = data.frame(x = xpred))
   lines(xpred, ypred, lwd = 3, lty = 2, col = lineColors[7])
 

@@ -96,23 +96,29 @@ getOneMatrix  <- function(dataFile) {
   if(class(mat) == 'try-error') 
     return(NULL) 
   
-  mat = as.matrix(mat)
+  mat   = as.matrix(mat)
   delay = as.numeric(mat[,1])
   if(length(delay) == 0)
     return(NULL) 
+  mat   = mat[,-1]
   
-  u = !duplicated(delay)
+  # Remove duplicated delays and wavls
+  u     = !duplicated(delay)
   delay = delay[u]
-  mat   = mat[u,-1]
-  mat[!is.finite(mat)] = 0
+  mat   = mat[u,]
+  u     = !duplicated(wavl)
+  wavl  = wavl[u]
+  mat   = mat[,u]
   
+  mat[!is.finite(mat)] = 0
+
   # Ensure increasing coordinates
-  iord = order(wavl,decreasing=FALSE)
-  wavl=wavl[iord]
-  mat = mat[,iord] 
-  iord = order(delay,decreasing=FALSE)
-  delay=delay[iord]
-  mat = mat[iord,] 
+  iord = order(wavl, decreasing = FALSE)
+  wavl = wavl[iord]
+  mat  = mat[, iord]
+  iord = order(delay, decreasing = FALSE)
+  delay = delay[iord]
+  mat = mat[iord, ] 
   
   # Downsize
   if(input$compFacD >= 2 | input$compFacW >= 2) {
@@ -184,12 +190,12 @@ observeEvent(
               inputStyle$dec    = "."
               inputStyle$datStr = "wxd"
             },
-            otherStyle = {
-              inputStyle$header = FALSE
-              inputStyle$sep    = ","
-              inputStyle$dec    = "."
-              inputStyle$datStr = "wxd"
-            },
+            # otherStyle = {
+            #   inputStyle$header = FALSE
+            #   inputStyle$sep    = ","
+            #   inputStyle$dec    = "."
+            #   inputStyle$datStr = "wxd"
+            # },
             # munichStyle = {
             #   inputStyle$header = FALSE
             #   inputStyle$sep= "\t"
@@ -501,12 +507,12 @@ output$saveProject <- downloadHandler(
 observeEvent(
   input$dataSave,
   isolate({
-    mat <- Inputs$mat
-    wavl <- Inputs$wavl
+    mat   <- Inputs$mat
+    wavl  <- Inputs$wavl
     delay <- Inputs$delaySave
-    delay = c("wavl",paste0(delay))
-    print(str(Inputs$delay))
-    print(str(Inputs$delaySave))
+    header = c("wavl",paste0(delay))
+    # print(str(Inputs$delay))
+    # print(str(Inputs$delaySave))
     
     write.table(
       cbind(wavl, t(mat)),
@@ -520,7 +526,7 @@ observeEvent(
         ),
       sep = ",",
       row.names = FALSE,
-      col.names = delay
+      col.names = header
     )
   })
 )

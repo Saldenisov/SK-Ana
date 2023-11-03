@@ -1,5 +1,5 @@
 Version = "3.4.7b"
-DateVersion = "2023-11-02"
+DateVersion = "2023-11-03"
 
 # enableBookmarking("server")
 
@@ -23,7 +23,7 @@ libs <- c(
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
   "inlmisc","shinythemes","magrittr","callr","processx",
-  "shinyCopy2clipboard","readr"
+  "readr" #,"shinyCopy2clipboard"
 )
 #remotes::install_github("deepanshu88/shinyCopy2clipboard")
 for (lib in libs) {

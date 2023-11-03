@@ -27,16 +27,16 @@ sidebarLayout(
           "keepWlRange",
           "Wavelength Range",
           min = 0,
-          max = 1,
-          value = c(0, 1),
+          max = 1000,
+          value = c(0, 1000),
           sep = ""
         ),
         sliderInput(
           "keepDlRange",
           "Delay Range",
           min = 0,
-          max = 1,
-          value = c(0, 1),
+          max = 1000,
+          value = c(0, 1000),
           sep = ""
         )
       ),
@@ -281,13 +281,13 @@ sidebarLayout(
                     tags$style(
                       type = 'text/css',
                       "#delayStepCutSave { width:100%; margin-top: 30px;}"
-                    ),
-                    shinyCopy2clipboard::CopyButton("copybtn_dlCut", 
-                                                    label = "Copy",
-                                                    icon  = icon("pause"),
-                                                    text  = "Empty",
-                                                    class = "btn-primary",
-                                                    width = "75px")
+                    )#,
+                    # shinyCopy2clipboard::CopyButton("copybtn_dlCut", 
+                    #                                 label = "Copy",
+                    #                                 icon  = icon("pause"),
+                    #                                 text  = "Empty",
+                    #                                 class = "btn-primary",
+                    #                                 width = "75px")
                   )
                 )
               )
@@ -329,13 +329,13 @@ sidebarLayout(
                     tags$style(
                       type = 'text/css',
                       "#wavlStepCutSave { width:100%; margin-top: 30px;}"
-                    ),
-                    shinyCopy2clipboard::CopyButton("copybtn_wlCut", 
-                                                     label = "Copy",
-                                                     icon  = icon("pause"),
-                                                     text  = "Empty",
-                                                     class = "btn-primary",
-                                                    width = "75px")
+                    )#,
+                    # shinyCopy2clipboard::CopyButton("copybtn_wlCut", 
+                    #                                  label = "Copy",
+                    #                                  icon  = icon("pause"),
+                    #                                  text  = "Empty",
+                    #                                  class = "btn-primary",
+                    #                                 width = "75px")
                     
                   )
                 )

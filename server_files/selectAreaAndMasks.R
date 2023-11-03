@@ -40,15 +40,12 @@ autoDlMask <- function(mat, nmat) {
     Q = 2 + max(1, 2 * (nmat - 1))
   )
 
-  chp = NULL
-  if(length(cpts(ans)) >= 2) {
-    if (nmat == 1) {
-      chp <- cpts(ans)[2]
-    } else {
-      chp <- cpts(ans)
-    }
+  if (nmat == 1) {
+    chp = cpts(ans)[2]
+  } else {
+    chp = cpts(ans)
   }
-
+  
   return(chp)
 }
 
@@ -85,11 +82,11 @@ observeEvent(
     ll <- list()
     # ID
     ll$projectTag <- input$projectTag
-    ll$matDims <- dim(Inputs$matOrig)
+    ll$matDims    <- dim(Inputs$matOrig)
     # Selectors
-    ll$keepCbl <- input$keepCbl
-    ll$keepDlRange <- input$keepDlRange
-    ll$keepWlRange <- input$keepWlRange
+    ll$keepCbl        <- input$keepCbl
+    ll$keepDlRange    <- input$keepDlRange
+    ll$keepWlRange    <- input$keepWlRange
     ll$dlScaleFacOrig <- Inputs$dlScaleFacOrig
     # Masks
     ll$nMasksBaseline <- input$nMasksBaseline
@@ -488,10 +485,10 @@ selectArea <- reactive({
     return(NULL)
   }
 
-  delay <- Inputs$delayOrig
-  wavl <- Inputs$wavlOrig
-  mat <- Inputs$matOrig
-  delayId <- Inputs$delayIdOrig
+  delay     <- Inputs$delayOrig
+  wavl      <- Inputs$wavlOrig
+  mat       <- Inputs$matOrig
+  delayId   <- Inputs$delayIdOrig
   delaySave <- Inputs$delaySaveOrig
     
   if (input$nMasksBaseline != 0) {
@@ -537,21 +534,16 @@ selectArea <- reactive({
   subX <- delay >= xlim[1] & delay <= xlim[2]
   subY <- wavl  >= ylim[1] & wavl  <= ylim[2]
 
-  if(sum(subX) >= 2 & sum(subY) >= 2) {
-    delay   <- delay[subX]
-    delayId <- delayId[subX]
-    wavl    <- wavl[subY]
-    mat     <- mat[subX, subY]
-    delaySave <- delaySave[subX]
-  } else {
-    subX = rep(TRUE, length(delay))
-    subY = rep(TRUE, length(wavl))
-  }
-
-  Inputs$delay <<- delay
-  Inputs$delayId <<- delayId
+  delay     <- delay[subX]
+  delayId   <- delayId[subX]
+  wavl      <- wavl[subY]
+  mat       <- mat[subX, subY]
+  delaySave <- delaySave[subX]
+  
+  Inputs$delay     <<- delay
+  Inputs$delayId   <<- delayId
   Inputs$delaySave <<- delaySave
-  Inputs$wavl <<- wavl
+  Inputs$wavl      <<- wavl
 
   # Aggregate and apply masks
   delayMask <- rep(0, length(delay))
@@ -561,7 +553,7 @@ selectArea <- reactive({
       if (length(xlim) != 0) {
         if (diff(xlim) != 0) {
           sel <- delay >= xlim[1] & delay <= xlim[2]
-          if (sum(sel) != 0) delayMask[sel] <- NA
+          if (sum(sel) != 0) delayMask[sel] = NA
         }
       }
     }
@@ -574,7 +566,7 @@ selectArea <- reactive({
       if (length(ylim) != 0) {
         if (diff(ylim) != 0) {
           sel <- wavl >= ylim[1] & wavl <= ylim[2]
-          if (sum(sel) != 0) wavlMask[sel] <- NA
+          if (sum(sel) != 0) wavlMask[sel] = NA
         }
       }
     }
@@ -582,7 +574,7 @@ selectArea <- reactive({
   
   if (!anyNA(Inputs$delayGlitch)) {
     for (i in 1:length(Inputs$delayGlitch))
-      delayMask[which(delay == Inputs$delayGlitch[i])] <- NA
+      delayMask[which(delay == Inputs$delayGlitch[i])] = NA
   }
 
   # Track of baseline masks for plots
@@ -602,11 +594,11 @@ selectArea <- reactive({
   }
   
   Inputs$baselineMask <<- baselineMask
-  Inputs$delayMask <<- delayMask
-  Inputs$wavlMask  <<- wavlMask
+  Inputs$delayMask    <<- delayMask
+  Inputs$wavlMask     <<- wavlMask
 
-  mat[is.na(delayMask), ] <- NA
-  mat[, is.na(wavlMask)]  <- NA
+  mat[is.na(delayMask), ] = NA
+  mat[, is.na(wavlMask)]  = NA
 
   Inputs$mat <<- mat
 
@@ -1331,48 +1323,48 @@ observeEvent(
 )
 
 #### Copy buttons ####
-observe({
-  req(Inputs$mat)
-  req(input$stepWlCut)
-  mat <- Inputs$mat
-  wavl <- Inputs$wavl
-  delay <- Inputs$delaySave
-  indx <- seq(1, length(wavl),
-              by = max(1, input$stepWlCut)
-  )
-  mat = mat[,indx]
-  wavl = c("delay",paste0(wavl[indx]))
-  C = cbind(delay, mat)
-  txt = readr::format_tsv(as.data.frame(C), eol = "\r\n")
-  shinyCopy2clipboard::CopyButtonUpdate(
-    session,
-    id    = "copybtn_dlCut",
-    label = "Copy",
-    icon  = icon("copy"),
-    text  = txt 
-  )
-})
-observe({
-  req(Inputs$mat)
-  req(input$stepDlCut)
-  mat <- Inputs$mat
-  wavl <- Inputs$wavl
-  delay <- Inputs$delaySave
-  indx <- seq(1, length(delay),
-              by = max(1, input$stepDlCut)
-  )
-  mat = mat[indx,]
-  delay = c("wavl",paste0(delay[indx]))
-  S = cbind(wavl, t(mat))
-  txt = readr::format_tsv(as.data.frame(S), eol = "\r\n")
-  shinyCopy2clipboard::CopyButtonUpdate(
-    session,
-    id    = "copybtn_wlCut",
-    label = "Copy",
-    icon  = icon("copy"),
-    text  = txt 
-  )
-})
+# observe({
+#   req(Inputs$mat)
+#   req(input$stepWlCut)
+#   mat <- Inputs$mat
+#   wavl <- Inputs$wavl
+#   delay <- Inputs$delaySave
+#   indx <- seq(1, length(wavl),
+#               by = max(1, input$stepWlCut)
+#   )
+#   mat = mat[,indx]
+#   wavl = c("delay",paste0(wavl[indx]))
+#   C = cbind(delay, mat)
+#   txt = readr::format_tsv(as.data.frame(C), eol = "\r\n")
+#   shinyCopy2clipboard::CopyButtonUpdate(
+#     session,
+#     id    = "copybtn_dlCut",
+#     label = "Copy",
+#     icon  = icon("copy"),
+#     text  = txt 
+#   )
+# })
+# observe({
+#   req(Inputs$mat)
+#   req(input$stepDlCut)
+#   mat   <- Inputs$mat
+#   wavl  <- Inputs$wavl
+#   delay <- Inputs$delaySave
+#   indx  <- seq(1, length(delay),
+#                by = max(1, input$stepDlCut)
+#   )
+#   mat = mat[indx,]
+#   delay = c("wavl",paste0(delay[indx]))
+#   S = cbind(wavl, t(mat))
+#   txt = readr::format_tsv(as.data.frame(S), eol = "\r\n")
+#   shinyCopy2clipboard::CopyButtonUpdate(
+#     session,
+#     id    = "copybtn_wlCut",
+#     label = "Copy",
+#     icon  = icon("copy"),
+#     text  = txt 
+#   )
+# })
 
 observeEvent(
   input$wavlStepCutSave,

@@ -1,8 +1,8 @@
 BUILD : 
     1/ cd SK-Ana
-    2/ docker build -t ppernot1/skana -f docker/Dockerfile .
+    2/ docker build -t ppernot1/skana:3.4.7b -t ppernot1/skana:latest -f docker/Dockerfile .
     3/ docker login
-    4/ docker push ppernot1/skana
+    4/ docker push --all-tags ppernot1/skana
 
 RUN : 
    UI : 

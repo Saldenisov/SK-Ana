@@ -5,6 +5,7 @@ sidebarLayout(
       tabPanel(
         title =h4("New Project"),
         br(),
+        # shinyCopy2clipboard::use_copy(),
         textInput(
           inputId = 'projectTag', 
           label   = 'Project Name', 
