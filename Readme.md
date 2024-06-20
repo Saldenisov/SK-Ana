@@ -112,7 +112,7 @@ A review", _J. Photochem. Photobiol. C_ __13__:1–27. [DOI](http://dx.doi.org/1
 * _Apport de la simulation à la détermination de mécanismes réactionnels en 
 chimie sous rayonnement_. Action Nationale de Formation CNRS "Chimie sous
 Rayonnement et Radiochimie" (Oléron, 2017/09) 
-[PDF](http://pagesperso.lcp.u-psud.fr/pernot/Downloads/2017_ANF_Oleron_Pernot.pdf)
+[PDF](https://universite-paris-saclay.hal.science/hal-04618186)
 
 
 ### Works using SK-Ana (please let me know of any missing reference)
