@@ -1,0 +1,16 @@
+& was unexpected at this time.
+The value specified in an AutoRun registry key could not be parsed.
+& was unexpected at this time.
+The value specified in an AutoRun registry key could not be parsed.
+R version: R version 3.6.3 (2020-02-29)
+LibPaths: C:/Users/denisov/miniconda3/envs/skana36/lib/R/library
+Installing inlmisc from source...
+Warning message:
+package 'inlmisc' is not available (for R version 3.6.3) 
+Installed packages containing inlmisc:
+Error in installed.packages()["inlmisc", c("Package", "Version", "LibPath")] : 
+  subscript out of bounds
+Calls: print
+Execution halted
+
+ERROR conda.cli.main_run:execute(124): `conda run Rscript --vanilla C:\dev\SK-Ana\install_inlmisc.R` failed. (See above for error)

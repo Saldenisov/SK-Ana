@@ -1205,8 +1205,16 @@ observe({
 bgALSpx = NULL
 resALS  = reactiveValues(results = NULL)
 bgALS   = reactiveValues(status = process_status(bgALSpx))
-alsStdOut = tempfile(tmpdir = '/tmp',fileext = '_als.stdout')
-file.create(alsStdOut, showWarnings = FALSE)
+alsStdOut <- tempfile(pattern = "als_", tmpdir = tempdir(), fileext = ".stdout")
+# Ensure the file exists (portable across OSes)
+tryCatch({
+  if (!file.exists(dirname(alsStdOut))) {
+    dir.create(dirname(alsStdOut), recursive = TRUE, showWarnings = FALSE)
+  }
+  if (!file.exists(alsStdOut)) {
+    file.create(alsStdOut, showWarnings = FALSE)
+  }
+}, error = function(e) {})
 obsALSStatus = observe(
   {
     invalidateLater(millis = 500)
@@ -1266,6 +1274,11 @@ nclicks <- reactiveVal(0)
 doALS <- observeEvent(
   input$runALS, {
     if (isolate(!checkInputsSanity())) {
+      showNotification(
+        "Inputs are incomplete: please load data and define a selection before running ALS.",
+        type = "warning",
+        duration = 6
+      )
       return(NULL)
     }
     if(nclicks() != 0){
@@ -1371,6 +1384,17 @@ doALS <- observeEvent(
     
     
     
+    # On Windows, Conda R often lacks the bin/x64 layout. If Rterm.exe is not found
+    # under the current R_ARCH, drop R_ARCH for the child process so callr uses bin\Rterm.exe.
+    rbgenv <- NULL
+    if (identical(.Platform$OS.type, "windows")) {
+      arch <- Sys.getenv("R_ARCH", "")
+      rterm_candidate <- file.path(R.home("bin"), arch, "Rterm.exe")
+      if (!file.exists(rterm_candidate)) {
+        rbgenv <- c(R_ARCH = "")
+      }
+    }
+
     rx = callr::r_bg(
       als,
       args = list(
@@ -1394,7 +1418,8 @@ doALS <- observeEvent(
       ),
       package = TRUE,
       stdout = alsStdOut,
-      stderr = alsStdOut
+      stderr = alsStdOut,
+      env = rbgenv
     )
     resALS$results = NULL
     resAmb$results = NULL
@@ -1847,6 +1872,17 @@ doAmbRot <- observeEvent(
     )
     
     fun = get(paste0('rotAmb',length(rotVec)))
+
+    # Same Windows Rterm.exe handling as ALS run
+    rbgenv <- NULL
+    if (identical(.Platform$OS.type, "windows")) {
+      arch <- Sys.getenv("R_ARCH", "")
+      rterm_candidate <- file.path(R.home("bin"), arch, "Rterm.exe")
+      if (!file.exists(rterm_candidate)) {
+        rbgenv <- c(R_ARCH = "")
+      }
+    }
+
     rx <- callr::r_bg(
       fun,
       args = list(
@@ -1859,20 +1895,21 @@ doAmbRot <- observeEvent(
         eps = eps,
         updateProgress = NULL
       ),
-      package = TRUE
+      package = TRUE,
+      env = rbgenv
     )
     resAmb$results = NULL
     obsAmbStatus$resume()
     bgAmbpx <<- rx
     
+    id = showNotification(
+      "Running ambiguity explorer...",
+      type = "message",
+      duration = 5
+    )
+
   }
 )
-
-
-rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
-
-output$ambSpVectors <- renderPlot({
-  req(resAmb$results)    
   req(alsOut <- resALS$results)
   
   plotAmbVec(

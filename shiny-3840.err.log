@@ -1,0 +1,55 @@
+'/f' is not recognized as an internal or external command,
+operable program or batch file.
+'/f' is not recognized as an internal or external command,
+operable program or batch file.
+Launching Shiny app in C:/dev/SK-Ana on port 3840
+Loading required package: shiny
+Iso 0.0-18.1
+
+Attaching package: 'zoo'
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Successfully loaded changepoint package version 2.2.2
+ NOTE: Predefined penalty values changed in version 2.2.  Previous penalty values with a postfix 1 i.e. SIC1 are now without i.e. SIC and previous penalties without a postfix i.e. SIC are now with a postfix 0 i.e. SIC0. See NEWS and help files for further details.
+
+Attaching package: 'DT'
+
+The following objects are masked from 'package:shiny':
+
+    dataTableOutput, renderDataTable
+
+Spam version 2.6-0 (2020-12-14) is loaded.
+Type 'help( Spam)' or 'demo( spam)' for a short introduction 
+and overview of this package.
+Help for individual functions is also obtained by adding the
+suffix '.spam' to the function name, e.g. 'help( chol.spam)'.
+
+Attaching package: 'spam'
+
+The following objects are masked from 'package:base':
+
+    backsolve, forwardsolve
+
+See https://github.com/NCAR/Fields for
+ an extensive vignette, other supplements and source code 
+##  rgenoud (Version 5.8-3.0, Build Date: 2019-01-22)
+##  See http://sekhon.berkeley.edu/rgenoud for additional documentation.
+##  Please cite software as:
+##   Walter Mebane, Jr. and Jasjeet S. Sekhon. 2011.
+##   ``Genetic Optimization Using Derivatives: The rgenoud package for R.''
+##   Journal of Statistical Software, 42(11): 1-26. 
+##
+
+
+Attaching package: 'xtable'
+
+The following object is masked from 'package:spam':
+
+    display
+
+
+Listening on http://0.0.0.0:3840
+^C
