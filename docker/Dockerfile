@@ -51,5 +51,4 @@ COPY data /SK-Ana/data/
 COPY outputDir /SK-Ana/outputDir/
 
 # expose port and run app
-EXPOSE 3840
-CMD ["R", "-e", "shiny::runApp(host = '0.0.0.0', port = 3840)"]
+CMD ["R", "-e", "port <- as.integer(Sys.getenv('PORT', '3000')); host <- '0.0.0.0'; message(paste('Starting app on', host, 'port', port)); shiny::runApp('.', host = host, port = port)"]
