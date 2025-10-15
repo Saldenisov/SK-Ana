@@ -15,6 +15,29 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
+## Dev44 branch (R 4.4)
+
+This branch (`dev44`) updates SK-Ana for R 4.4 compatibility and diverges from the original `master` as follows:
+
+- Uses R 4.4.x (tested with 4.4.1)
+- Removed dependency on `inlmisc`; added a local `GetColors` implementation
+- Added `run_app_3840.R` helper script to launch the app on port 3840
+- Minor package/dependency adjustments and configuration cleanups
+
+### Run locally without Docker (R 4.4)
+
+1. Install R 4.4.x from CRAN.
+2. (Optional) Install RStudio.
+3. Open a terminal in the project root (this folder).
+4. Start the app in one of the following ways:
+   - R console:
+     - setwd to the project directory and run: `shiny::runApp('.')`
+     - or: `source('run_app_3840.R')` (launches on port 3840)
+   - RStudio:
+     - open `server.R` or `ui.R` and click "Run App"; or open and run `run_app_3840.R`.
+
+On first launch, required packages will be installed automatically if missing (e.g. `outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, `msm`, `xtable`). Depending on your OS, you may need to install some of them manually using `install.packages(...)` in R.
+
 ## User's manual
 
 __New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
