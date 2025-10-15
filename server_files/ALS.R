@@ -167,6 +167,15 @@ als <- function(
   closeC  = NA,
   wCloseC = NA) {
   
+  # DOCKER FIX: Explicitly load required packages in subprocess
+  # This ensures packages are available in callr background processes
+  required_packages <- c('nnls', 'Iso', 'mvtnorm', 'fields', 'Rsolnp', 'deSolve', 'msm', 'changepoint', 'outliers', 'rgenoud', 'NMFN')
+  for (pkg in required_packages) {
+    if (requireNamespace(pkg, quietly = TRUE)) {
+      library(pkg, character.only = TRUE, quietly = TRUE)
+    }
+  }
+  
   # Interface to the core ALS code (myals)
   # Implements sequential dimension growth...
   
@@ -920,41 +929,95 @@ doALS <- observeEvent(
     
     # On Windows, Conda R often lacks the bin/x64 layout. If Rterm.exe is not found
     # under the current R_ARCH, drop R_ARCH for the child process so callr uses bin\Rterm.exe.
-    rbgenv <- NULL
+    # For Docker/Linux, we don't need any special environment variables.
     if (identical(.Platform$OS.type, "windows")) {
       arch <- Sys.getenv("R_ARCH", "")
       rterm_candidate <- file.path(R.home("bin"), arch, "Rterm.exe")
       if (!file.exists(rterm_candidate)) {
-        rbgenv <- c(R_ARCH = "")
+        rbgenv <- character(0)
+        rbgenv["R_ARCH"] <- ""
+        
+        rx = callr::r_bg(
+          als,
+          args = list(
+            delay, delayId, wavl, mat, nullC, S, C,
+            nAls    = nAls,
+            nStart  = nStart,
+            S0      = S0,
+            maxiter = input$maxiter,
+            uniS    = input$uniS,
+            nonnegS = input$nonnegS,
+            nonnegC = input$nonnegC,
+            thresh  = 10^input$alsThresh,
+            normS   = input$normS,
+            hardS0  = !input$softS0,
+            wHardS0 = 10^input$wSoftS0,
+            optS1st = input$optS1st,
+            smooth  = input$smooth,
+            SumS    = input$SumS,
+            closeC  = input$closeC,
+            wCloseC = 10^input$wCloseC
+          ),
+          package = TRUE,
+          stdout = alsStdOut,
+          stderr = alsStdOut,
+          env = rbgenv
+        )
+      } else {
+        rx = callr::r_bg(
+          als,
+          args = list(
+            delay, delayId, wavl, mat, nullC, S, C,
+            nAls    = nAls,
+            nStart  = nStart,
+            S0      = S0,
+            maxiter = input$maxiter,
+            uniS    = input$uniS,
+            nonnegS = input$nonnegS,
+            nonnegC = input$nonnegC,
+            thresh  = 10^input$alsThresh,
+            normS   = input$normS,
+            hardS0  = !input$softS0,
+            wHardS0 = 10^input$wSoftS0,
+            optS1st = input$optS1st,
+            smooth  = input$smooth,
+            SumS    = input$SumS,
+            closeC  = input$closeC,
+            wCloseC = 10^input$wCloseC
+          ),
+          package = TRUE,
+          stdout = alsStdOut,
+          stderr = alsStdOut
+        )
       }
+    } else {
+      # Linux/Docker - no special environment needed
+      rx = callr::r_bg(
+        als,
+        args = list(
+          delay, delayId, wavl, mat, nullC, S, C,
+          nAls    = nAls,
+          nStart  = nStart,
+          S0      = S0,
+          maxiter = input$maxiter,
+          uniS    = input$uniS,
+          nonnegS = input$nonnegS,
+          nonnegC = input$nonnegC,
+          thresh  = 10^input$alsThresh,
+          normS   = input$normS,
+          hardS0  = !input$softS0,
+          wHardS0 = 10^input$wSoftS0,
+          optS1st = input$optS1st,
+          smooth  = input$smooth,
+          SumS    = input$SumS,
+          closeC  = input$closeC,
+          wCloseC = 10^input$wCloseC
+        ),
+        package = TRUE,
+        stdout = alsStdOut,
+        stderr = alsStdOut
+      )
     }
-
-    rx = callr::r_bg(
-      als,
-      args = list(
-        delay, delayId, wavl, mat, nullC, S, C,
-        nAls    = nAls,
-        nStart  = nStart,
-        S0      = S0,
-        maxiter = input$maxiter,
-        uniS    = input$uniS,
-        nonnegS = input$nonnegS,
-        nonnegC = input$nonnegC,
-        thresh  = 10^input$alsThresh,
-        normS   = input$normS,
-        hardS0  = !input$softS0,
-        wHardS0 = 10^input$wSoftS0,
-        optS1st = input$optS1st,
-        smooth  = input$smooth,
-        SumS    = input$SumS,
-        closeC  = input$closeC,
-        wCloseC = 10^input$wCloseC
-      ),
-      package = TRUE,
-      stdout = alsStdOut,
-      stderr = alsStdOut,
-      env = rbgenv
-    )
     resALS$results = NULL
     resAmb$results = NULL
     obsALSStatus$resume()
@@ -1408,30 +1471,61 @@ doAmbRot <- observeEvent(
     fun = get(paste0('rotAmb',length(rotVec)))
 
     # Same Windows Rterm.exe handling as ALS run
-    rbgenv <- NULL
     if (identical(.Platform$OS.type, "windows")) {
       arch <- Sys.getenv("R_ARCH", "")
       rterm_candidate <- file.path(R.home("bin"), arch, "Rterm.exe")
       if (!file.exists(rterm_candidate)) {
-        rbgenv <- c(R_ARCH = "")
+        rbgenv <- character(0)
+        rbgenv["R_ARCH"] <- ""
+        
+        rx <- callr::r_bg(
+          fun,
+          args = list(
+            C0 = C0, 
+            S0 = S0,
+            data = Inputs$mat, 
+            nullC = nullC,
+            rotVec = rotVec, 
+            dens = dens, 
+            eps = eps,
+            updateProgress = NULL
+          ),
+          package = TRUE,
+          env = rbgenv
+        )
+      } else {
+        rx <- callr::r_bg(
+          fun,
+          args = list(
+            C0 = C0, 
+            S0 = S0,
+            data = Inputs$mat, 
+            nullC = nullC,
+            rotVec = rotVec, 
+            dens = dens, 
+            eps = eps,
+            updateProgress = NULL
+          ),
+          package = TRUE
+        )
       }
+    } else {
+      # Linux/Docker - no special environment needed
+      rx <- callr::r_bg(
+        fun,
+        args = list(
+          C0 = C0, 
+          S0 = S0,
+          data = Inputs$mat, 
+          nullC = nullC,
+          rotVec = rotVec, 
+          dens = dens, 
+          eps = eps,
+          updateProgress = NULL
+        ),
+        package = TRUE
+      )
     }
-
-    rx <- callr::r_bg(
-      fun,
-      args = list(
-        C0 = C0, 
-        S0 = S0,
-        data = Inputs$mat, 
-        nullC = nullC,
-        rotVec = rotVec, 
-        dens = dens, 
-        eps = eps,
-        updateProgress = NULL
-      ),
-      package = TRUE,
-      env = rbgenv
-    )
     resAmb$results = NULL
     obsAmbStatus$resume()
     bgAmbpx <<- rx

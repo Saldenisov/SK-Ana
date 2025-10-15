@@ -41,27 +41,53 @@ bmc_glob = function(
   pars = parContract(paropt)
   np   = length(pars$p0) 
   
-  rx <- callr::r_bg(
-    rgenoud::genoud,
-    args = list(
-      fn = ifelse(weighted, mwlogP, mulogP),
-      parms = parms,
-      paropt = paropt,
-      starting.values = startp,
-      nvars = np,
-      BFGS = FALSE,
-      print.level = 1,
-      max.generations = niter,
-      wait.generations = 5,
-      gradient.check = FALSE,
-      pop.size = global,
-      Domains = cbind(pars$LB, pars$UB),
-      boundary.enforcement = 2
-    ),
-    stdout  = glOptOut,
-    stderr  = glOptOut,
-    package = TRUE
-  )
+  # DOCKER FIX: Use platform-specific callr approach
+  if (identical(.Platform$OS.type, "windows")) {
+    rx <- callr::r_bg(
+      rgenoud::genoud,
+      args = list(
+        fn = ifelse(weighted, mwlogP, mulogP),
+        parms = parms,
+        paropt = paropt,
+        starting.values = startp,
+        nvars = np,
+        BFGS = FALSE,
+        print.level = 1,
+        max.generations = niter,
+        wait.generations = 5,
+        gradient.check = FALSE,
+        pop.size = global,
+        Domains = cbind(pars$LB, pars$UB),
+        boundary.enforcement = 2
+      ),
+      stdout  = glOptOut,
+      stderr  = glOptOut,
+      package = TRUE
+    )
+  } else {
+    # Linux/Docker - no special environment handling
+    rx <- callr::r_bg(
+      rgenoud::genoud,
+      args = list(
+        fn = ifelse(weighted, mwlogP, mulogP),
+        parms = parms,
+        paropt = paropt,
+        starting.values = startp,
+        nvars = np,
+        BFGS = FALSE,
+        print.level = 1,
+        max.generations = niter,
+        wait.generations = 5,
+        gradient.check = FALSE,
+        pop.size = global,
+        Domains = cbind(pars$LB, pars$UB),
+        boundary.enforcement = 2
+      ),
+      stdout  = glOptOut,
+      stderr  = glOptOut,
+      package = TRUE
+    )
+  }
   
   return(rx)
 }
@@ -81,21 +107,41 @@ bmc_loc = function(
   # the solution...)
   best = best * rlnorm(best,0,0.005)
   
-  rx <- callr::r_bg(
-    Rsolnp::solnp,
-    args = list(
-      pars = best,
-      fun = ifelse(weighted, mwlogP, mulogP),
-      LB = pars$LB,
-      UB = pars$UB,
-      control = list(tol = tol, trace = 1),
-      parms = parms,
-      paropt = paropt
-    ),
-    stdout = locOptOut,
-    stderr = locOptOut,
-    package = TRUE
-  )
+  # DOCKER FIX: Use platform-specific callr approach
+  if (identical(.Platform$OS.type, "windows")) {
+    rx <- callr::r_bg(
+      Rsolnp::solnp,
+      args = list(
+        pars = best,
+        fun = ifelse(weighted, mwlogP, mulogP),
+        LB = pars$LB,
+        UB = pars$UB,
+        control = list(tol = tol, trace = 1),
+        parms = parms,
+        paropt = paropt
+      ),
+      stdout = locOptOut,
+      stderr = locOptOut,
+      package = TRUE
+    )
+  } else {
+    # Linux/Docker - no special environment handling
+    rx <- callr::r_bg(
+      Rsolnp::solnp,
+      args = list(
+        pars = best,
+        fun = ifelse(weighted, mwlogP, mulogP),
+        LB = pars$LB,
+        UB = pars$UB,
+        control = list(tol = tol, trace = 1),
+        parms = parms,
+        paropt = paropt
+      ),
+      stdout = locOptOut,
+      stderr = locOptOut,
+      package = TRUE
+    )
+  }
   
   return(rx)
 }
