@@ -24,17 +24,31 @@ This branch (`dev44`) updates SK-Ana for R 4.4 compatibility and diverges from t
 - Added `run_app_3840.R` helper script to launch the app on port 3840
 - Minor package/dependency adjustments and configuration cleanups
 
-### Run locally without Docker (R 4.4)
+### Run locally without Docker (R 4.2+)
 
-1. Install R 4.4.x from CRAN.
+1. Install R 4.2+ from CRAN (tested with R 4.2.3 and 4.4.1).
 2. (Optional) Install RStudio.
 3. Open a terminal in the project root (this folder).
 4. Start the app in one of the following ways:
-   - R console:
-     - setwd to the project directory and run: `shiny::runApp('.')`
-     - or: `source('run_app_3840.R')` (launches on port 3840)
-   - RStudio:
-     - open `server.R` or `ui.R` and click "Run App"; or open and run `run_app_3840.R`.
+   
+   **Method A: Using R console/terminal**
+   ```r
+   setwd("C:/path/to/SK-Ana")  # Adjust path as needed
+   shiny::runApp(".")
+   ```
+   
+   **Method B: Using the helper script**
+   - Double-click on `run_app_3840.R` in Windows Explorer, or
+   - In R console: `source("run_app_3840.R")` 
+   - This will launch the app on http://localhost:3840
+   
+   **Method C: Using RStudio**
+   - Open `server.R` or `ui.R` in RStudio
+   - Click "Run App" button
+
+5. The app will open automatically in your browser, or go to:
+   - http://localhost:3838 (default shiny port) or
+   - http://localhost:3840 (if using `run_app_3840.R`)
 
 On first launch, required packages will be installed automatically if missing (e.g. `outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, `msm`, `xtable`). Depending on your OS, you may need to install some of them manually using `install.packages(...)` in R.
 
