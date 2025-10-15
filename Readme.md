@@ -94,39 +94,49 @@ Depending on your OS, you might have to install them manually.
 For cross-plateform compatibility issues, the preferred installation
 method is through a docker container.
 
-The [skana](https://hub.docker.com/repository/docker/ppernot1/skana)
-[Docker](https://www.docker.com/) container has all elements preinstalled.
+### Option 1: Updated Docker Image (Recommended)
 
-To run the container:
+The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image includes all latest fixes and R 4.4.1 compatibility.
 
 0. Install [Docker](https://www.docker.com/products/docker-desktop)
 
-1. Type the following command in a terminal
-```
-docker run -d -p 3840:3840 --name skana ppernot1/skana
-```      
-
-2. Access SK-Ana at http://localhost:3840 in your favorite browser
-
-3. When finished
-```
-docker kill skana
+1. Run the container:
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana
 ```
 
-4. For further sessions
+2. Access SK-Ana in your browser:
+   - **Windows/Mac/Linux**: http://localhost:3840 or http://127.0.0.1:3840
+   - The application will be available at the above addresses once the container starts
+
+3. When finished:
+```bash
+docker stop skana
+docker rm skana
 ```
+
+4. For further sessions (reuse existing container):
+```bash
 docker restart skana
 ```
 
-5. To cleanup
-```
-docker remove -v skana
+5. To get the latest version:
+```bash
+docker pull saldenisov/skana
 ```
 
-6. To get the latest version
+### Option 2: Original Docker Image
+
+The original [ppernot1/skana](https://hub.docker.com/repository/docker/ppernot1/skana) Docker container:
+
+1. Run the container:
+```bash
+docker run -d -p 3840:3840 --name skana-original ppernot1/skana
 ```
-docker pull ppernot1/skana
-```      
+
+2. Access at http://localhost:3840
+
+**Note**: The updated `saldenisov/skana` image includes bug fixes and is recommended for new deployments.
 
 
 ## How to cite SK-Ana
