@@ -5,7 +5,7 @@ FROM rocker/shiny:4.4.1
 WORKDIR /SK-Ana
 
 # Install R packages needed by the app
-RUN R -e "install.packages(c('shiny','shinythemes','shinycssloaders','DT','outliers','nnls','Iso','httpuv','Rsolnp','fields','NMFN','rgenoud','mvtnorm','deSolve','msm','xtable','magrittr','callr','processx','RColorBrewer','viridisLite'), repos='https://cloud.r-project.org')"
+RUN R -e "install.packages(c('shiny','shinythemes','shinycssloaders','DT','outliers','nnls','Iso','httpuv','Rsolnp','fields','NMFN','rgenoud','mvtnorm','deSolve','msm','xtable','magrittr','callr','processx','RColorBrewer','viridisLite','changepoint'), repos='https://cloud.r-project.org')"
 # Ensure shinyBS is available (CRAN is archived sometimes); try CRAN then fallback to GitHub
 RUN R -e "if (!requireNamespace('shinyBS', quietly = TRUE)) { try(install.packages('shinyBS', repos='https://cloud.r-project.org'), silent=TRUE); if (!requireNamespace('shinyBS', quietly=TRUE)) { install.packages('remotes', repos='https://cloud.r-project.org'); remotes::install_github('ebailey78/shinyBS'); } }"
 
