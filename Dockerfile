@@ -17,7 +17,6 @@ COPY reportTemplate.Rmd /SK-Ana/
 COPY ui_files /SK-Ana/ui_files/
 COPY server_files /SK-Ana/server_files/
 COPY data /SK-Ana/data/
-COPY R /SK-Ana/R/
 
 # Create output directory inside the container
 RUN mkdir -p /SK-Ana/outputDir
