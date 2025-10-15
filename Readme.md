@@ -15,14 +15,7 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
-## Dev44 branch (R 4.4)
-
-This branch (`dev44`) updates SK-Ana for R 4.4 compatibility and diverges from the original `master` as follows:
-
-- Uses R 4.4.x (tested with 4.4.1)
-- Removed dependency on `inlmisc`; added a local `GetColors` implementation
-- Added `run_app_3840.R` helper script to launch the app on port 3840
-- Minor package/dependency adjustments and configuration cleanups
+## Running SK-Ana
 
 ### Run locally without Docker (R 4.2+)
 
@@ -125,9 +118,12 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 
 ## Technical notes
 - Interactive GUI built with R/Shiny; runs locally or in Docker.
-- Recommended Docker one‑liner (see container section below):
-  - docker run -d -p 3840:3840 --name skana saldenisov/skana
-  - Access via http://localhost:3840 (or http://127.0.0.1:3840)
+- Compatible with R 4.4.x (tested with R 4.4.1)
+- Removed dependency on `inlmisc`; includes local `GetColors` implementation
+- Includes `run_app_3840.R` helper script for easy local deployment
+- Recommended Docker deployment (see container section below):
+  - `docker run -d -p 3840:3840 --name skana saldenisov/skana:latest`
+  - Access via http://localhost:3840
 - Integrates visualization, matrix factorization, and model fitting in one app.
 
 ---
@@ -188,7 +184,7 @@ The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image i
 
 1. Run the container:
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/skana
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
 2. Access SK-Ana in your browser:
@@ -208,7 +204,7 @@ docker restart skana
 
 5. To get the latest version:
 ```bash
-docker pull saldenisov/skana
+docker pull saldenisov/skana:latest
 ```
 
 ### Option 2: Original Docker Image
