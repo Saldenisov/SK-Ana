@@ -1910,6 +1910,11 @@ doAmbRot <- observeEvent(
 
   }
 )
+rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
+
+output$ambSpVectors <- renderPlot({
+  req(resAmb$results)
+  req(length(resAmb$results$solutions) > 0)
   req(alsOut <- resALS$results)
   
   plotAmbVec(
@@ -1939,7 +1944,8 @@ observeEvent(input$ambSp_dblclick, {
 rangesAmbKin <- reactiveValues(x = NULL, y = NULL)
 
 output$ambKinVectors <- renderPlot({
-  req(resAmb$results)    
+  req(resAmb$results)
+  req(length(resAmb$results$solutions) > 0)
   req(alsOut <- resALS$results)
   
   plotAmbVec(
