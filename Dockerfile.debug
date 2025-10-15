@@ -1,0 +1,104 @@
+# Enhanced debugging Dockerfile for SK-Ana ALS issues
+FROM rocker/shiny:4.4.1
+
+# Set environment variables for compilation and debugging
+ENV DEBIAN_FRONTEND=noninteractive
+ENV R_COMPILE_AND_INSTALL_PACKAGES=yes
+ENV R_DEBUG=1
+
+# Install system dependencies + debugging tools
+RUN apt-get update && apt-get install -y \
+    # Compilation dependencies
+    gfortran \
+    libblas-dev \
+    liblapack-dev \
+    build-essential \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libgit2-dev \
+    libssh2-1-dev \
+    libudunits2-dev \
+    libgdal-dev \
+    gdal-bin \
+    libproj-dev \
+    libgsl-dev \
+    libcairo2-dev \
+    libmagick++-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff5-dev \
+    # Debugging tools
+    strace \
+    htop \
+    procps \
+    lsof \
+    tcpdump \
+    vim \
+    less \
+    tree \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /SK-Ana
+
+# Install R packages in stages with enhanced logging
+RUN R -e "options(repos='https://cloud.r-project.org'); cat('=== Installing base packages ===\n'); install.packages(c('Rcpp', 'RcppEigen', 'Matrix', 'lattice'), type='source'); cat('=== Base packages completed ===\n')"
+
+RUN R -e "options(repos='https://cloud.r-project.org'); cat('=== Installing numerical packages ===\n'); install.packages(c('nnls', 'Iso', 'mvtnorm', 'fields', 'Rsolnp'), type='source'); cat('=== Numerical packages completed ===\n')"
+
+RUN R -e "options(repos='https://cloud.r-project.org'); cat('=== Installing computational packages ===\n'); install.packages(c('deSolve', 'msm', 'changepoint', 'outliers', 'rgenoud'), type='source'); cat('=== Computational packages completed ===\n')"
+
+RUN R -e "options(repos='https://cloud.r-project.org'); cat('=== Installing NMF packages ===\n'); install.packages('NMFN'); cat('=== NMF packages completed ===\n')"
+
+RUN R -e "options(repos='https://cloud.r-project.org'); cat('=== Installing Shiny packages ===\n'); install.packages(c('shiny', 'shinythemes', 'shinycssloaders', 'DT', 'httpuv')); cat('=== Shiny packages completed ===\n')"
+
+RUN R -e "if (!requireNamespace('shinyBS', quietly = TRUE)) { tryCatch({ install.packages('shinyBS', repos='https://cloud.r-project.org') }, error = function(e) { install.packages('remotes', repos='https://cloud.r-project.org'); remotes::install_github('ebailey78/shinyBS') }) }"
+
+RUN R -e "options(repos='https://cloud.r-project.org'); cat('=== Installing utility packages ===\n'); install.packages(c('xtable', 'magrittr', 'callr', 'processx', 'RColorBrewer', 'viridisLite')); cat('=== Utility packages completed ===\n')"
+
+RUN R -e "if (!requireNamespace('tools', quietly = TRUE)) { install.packages('tools', repos='https://cloud.r-project.org') }"
+
+# Copy application files
+COPY global.R /SK-Ana/
+COPY ui.R /SK-Ana/
+COPY server.R /SK-Ana/
+COPY reportTemplate.Rmd /SK-Ana/
+COPY ui_files /SK-Ana/ui_files/
+COPY server_files /SK-Ana/server_files/
+COPY data /SK-Ana/data/
+
+# Create debug directories
+RUN mkdir -p /SK-Ana/outputDir /SK-Ana/debug_logs /SK-Ana/temp_debug
+RUN chown -R shiny:shiny /SK-Ana
+RUN chmod -R 755 /SK-Ana
+
+# Copy debugging scripts
+COPY debug_als.R /SK-Ana/
+COPY test_als_simple.R /SK-Ana/
+
+# Run comprehensive debugging
+RUN R -f /SK-Ana/debug_als.R > /SK-Ana/debug_logs/debug_output.log 2>&1 || true
+
+# Test the simplified ALS
+RUN R -f /SK-Ana/test_als_simple.R > /SK-Ana/debug_logs/simple_als_test.log 2>&1 || true
+
+# Expose port
+EXPOSE 3838
+
+# Create startup script with debugging
+RUN echo '#!/bin/bash' > /SK-Ana/start_with_debug.sh && \
+    echo 'echo "=== Starting SK-Ana with Debug Logging ==="' >> /SK-Ana/start_with_debug.sh && \
+    echo 'echo "Timestamp: $(date)"' >> /SK-Ana/start_with_debug.sh && \
+    echo 'echo "Container Resources:"' >> /SK-Ana/start_with_debug.sh && \
+    echo 'free -h' >> /SK-Ana/start_with_debug.sh && \
+    echo 'df -h /SK-Ana' >> /SK-Ana/start_with_debug.sh && \
+    echo 'echo "=========================="' >> /SK-Ana/start_with_debug.sh && \
+    echo 'R -e "port <- as.integer(Sys.getenv(\"PORT\", \"3838\")); host <- \"0.0.0.0\"; message(paste(\"Starting SK-Ana on\", host, \"port\", port)); shiny::runApp(\".\", host = host, port = port)" 2>&1 | tee /SK-Ana/debug_logs/app.log' >> /SK-Ana/start_with_debug.sh && \
+    chmod +x /SK-Ana/start_with_debug.sh
+
+# Default command
+CMD ["/SK-Ana/start_with_debug.sh"]

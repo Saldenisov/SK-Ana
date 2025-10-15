@@ -22,8 +22,8 @@ libs <- c(
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
-  "inlmisc","shinythemes","magrittr","callr","processx",
-  "readr" #,"shinyCopy2clipboard"
+  "shinythemes","magrittr","callr","processx"
+  # ,"readr", "shinyCopy2clipboard"
 )
 #remotes::install_github("deepanshu88/shinyCopy2clipboard")
 for (lib in libs) {
@@ -42,15 +42,36 @@ for (lib in libs) {
 col2tr <- function(col, alpha)
   rgb(unlist(t(col2rgb(col))), alpha = alpha, maxColorValue = 255)
 
-imgColors <- inlmisc::GetColors(255, scheme = "davos")
-cutColors <- inlmisc::GetColors(255, scheme = "jet")
-resColors <- inlmisc::GetColors( 15, scheme = "BuRd")
-lineColors <- rev(inlmisc::GetColors(8))
-colo_tr  <- rev(inlmisc::GetColors(8, alpha = 0.25))
+# Replacement for inlmisc::GetColors using common palettes
+GetColors <- function(n, scheme = NULL, alpha = 1) {
+  pal_fun <- switch(
+    if (is.null(scheme)) "viridis" else scheme,
+    # Approximate 'jet' using a classic blue-cyan-yellow-red ramp
+    jet = grDevices::colorRampPalette(c("#00007F", "#00FFFF", "#FFFF00", "#FF0000")),
+    # Approximate 'BuRd' using a diverging red-blue palette (reversed to match "BuRd")
+    BuRd = grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(11, "RdBu"))),
+    # Use a modern sequential palette for 'davos'
+    davos = function(k) viridisLite::mako(k),
+    # Default to viridis
+    viridis = function(k) viridisLite::viridis(k)
+  )
+  cols <- pal_fun(as.integer(n))
+  # Apply alpha if specified (0..1)
+  if (!is.null(alpha) && !is.na(alpha) && is.finite(alpha)) {
+    cols <- grDevices::adjustcolor(cols, alpha.f = max(0, min(1, alpha)))
+  }
+  cols
+}
+
+imgColors <- GetColors(255, scheme = "davos")
+cutColors <- GetColors(255, scheme = "jet")
+resColors <- GetColors(15,  scheme = "BuRd")
+lineColors <- rev(GetColors(8))
+colo_tr  <- rev(GetColors(8,  alpha = 0.25))
 cyan_tr  <- colo_tr[5]
 pink_tr  <- colo_tr[3]
 mask_tr  <- colo_tr[8]
-colo_tr2 <- rev(inlmisc::GetColors(8, alpha = 0.5))
+colo_tr2 <- rev(GetColors(8, alpha = 0.5))
 cyan_tr2 <- colo_tr2[5]
 pink_tr2 <- colo_tr2[3]
 mask_tr2 <- colo_tr2[8]

@@ -1,0 +1,3 @@
+# This file ensures the outputDir directory is tracked by git
+# The directory is used by the SK-Ana app for output files
+

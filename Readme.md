@@ -15,9 +15,128 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
+## Running SK-Ana
+
+### Run locally without Docker (R 4.2+)
+
+1. Install R 4.2+ from CRAN (tested with R 4.2.3 and 4.4.1).
+2. (Optional) Install RStudio.
+3. Open a terminal in the project root (this folder).
+4. Start the app in one of the following ways:
+   
+   **Method A: Using R console/terminal**
+   ```r
+   setwd("C:/path/to/SK-Ana")  # Adjust path as needed
+   shiny::runApp(".")
+   ```
+   
+   **Method B: Using the helper script**
+   - Double-click on `run_app_3840.R` in Windows Explorer, or
+   - In R console: `source("run_app_3840.R")` 
+   - This will launch the app on http://localhost:3840
+   
+   **Method C: Using RStudio**
+   - Open `server.R` or `ui.R` in RStudio
+   - Click "Run App" button
+
+5. The app will open automatically in your browser, or go to:
+   - http://localhost:3838 (default shiny port) or
+   - http://localhost:3840 (if using `run_app_3840.R`)
+
+On first launch, required packages will be installed automatically if missing (e.g. `outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, `msm`, `xtable`). Depending on your OS, you may need to install some of them manually using `install.packages(...)` in R.
+
 ## User's manual
 
 __New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
+
+---
+
+## What is SK-Ana?
+
+SK-Ana (Spectro-Kinetic Analysis) is an R + Shiny application for analyzing time-resolved spectroscopic datasets (e.g., pulse radiolysis, transient absorption, pump–probe). Such experiments produce 2D matrices where one axis is time (kinetics) and the other is wavelength (spectra). The goal is to recover the spectra of transient species and their kinetic profiles, and optionally fit a mechanistic reaction model.
+
+### Data model
+A measured dataset D(t, λ) is modeled as a sum of species spectra and time-dependent concentrations plus noise:
+
+D(t_i, λ_j) ≈ Σ_k C_k(t_i) · S_k(λ_j) + ε(t_i, λ_j)
+
+where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species spectra, and ε is noise.
+
+---
+
+## Core capabilities
+
+### 1) Singular Value Decomposition (SVD)
+- Estimates the number of significant components above noise.
+- Denoises by reconstructing the dataset from significant singular values.
+
+### 2) Non-Negative Matrix Factorization (NNMF)
+- Factorizes D ≈ C · Sᵀ with non-negativity on spectra and concentrations.
+- Optional constraints (smoothness, sparsity, unimodality) can be applied.
+- Subject to rotational/scaling ambiguity (multiple valid solutions may exist).
+
+### 3) MCR-ALS (Multi-Curve Resolution – Alternating Least Squares)
+- Alternates between solving for C and S under chosen constraints:
+  - positivity (spectra, concentrations)
+  - mass/stoichiometry conservation
+  - known spectral shapes or fixed regions
+  - time masks or kinetic restrictions
+- Provides uncertainty/interval estimates for spectra/kinetics.
+
+### 4) Hybrid Hard–Soft Modeling (HH-SM)
+- Couples empirical data fitting with mechanistic kinetic models (ODEs).
+- Optimizes non-linear rate constants (k) and linear spectral coefficients jointly.
+- Supports Decay-Associated Spectra (DAS) and full target-mechanism fitting.
+
+### 5) Global analysis across conditions
+- Fits multiple datasets simultaneously (e.g., different concentrations, solvents, windows) with shared spectra and condition-dependent kinetics.
+- Enables cross-validation and robust parameter estimation.
+
+### 6) Ambiguity and error analysis
+- Explores solution-space ambiguity (T-transform invariances for D = C · Sᵀ).
+- Quantifies confidence bounds on spectra/kinetics and assesses identifiability.
+
+---
+
+## Typical workflow
+1. Import a spectro-kinetic matrix (time × wavelength).
+2. Run SVD to estimate component count and denoise (optional).
+3. Initialize and run MCR-ALS with constraints to extract C and S.
+4. If applicable, define a kinetic scheme and switch to HH-SM to fit rate constants and refine spectra globally.
+5. Inspect residuals, confidence intervals, and ambiguity diagnostics.
+6. Export spectra, kinetics, fitted parameters, and reconstructed datasets.
+
+---
+
+## Typical use cases
+- Pulse radiolysis studies (solvated electrons, radical chemistry).
+- Femtosecond–microsecond pump–probe transient absorption.
+- Photochemical intermediates and reaction-mechanism elucidation.
+- Polymerization and redox kinetics; comparison with TD‑DFT/ab‑initio spectra.
+
+---
+
+## Technical notes
+- Interactive GUI built with R/Shiny; runs locally or in Docker.
+- Compatible with R 4.4.x (tested with R 4.4.1)
+- Removed dependency on `inlmisc`; includes local `GetColors` implementation
+- Includes `run_app_3840.R` helper script for easy local deployment
+- Recommended Docker deployment (see container section below):
+  - `docker run -d -p 3840:3840 --name skana saldenisov/skana:latest`
+  - Access via http://localhost:3840
+- Integrates visualization, matrix factorization, and model fitting in one app.
+
+---
+
+## Related software
+- MCR‑ALS (MATLAB GUI): SVD, MCR‑ALS, hybrid, ambiguity analysis.
+- GloTarAn (R + Java): Global/target analysis (SVD, DAS).
+- SK‑Ana (R + Shiny): SVD, MCR‑ALS, hybrid modeling, ambiguity exploration.
+
+---
+
+## In summary
+SK‑Ana provides a unified workflow to deconvolve, model, and interpret time‑resolved spectro‑kinetic data using both data‑driven and mechanistic approaches—bridging experiment, analysis, and simulation for robust mechanistic insight.
 
 <!--
 ## Local install 
@@ -57,39 +176,49 @@ Depending on your OS, you might have to install them manually.
 For cross-plateform compatibility issues, the preferred installation
 method is through a docker container.
 
-The [skana](https://hub.docker.com/repository/docker/ppernot1/skana)
-[Docker](https://www.docker.com/) container has all elements preinstalled.
+### Option 1: Updated Docker Image (Recommended)
 
-To run the container:
+The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image includes all latest fixes and R 4.4.1 compatibility.
 
 0. Install [Docker](https://www.docker.com/products/docker-desktop)
 
-1. Type the following command in a terminal
-```
-docker run -d -p 3840:3840 --name skana ppernot1/skana
-```      
-
-2. Access SK-Ana at http://localhost:3840 in your favorite browser
-
-3. When finished
-```
-docker kill skana
+1. Run the container:
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-4. For further sessions
+2. Access SK-Ana in your browser:
+   - **Windows/Mac/Linux**: http://localhost:3840 or http://127.0.0.1:3840
+   - The application will be available at the above addresses once the container starts
+
+3. When finished:
+```bash
+docker stop skana
+docker rm skana
 ```
+
+4. For further sessions (reuse existing container):
+```bash
 docker restart skana
 ```
 
-5. To cleanup
-```
-docker remove -v skana
+5. To get the latest version:
+```bash
+docker pull saldenisov/skana:latest
 ```
 
-6. To get the latest version
+### Option 2: Original Docker Image
+
+The original [ppernot1/skana](https://hub.docker.com/repository/docker/ppernot1/skana) Docker container:
+
+1. Run the container:
+```bash
+docker run -d -p 3840:3840 --name skana-original ppernot1/skana
 ```
-docker pull ppernot1/skana
-```      
+
+2. Access at http://localhost:3840
+
+**Note**: The updated `saldenisov/skana` image includes bug fixes and is recommended for new deployments.
 
 
 ## How to cite SK-Ana

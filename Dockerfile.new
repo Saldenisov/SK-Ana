@@ -1,0 +1,105 @@
+# Use Rocker Shiny with R 4.4.x as base
+FROM rocker/shiny:4.4.1
+
+# Set environment variables for compilation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV R_COMPILE_AND_INSTALL_PACKAGES=yes
+
+# Install system dependencies required for R package compilation
+RUN apt-get update && apt-get install -y \
+    # Fortran compiler (required for nnls, fields, etc.)
+    gfortran \
+    # Linear algebra libraries
+    libblas-dev \
+    liblapack-dev \
+    # General build tools
+    build-essential \
+    # Libraries for various R packages
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libgit2-dev \
+    libssh2-1-dev \
+    libudunits2-dev \
+    libgdal-dev \
+    gdal-bin \
+    libproj-dev \
+    # GSL library (for some numerical packages)
+    libgsl-dev \
+    # Cairo for graphics
+    libcairo2-dev \
+    # ImageMagick for image processing
+    libmagick++-dev \
+    # Additional dependencies
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff5-dev \
+    # Clean up
+    && rm -rf /var/lib/apt/lists/*
+
+# Set work directory
+WORKDIR /SK-Ana
+
+# Install R packages in stages to handle dependencies better
+# First, install system/base R packages that others depend on
+RUN R -e "install.packages(c('Rcpp', 'RcppEigen', 'Matrix', 'lattice'), repos='https://cloud.r-project.org', type='source')"
+
+# Install core numerical packages that require compilation
+RUN R -e "install.packages(c('nnls', 'Iso', 'mvtnorm', 'fields', 'Rsolnp'), repos='https://cloud.r-project.org', type='source')"
+
+# Install additional computational packages
+RUN R -e "install.packages(c('deSolve', 'msm', 'changepoint', 'outliers', 'rgenoud'), repos='https://cloud.r-project.org', type='source')"
+
+# Install NMF-related packages
+RUN R -e "install.packages('NMFN', repos='https://cloud.r-project.org')"
+
+# Install Shiny and related UI packages
+RUN R -e "install.packages(c('shiny', 'shinythemes', 'shinycssloaders', 'DT', 'httpuv'), repos='https://cloud.r-project.org')"
+
+# Install shinyBS (with fallback to GitHub if CRAN fails)
+RUN R -e "if (!requireNamespace('shinyBS', quietly = TRUE)) { \
+    tryCatch({ \
+        install.packages('shinyBS', repos='https://cloud.r-project.org') \
+    }, error = function(e) { \
+        install.packages('remotes', repos='https://cloud.r-project.org'); \
+        remotes::install_github('ebailey78/shinyBS') \
+    }) \
+}"
+
+# Install remaining utility packages
+RUN R -e "install.packages(c('xtable', 'magrittr', 'callr', 'processx', 'RColorBrewer', 'viridisLite'), repos='https://cloud.r-project.org')"
+
+# Install tools package (usually comes with base R but ensure it's available)
+RUN R -e "if (!requireNamespace('tools', quietly = TRUE)) { install.packages('tools', repos='https://cloud.r-project.org') }"
+
+# Verify all critical packages are installed and can be loaded
+RUN R -e "libs <- c('outliers', 'nnls', 'Iso', 'httpuv', 'changepoint', 'shiny', 'shinyBS', 'DT', 'Rsolnp', 'fields', 'NMFN', 'tools', 'shinycssloaders', 'rgenoud', 'mvtnorm', 'deSolve', 'msm', 'xtable', 'shinythemes', 'magrittr', 'callr', 'processx', 'RColorBrewer', 'viridisLite'); for (lib in libs) { if (!requireNamespace(lib, quietly = TRUE)) { stop(paste('Package', lib, 'failed to install')) } else { cat(paste('✓ Package', lib, 'loaded successfully\n')) } }; cat('All packages verified successfully!\n')"
+
+# Copy application files
+COPY global.R /SK-Ana/
+COPY ui.R /SK-Ana/
+COPY server.R /SK-Ana/
+COPY reportTemplate.Rmd /SK-Ana/
+COPY ui_files /SK-Ana/ui_files/
+COPY server_files /SK-Ana/server_files/
+COPY data /SK-Ana/data/
+
+# Create output directory
+RUN mkdir -p /SK-Ana/outputDir
+
+# Set proper permissions
+RUN chown -R shiny:shiny /SK-Ana
+RUN chmod -R 755 /SK-Ana
+
+# Test ALS functionality specifically
+RUN R -e "library(nnls); A <- matrix(c(1,1,2,3), nrow=2); b <- c(6,14); result <- nnls(A, b); cat('✓ nnls package working correctly\n'); cat('✓ ALS core dependencies verified\n')"
+
+# Expose port
+EXPOSE 3838
+
+# Run the application
+CMD ["R", "-e", "port <- as.integer(Sys.getenv('PORT', '3838')); host <- '0.0.0.0'; message(paste('Starting SK-Ana on', host, 'port', port)); shiny::runApp('.', host = host, port = port)"]
