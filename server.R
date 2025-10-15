@@ -56,11 +56,14 @@ function(input, output, session) {
   
   # Load Server files ####
   files <- c(
+    "helpers.R",
+    "process_utils.R",
     "getData.R",
     "sliders.R",
     "project.R",
     "selectAreaAndMasks.R",
     "SVD.R",
+    "ALS_plots.R",
     "ALS.R",
     "kinetHypercubeTransfo.R",
     "kinetParsers.R",
