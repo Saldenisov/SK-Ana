@@ -56,6 +56,92 @@ On first launch, required packages will be installed automatically if missing (e
 
 __New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
 
+---
+
+## What is SK-Ana?
+
+SK-Ana (Spectro-Kinetic Analysis) is an R + Shiny application for analyzing time-resolved spectroscopic datasets (e.g., pulse radiolysis, transient absorption, pump–probe). Such experiments produce 2D matrices where one axis is time (kinetics) and the other is wavelength (spectra). The goal is to recover the spectra of transient species and their kinetic profiles, and optionally fit a mechanistic reaction model.
+
+### Data model
+A measured dataset D(t, λ) is modeled as a sum of species spectra and time-dependent concentrations plus noise:
+
+D(t_i, λ_j) ≈ Σ_k C_k(t_i) · S_k(λ_j) + ε(t_i, λ_j)
+
+where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species spectra, and ε is noise.
+
+---
+
+## Core capabilities
+
+### 1) Singular Value Decomposition (SVD)
+- Estimates the number of significant components above noise.
+- Denoises by reconstructing the dataset from significant singular values.
+
+### 2) Non-Negative Matrix Factorization (NNMF)
+- Factorizes D ≈ C · Sᵀ with non-negativity on spectra and concentrations.
+- Optional constraints (smoothness, sparsity, unimodality) can be applied.
+- Subject to rotational/scaling ambiguity (multiple valid solutions may exist).
+
+### 3) MCR-ALS (Multi-Curve Resolution – Alternating Least Squares)
+- Alternates between solving for C and S under chosen constraints:
+  - positivity (spectra, concentrations)
+  - mass/stoichiometry conservation
+  - known spectral shapes or fixed regions
+  - time masks or kinetic restrictions
+- Provides uncertainty/interval estimates for spectra/kinetics.
+
+### 4) Hybrid Hard–Soft Modeling (HH-SM)
+- Couples empirical data fitting with mechanistic kinetic models (ODEs).
+- Optimizes non-linear rate constants (k) and linear spectral coefficients jointly.
+- Supports Decay-Associated Spectra (DAS) and full target-mechanism fitting.
+
+### 5) Global analysis across conditions
+- Fits multiple datasets simultaneously (e.g., different concentrations, solvents, windows) with shared spectra and condition-dependent kinetics.
+- Enables cross-validation and robust parameter estimation.
+
+### 6) Ambiguity and error analysis
+- Explores solution-space ambiguity (T-transform invariances for D = C · Sᵀ).
+- Quantifies confidence bounds on spectra/kinetics and assesses identifiability.
+
+---
+
+## Typical workflow
+1. Import a spectro-kinetic matrix (time × wavelength).
+2. Run SVD to estimate component count and denoise (optional).
+3. Initialize and run MCR-ALS with constraints to extract C and S.
+4. If applicable, define a kinetic scheme and switch to HH-SM to fit rate constants and refine spectra globally.
+5. Inspect residuals, confidence intervals, and ambiguity diagnostics.
+6. Export spectra, kinetics, fitted parameters, and reconstructed datasets.
+
+---
+
+## Typical use cases
+- Pulse radiolysis studies (solvated electrons, radical chemistry).
+- Femtosecond–microsecond pump–probe transient absorption.
+- Photochemical intermediates and reaction-mechanism elucidation.
+- Polymerization and redox kinetics; comparison with TD‑DFT/ab‑initio spectra.
+
+---
+
+## Technical notes
+- Interactive GUI built with R/Shiny; runs locally or in Docker.
+- Recommended Docker one‑liner (see container section below):
+  - docker run -d -p 3840:3840 --name skana saldenisov/skana
+  - Access via http://localhost:3840 (or http://127.0.0.1:3840)
+- Integrates visualization, matrix factorization, and model fitting in one app.
+
+---
+
+## Related software
+- MCR‑ALS (MATLAB GUI): SVD, MCR‑ALS, hybrid, ambiguity analysis.
+- GloTarAn (R + Java): Global/target analysis (SVD, DAS).
+- SK‑Ana (R + Shiny): SVD, MCR‑ALS, hybrid modeling, ambiguity exploration.
+
+---
+
+## In summary
+SK‑Ana provides a unified workflow to deconvolve, model, and interpret time‑resolved spectro‑kinetic data using both data‑driven and mechanistic approaches—bridging experiment, analysis, and simulation for robust mechanistic insight.
+
 <!--
 ## Local install 
 
