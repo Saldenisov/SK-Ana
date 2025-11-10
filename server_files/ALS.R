@@ -1113,10 +1113,22 @@ alsPreview <- reactiveFileReader(
     tryCatch(readRDS(fp), error = function(e) NULL)
   }
 )
+# Reactive value to cache last valid state
+alsLastValid <- reactiveVal(NULL)
 # Use final results if available, otherwise fall back to live preview
+# Cache last valid state to prevent flickering during updates
 alsLiveOut <- reactive({
-  if (!is.null(resALS$results)) return(resALS$results)
-  alsPreview()
+  if (!is.null(resALS$results)) {
+    alsLastValid(resALS$results)
+    return(resALS$results)
+  }
+  preview <- alsPreview()
+  if (!is.null(preview)) {
+    alsLastValid(preview)
+    return(preview)
+  }
+  # Return cached value if current read failed
+  alsLastValid()
 })
 
 output$alsPrint <- renderPrint({
@@ -1221,7 +1233,7 @@ rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
 
 output$alsKinVectors <- renderPlot({
   alsOut <- alsLiveOut()
-  req(alsOut)
+  req(alsOut)  # Now safe - alsLiveOut caches last valid state
   
   # Use custom X-axis scale if provided
   xlim_custom <- rangesAlsKin$x
@@ -1266,7 +1278,7 @@ rangesAlsSp <- reactiveValues(x = NULL, y = NULL)
 
 output$alsSpVectors <- renderPlot({
   alsOut <- alsLiveOut()
-  req(alsOut)
+  req(alsOut)  # Now safe - alsLiveOut caches last valid state
   
   # Use custom X-axis scale if provided
   xlim_custom <- rangesAlsSp$x
