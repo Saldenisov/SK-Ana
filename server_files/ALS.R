@@ -55,7 +55,7 @@ getC <- function(S, data, C, nonnegC = TRUE,
 }
 getS <- function(C, data, S, xS, nonnegS, uniS,
                  S0, normS, smooth, SumS, hardS0,
-                 wHardS0) {
+                 wHardS0, normMode = "intensity") {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
@@ -130,13 +130,27 @@ getS <- function(C, data, S, xS, nonnegS, uniS,
   if (normS) {
     # Spectra normalization
     if (SumS) {
-      # Area
-      for (i in 1:ncol(S))
-        S[, i] <- S[, i] / sum(S[, i])
+      # Area (L1 norm)
+      for (i in 1:ncol(S)) {
+        # Use absolute values for normalization if negatives present
+        norm_factor <- sum(abs(S[, i]))
+        S[, i] <- S[, i] / ifelse(norm_factor > 0, norm_factor, 1)
+      }
     } else {
-      # Amplitude
-      for (i in 1:ncol(S))
-        S[, i] <- S[, i] / ifelse(max(S[, i] > 0), max(S[, i]), 1)
+      # Intensity-based normalization
+      if (normMode == "l1") {
+        # L1 norm: divide by sum of absolute values
+        for (i in 1:ncol(S)) {
+          norm_factor <- sum(abs(S[, i]))
+          S[, i] <- S[, i] / ifelse(norm_factor > 0, norm_factor, 1)
+        }
+      } else {
+        # Intensity (max): divide by max absolute value
+        for (i in 1:ncol(S)) {
+          norm_factor <- max(abs(S[, i]))
+          S[, i] <- S[, i] / ifelse(norm_factor > 0, norm_factor, 1)
+        }
+      }
     }
   }
   
@@ -165,7 +179,10 @@ als <- function(
   smooth  = FALSE,
   SumS    = NA,
   closeC  = NA,
-  wCloseC = NA) {
+  wCloseC = NA,
+  normMode = "intensity",
+  state_file = NULL,
+  update_interval = 10) {
   
   # DOCKER FIX: Explicitly load required packages in subprocess
   # This ensures packages are available in callr background processes
@@ -203,7 +220,10 @@ als <- function(
       nullC = nullC,
       closeC = closeC,
       wCloseC = wCloseC,
-      silent = FALSE
+      normMode = normMode,
+      silent = FALSE,
+      state_file = state_file,
+      update_interval = update_interval
     )
     if(is.null(res[[n]]))
       return(NULL)
@@ -236,7 +256,9 @@ myals <- function(C, Psi, S,
                   normS = TRUE, uniS = FALSE, S0 = NULL, smooth = 0,
                   silent = TRUE, SumS = FALSE, hardS0 = TRUE,
                   wHardS0 = 1.0,
-                  nullC = NA, closeC = FALSE, wCloseC = 0) {
+                  nullC = NA, closeC = FALSE, wCloseC = 0,
+                  normMode = "intensity",
+                  state_file = NULL, update_interval = 10) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
@@ -255,15 +277,27 @@ myals <- function(C, Psi, S,
       S0 <- matrix(S0, ncol = 1, nrow = length(S0))
     }
     if (normS) {
-      # Spectra normalization
+      # Spectra normalization for S0
       if (SumS) {
-        # Area
-        for (i in 1:ncol(S0))
-          S0[, i] <- S0[, i] / sum(S0[, i])
+        # Area (L1 norm)
+        for (i in 1:ncol(S0)) {
+          norm_factor <- sum(abs(S0[, i]))
+          S0[, i] <- S0[, i] / ifelse(norm_factor > 0, norm_factor, 1)
+        }
       } else {
-        # Amplitude
-        for (i in 1:ncol(S0))
-          S0[, i] <- S0[, i] / ifelse(max(S0[, i] > 0), max(S0[, i]), 1)
+        if (normMode == "l1") {
+          # L1 norm
+          for (i in 1:ncol(S0)) {
+            norm_factor <- sum(abs(S0[, i]))
+            S0[, i] <- S0[, i] / ifelse(norm_factor > 0, norm_factor, 1)
+          }
+        } else {
+          # Intensity (max)
+          for (i in 1:ncol(S0)) {
+            norm_factor <- max(abs(S0[, i]))
+            S0[, i] <- S0[, i] / ifelse(norm_factor > 0, norm_factor, 1)
+          }
+        }
       }
     }
   }
@@ -280,7 +314,7 @@ myals <- function(C, Psi, S,
     if (iter %% 2 == b) {
       S <- getS(
         C, Psi, S, xS, nonnegS, uniS,
-        S0, normS, smooth, SumS, hardS0, wHardS0
+        S0, normS, smooth, SumS, hardS0, wHardS0, normMode
       )
     } else {
       C <- getC(S, Psi, C, nonnegC, nullC, closeC, wCloseC)
@@ -297,13 +331,31 @@ myals <- function(C, Psi, S,
       return(NULL)
     oldrss <- rss
     
-    if ( !silent & iter%%10 == 1 ) {
+    if (!silent && (iter %% update_interval == 1)) {
+      # Iteration message with LOF (%) computed from current rss
+      lof_iter <- 100 * sqrt(rss)
       msg <- paste0(
         "Iter. (opt. ",
         ifelse(iter %% 2 == b, "S", "C"), "): ", iter,
-        ", |RD| : ", signif(abs(RD), 3), " > ", thresh
+        ", |RD| : ", signif(abs(RD), 3), " > ", thresh,
+        ", LOF(%) : ", signif(lof_iter, 3)
       )
       cat(msg, "<br/>")
+      # Write live snapshot for UI every update_interval iterations
+      if (!is.null(state_file)) {
+        vlof_snap <- try(100 * sqrt(rss), silent = TRUE)
+        snap <- list(
+          C = C, S = S, xC = xC, xS = xS, Psi = Psi,
+          rss = rss, resid = resid, iter = iter,
+          msg = msg,
+          lof = ifelse(class(vlof_snap) == "try-error", NA, vlof_snap),
+          nullC = nullC
+        )
+        # Set column names for consistency with final output
+        colnames(snap$S) <- paste0("S_", 1:ncol(snap$S))
+        colnames(snap$C) <- paste0("C_", 1:ncol(snap$C))
+        try(saveRDS(snap, state_file), silent = TRUE)
+      }
     }
     
     oneMore <- ((iter %% 2 != b) && maxiter != 1 && iter <= 2)
@@ -749,7 +801,9 @@ bgALSpx = NULL
 resALS  = reactiveValues(results = NULL)
 bgALS   = reactiveValues(status = process_status(bgALSpx))
 alsStdOut <- tempfile(pattern = "als_", tmpdir = tempdir(), fileext = ".stdout")
-# Ensure the file exists (portable across OSes)
+# Live state snapshot file (updated during ALS)
+alsStateFile <- tempfile(pattern = "als_state_", tmpdir = tempdir(), fileext = ".rds")
+# Ensure the stdout file exists (portable across OSes)
 tryCatch({
   if (!file.exists(dirname(alsStdOut))) {
     dir.create(dirname(alsStdOut), recursive = TRUE, showWarnings = FALSE)
@@ -927,8 +981,14 @@ doALS <- observeEvent(
     
     
     
+    # Get normMode with fallback for backward compatibility
+    normMode <- if (!is.null(input$normMode)) input$normMode else "intensity"
+    
+    # Remove any previous live snapshot
+    try({ if (file.exists(alsStateFile)) file.remove(alsStateFile) }, silent = TRUE)
+
     # On Windows, Conda R often lacks the bin/x64 layout. If Rterm.exe is not found
-    # under the current R_ARCH, drop R_ARCH for the child process so callr uses bin\Rterm.exe.
+    # under the current R_ARCH, drop R_ARCH for the child process so callr uses bin\\Rterm.exe.
     # For Docker/Linux, we don't need any special environment variables.
     if (identical(.Platform$OS.type, "windows")) {
       arch <- Sys.getenv("R_ARCH", "")
@@ -956,7 +1016,10 @@ doALS <- observeEvent(
             smooth  = input$smooth,
             SumS    = input$SumS,
             closeC  = input$closeC,
-            wCloseC = 10^input$wCloseC
+            wCloseC = 10^input$wCloseC,
+            normMode = normMode,
+            state_file = alsStateFile,
+            update_interval = 10
           ),
           package = TRUE,
           stdout = alsStdOut,
@@ -983,7 +1046,10 @@ doALS <- observeEvent(
             smooth  = input$smooth,
             SumS    = input$SumS,
             closeC  = input$closeC,
-            wCloseC = 10^input$wCloseC
+            wCloseC = 10^input$wCloseC,
+            normMode = normMode,
+            state_file = alsStateFile,
+            update_interval = 10
           ),
           package = TRUE,
           stdout = alsStdOut,
@@ -1011,7 +1077,10 @@ doALS <- observeEvent(
           smooth  = input$smooth,
           SumS    = input$SumS,
           closeC  = input$closeC,
-          wCloseC = 10^input$wCloseC
+          wCloseC = 10^input$wCloseC,
+          normMode = normMode,
+          state_file = alsStateFile,
+          update_interval = 10
         ),
         package = TRUE,
         stdout = alsStdOut,
@@ -1034,6 +1103,22 @@ stdALSOut = reactiveFileReader(
   readFunc = readLines,
   warn     = FALSE
 )
+# Live preview of ALS state (updated by background process)
+alsPreview <- reactiveFileReader(
+  intervalMillis = 500,
+  session = session,
+  filePath = alsStateFile,
+  readFunc = function(fp) {
+    if (!file.exists(fp)) return(NULL)
+    tryCatch(readRDS(fp), error = function(e) NULL)
+  }
+)
+# Use final results if available, otherwise fall back to live preview
+alsLiveOut <- reactive({
+  if (!is.null(resALS$results)) return(resALS$results)
+  alsPreview()
+})
+
 output$alsPrint <- renderPrint({
   cat(stdALSOut(), sep = '\n')
 })
@@ -1135,12 +1220,31 @@ height = plotHeight)
 rangesAlsKin <- reactiveValues(x = NULL, y = NULL)
 
 output$alsKinVectors <- renderPlot({
-  req(alsOut <- resALS$results)
+  alsOut <- alsLiveOut()
+  req(alsOut)
+  
+  # Use custom X-axis scale if provided
+  xlim_custom <- rangesAlsKin$x
+  if (!is.null(input$alsKinXmin) && !is.null(input$alsKinXmax)) {
+    if (is.finite(input$alsKinXmin) && is.finite(input$alsKinXmax) && 
+        input$alsKinXmin < input$alsKinXmax) {
+      xlim_custom <- c(input$alsKinXmin, input$alsKinXmax)
+    }
+  }
+  
+  # Use custom Y-axis scale if provided
+  ylim_custom <- rangesAlsKin$y
+  if (!is.null(input$alsKinYmin) && !is.null(input$alsKinYmax)) {
+    if (is.finite(input$alsKinYmin) && is.finite(input$alsKinYmax) && 
+        input$alsKinYmin < input$alsKinYmax) {
+      ylim_custom <- c(input$alsKinYmin, input$alsKinYmax)
+    }
+  }
   
   plotAlsVec(alsOut,
              type = "Kin",
-             xlim = rangesAlsKin$x,
-             ylim = rangesAlsKin$y,
+             xlim = xlim_custom,
+             ylim = ylim_custom,
              delayTrans = Inputs$delayTrans
   )
 },
@@ -1161,12 +1265,31 @@ observeEvent(input$alsKin_dblclick, {
 rangesAlsSp <- reactiveValues(x = NULL, y = NULL)
 
 output$alsSpVectors <- renderPlot({
-  req(alsOut <- resALS$results)
+  alsOut <- alsLiveOut()
+  req(alsOut)
+  
+  # Use custom X-axis scale if provided
+  xlim_custom <- rangesAlsSp$x
+  if (!is.null(input$alsSpXmin) && !is.null(input$alsSpXmax)) {
+    if (is.finite(input$alsSpXmin) && is.finite(input$alsSpXmax) && 
+        input$alsSpXmin < input$alsSpXmax) {
+      xlim_custom <- c(input$alsSpXmin, input$alsSpXmax)
+    }
+  }
+  
+  # Use custom Y-axis scale if provided
+  ylim_custom <- rangesAlsSp$y
+  if (!is.null(input$alsSpYmin) && !is.null(input$alsSpYmax)) {
+    if (is.finite(input$alsSpYmin) && is.finite(input$alsSpYmax) && 
+        input$alsSpYmin < input$alsSpYmax) {
+      ylim_custom <- c(input$alsSpYmin, input$alsSpYmax)
+    }
+  }
   
   plotAlsVec(alsOut,
              type = "Sp",
-             xlim = rangesAlsSp$x,
-             ylim = rangesAlsSp$y,
+             xlim = xlim_custom,
+             ylim = ylim_custom,
              nonnegS = input$nonnegS,
              delayTrans = Inputs$delayTrans
   )
@@ -1253,7 +1376,57 @@ observeEvent(
       ),
       row.names = FALSE
     )
+    
+    showNotification(
+      "ALS results saved to outputDir folder",
+      type = "message",
+      duration = 3
+    )
   })
+)
+
+output$alsSpKinDownload <- downloadHandler(
+  filename = function() {
+    paste0(input$projectTag, "_ALS_", input$nALS, "sp_results.zip")
+  },
+  content = function(fname) {
+    req(alsOut <- resALS$results)
+    
+    # Create temporary directory
+    tmpdir <- tempdir()
+    
+    CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
+    
+    # Save Spectra
+    S <- cbind(Inputs$wavl, CS$S)
+    colnames(S) <- c("wavl", colnames(alsOut$S))
+    spectra_file <- file.path(tmpdir, paste0(
+      input$projectTag,
+      "_alsSpectra_",
+      input$nALS, "sp.csv"
+    ))
+    write.csv(S, file = spectra_file, row.names = FALSE)
+    
+    # Save Kinetics
+    C <- cbind(Inputs$delaySave, CS$C)
+    colnames(C) <- c("delay", colnames(alsOut$C))
+    kinets_file <- file.path(tmpdir, paste0(
+      input$projectTag,
+      "_alsKinets_",
+      input$nALS, "sp.csv"
+    ))
+    write.csv(C, file = kinets_file, row.names = FALSE)
+    
+    # Zip the files
+    files_to_zip <- c(spectra_file, kinets_file)
+    zip(zipfile = fname, files = files_to_zip, flags = "-j")
+    
+    # Handle .zip extension issue
+    if(file.exists(paste0(fname, ".zip"))) {
+      file.rename(paste0(fname, ".zip"), fname)
+    }
+  },
+  contentType = "application/zip"
 )
 
 output$alsContribs <- renderPlot({

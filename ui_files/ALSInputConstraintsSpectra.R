@@ -18,7 +18,20 @@ wellPanel(
     ),
     shinyBS::bsTooltip(
       "normS",
-      title = "Enforces the normalization of S ( default: max(S)=1 )"
+      title = "Enforces the normalization of S"
+    ),
+    conditionalPanel(
+      condition = "input.normS",
+      radioButtons(
+        "normMode",
+        label = "Norm mode",
+        choices = list(
+          "Intensity" = "intensity",
+          "L1" = "l1"
+        ),
+        selected = "intensity",
+        inline = TRUE
+      )
     )
   ),
   column(

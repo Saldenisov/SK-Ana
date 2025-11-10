@@ -43,8 +43,9 @@ getExternalSpectra <- function(ui, inputFile, wavl, tag) {
         # Interpolate on wavl grid
         S0 = spline(tmp[, 1], tmp[, k], xout = wavl)$y
         
-        # Normalize
-        S0 = S0 / max(S0)
+        # Normalize using absolute values to handle negatives
+        norm_factor = max(abs(S0))
+        S0 = S0 / ifelse(norm_factor > 0, norm_factor, 1)
         
         # Store in global list
         extSpectra[[paste0("S_",sp)]] = S0
