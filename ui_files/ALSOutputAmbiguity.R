@@ -70,6 +70,14 @@ fluidRow(
         tags$style(
           type='text/css',
           "#rotAmbVecSave { width:100%; margin-top: 5px;}"
+        ),
+        downloadButton(
+          "rotAmbVecDownload",
+          "Download"
+        ),
+        tags$style(
+          type='text/css',
+          "#rotAmbVecDownload { width:100%; margin-top: 5px;}"
         )
       )
     )
