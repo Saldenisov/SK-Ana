@@ -1569,8 +1569,10 @@ obsAmb = observeEvent(
   {
     obsAmbStatus$suspend()
     sol = bgAmb$status$result
+    log_info(paste("Ambiguity explorer completed:", length(sol$solutions), "solutions found"))
     if (length(sol$solutions) == 0) {
       if (sol$finished) {
+        log_warning("No solutions found - finished")
         showModal(modalDialog(
           title = ">>>> No Solution Found <<<< ",
           paste0(
@@ -1582,6 +1584,7 @@ obsAmb = observeEvent(
           size = "s"
         ))
       } else {
+        log_warning("No solutions found - algorithm incomplete")
         showModal(modalDialog(
           title = ">>>> No Solution Found <<<< ",
           paste0("Try to let the algorithm run for a longer time!"),
@@ -1590,6 +1593,8 @@ obsAmb = observeEvent(
           size = "s"
         ))
       }
+    } else {
+      log_info(paste("Solutions available for display"))
     }
     resAmb$results = sol
   },
@@ -1600,7 +1605,10 @@ obsAmb = observeEvent(
 ### Run ####
 doAmbRot <- observeEvent(
   input$runALSAmb, {
+    log_info("===== AMBIGUITY EXPLORER START =====")
+    tryCatch({
     req(alsOut <- resALS$results)
+    log_info("ALS results available")
 
     isolate({
       # TBD manage externalSpectra...
@@ -1631,9 +1639,12 @@ doAmbRot <- observeEvent(
       rotVec <- as.numeric(unlist(input$vecsToRotate))
       eps <- input$alsRotAmbEps
       dens <- input$alsRotAmbDens
+      log_debug(paste("Selected vectors:", paste(rotVec, collapse=",")))
+      log_debug(paste("Eps:", eps, "Dens:", dens))
     })
     
     if (length(rotVec) > 3) {
+      log_error("Too many vectors selected (max 3)")
       showModal(modalDialog(
         title = ">>>> Too Many Vectors Selected <<<< ",
         paste0("Please choose 3 vectors max."),
@@ -1641,6 +1652,7 @@ doAmbRot <- observeEvent(
         footer = modalButton("Close"),
         size = "s"
       ))
+      return(NULL)
     }
     
     C0 <- alsOut$C
@@ -1654,6 +1666,7 @@ doAmbRot <- observeEvent(
     )
     
     fun = get(paste0('rotAmb',length(rotVec)))
+    log_debug(paste("Using function:", paste0('rotAmb',length(rotVec))))
 
     # Same Windows Rterm.exe handling as ALS run
     if (identical(.Platform$OS.type, "windows")) {
@@ -1720,7 +1733,15 @@ doAmbRot <- observeEvent(
       type = "message",
       duration = 5
     )
-
+    log_info("Ambiguity explorer process started")
+    }, error = function(e) {
+      log_error(paste("Ambiguity explorer error:", e$message))
+      showNotification(
+        paste("Error in ambiguity explorer:", e$message),
+        type = "error",
+        duration = 10
+      )
+    })
   }
 )
 rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
