@@ -65,11 +65,14 @@ function(input, output, session) {
     "SVD.R",
     "ALS_plots.R",
     "ALS.R",
+    "ALS_CorrectionSpectra_Server.R",  # Correction spectra extension (must be after ALS.R)
+    "debug_console.R",  # Debug console and logging (must be after ALS.R)
     "kinetHypercubeTransfo.R",
     "kinetParsers.R",
     "kinetSpectrokineticModel.R",
     "kinetBayesian.R",
     "kinetInterface.R",
+    "kinetics_smoothing.R",  # Kinetics smoothing with Savitzky-Golay filter
     "report.R"
   )
   
