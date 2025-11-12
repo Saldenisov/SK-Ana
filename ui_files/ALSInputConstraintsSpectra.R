@@ -83,7 +83,9 @@ wellPanel(
           step  = 0.5,
           sep   = ""
         )
-      )
+      ),
+      # Correction spectra extension
+      source('ui_files/ALSInputConstraintsCorrectionSpectra.R')
     )
   )
 )
