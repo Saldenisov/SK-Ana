@@ -4,14 +4,16 @@
 # Main error handler function
 main_error_handler <- function(error, func_name, func_args) {
   error_msg <- sprintf(
-    "\n========== ERROR CAUGHT ==========\n" +
-    "Function: %s\n" +
-    "Error Type: %s\n" +
-    "Error Message: %s\n" +
-    "Stack Trace:\n%s\n" +
-    "Arguments: %s\n" +
-    "Timestamp: %s\n" +
-    "==================================\n",
+    paste0(
+      "\n========== ERROR CAUGHT ==========\n",
+      "Function: %s\n",
+      "Error Type: %s\n",
+      "Error Message: %s\n",
+      "Stack Trace:\n%s\n",
+      "Arguments: %s\n",
+      "Timestamp: %s\n",
+      "==================================\n"
+    ),
     func_name,
     class(error)[1],
     conditionMessage(error),
