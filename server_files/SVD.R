@@ -318,7 +318,7 @@ plotSVDVecBloc <- safely(function(C, S, axisC, axisS, delayTrans = '', ...) {
       grid()
     }
   }
-}
+}, return_on_error = NULL)
 
 # Interactive ####
 doSVD <- reactive({
