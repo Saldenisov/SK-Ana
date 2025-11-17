@@ -259,7 +259,7 @@ getS_Coupled <- safely(function(C, data, S, xS, nonnegS, uniS,
   }
   
   return(S)
-}
+}, return_on_error = NULL)
 
 # Main coupled ALS iteration ####
 myals_Coupled <- function(C, Psi, S,

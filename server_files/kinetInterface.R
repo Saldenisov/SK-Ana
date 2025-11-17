@@ -117,7 +117,8 @@ plotLofVsSvd <- safely(function(s, opt, lmax = 10,...) {
     pos = 1
   )
   box()
-}
+}, return_on_error = NULL)
+
 plotIntKin <- function(opt, delayTrans = '',...) {
   # Plot wavelength-integrated kinetic traces
 

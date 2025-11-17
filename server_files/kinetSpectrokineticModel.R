@@ -73,8 +73,9 @@ kinet   = safely(function(pars,parms) {
     }
     return(C)
   })      
-}
-spectra = function (C,pars,parms) {
+}, return_on_error = NULL)
+
+spectra <- function (C,pars,parms) {
   
   S = matrix(0,nrow=length(parms$wavl),ncol=ncol(C))
   colnames(S) = names(parms$active)[parms$active]

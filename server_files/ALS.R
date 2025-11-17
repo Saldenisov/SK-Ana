@@ -248,7 +248,8 @@ als <- safely(function(
   
   return(res[[nAls]])
   
-}
+}, return_on_error = NULL)
+
 myals <- function(C, Psi, S,
                   thresh = 0.001,
                   maxiter = 100,

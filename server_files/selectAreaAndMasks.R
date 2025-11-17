@@ -918,7 +918,7 @@ colorizeMask1D <- safely(function(axis = "delay", dir = "v",
       rect(ylim[1], x1 + eps, ylim[2], x2 - eps,
            border = NA, col = mask_tr2
       )
-    )
+    }
   }
 }, return_on_error = NULL)
 

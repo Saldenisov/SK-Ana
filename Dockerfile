@@ -11,6 +11,7 @@ RUN R -e "if (!requireNamespace('shinyBS', quietly = TRUE)) { try(install.packag
 
 # Copy app files
 COPY global.R /SK-Ana/
+COPY error_handler.R /SK-Ana/
 COPY ui.R /SK-Ana/
 COPY server.R /SK-Ana/
 COPY reportTemplate.Rmd /SK-Ana/

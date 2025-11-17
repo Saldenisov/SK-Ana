@@ -44,8 +44,9 @@ kinParse = safely(function(scheme) {
   return(list(nbSpecies=nbSpecies,nbReac=nbReac,species=species,
               D=D,L=L,kReac=kReac,kReacF=kReacF,reactants=reactants,
               products=products, tags = tag))  
-}
-c0Parse  = function(scheme) {
+}, return_on_error = NULL)
+
+c0Parse <- function(scheme) {
   # Extract relevant parts
   parts=c()
   for (line in scheme) {

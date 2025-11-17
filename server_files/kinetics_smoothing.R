@@ -76,10 +76,10 @@ apply_moving_average <- safely(function(kinetics, window_length) {
       return(zoo::rollmean(col, k = window_length, fill = NA))
     }
   })
-}
+}, return_on_error = NULL)
 
 # Enhanced kinetics plotting with optional smoothing
-plot_kinetics_with_smoothing <- function(data, x, 
+plot_kinetics_with_smoothing <- function(data, x,
                                        show_smoothed = FALSE,
                                        show_both = FALSE,
                                        window = 5, 
