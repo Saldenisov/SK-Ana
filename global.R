@@ -1,6 +1,9 @@
 Version = "3.4.7b"
 DateVersion = "2023-11-03"
 
+# Load error handler
+source("error_handler.R")
+
 # enableBookmarking("server")
 
 Sys.setlocale(category = "LC_NUMERIC", locale = "C")
@@ -39,11 +42,11 @@ for (lib in libs) {
 }
 
 # Colors ####
-col2tr <- function(col, alpha)
-  rgb(unlist(t(col2rgb(col))), alpha = alpha, maxColorValue = 255)
+col2tr <- safely(function(col, alpha)
+  rgb(unlist(t(col2rgb(col))), alpha = alpha, maxColorValue = 255), return_on_error = NULL)
 
 # Replacement for inlmisc::GetColors using common palettes
-GetColors <- function(n, scheme = NULL, alpha = 1) {
+GetColors <- safely(function(n, scheme = NULL, alpha = 1) {
   pal_fun <- switch(
     if (is.null(scheme)) "viridis" else scheme,
     # Approximate 'jet' using a classic blue-cyan-yellow-red ramp
@@ -61,7 +64,7 @@ GetColors <- function(n, scheme = NULL, alpha = 1) {
     cols <- grDevices::adjustcolor(cols, alpha.f = max(0, min(1, alpha)))
   }
   cols
-}
+}, return_on_error = NULL)
 
 imgColors <- GetColors(255, scheme = "davos")
 cutColors <- GetColors(255, scheme = "jet")
@@ -89,13 +92,14 @@ sideWidth <- 4
 mainWidth <- 12 - sideWidth
 
 # Misc. Functions ####
-string2Expr <- function(string) {
+string2Expr <- safely(function(string) {
   dat <- try(parse(text = string), silent = TRUE)
   if (!is(dat, "try-error")) {
     return(dat)
   } else {
     return(NULL)
   }
-}
-string2Num <- function(x)
-  as.numeric(eval(parse(text = eval(string2Expr(x)))))
+}, return_on_error = NULL)
+
+string2Num <- safely(function(x)
+  as.numeric(eval(parse(text = eval(string2Expr(x))))), return_on_error = NULL)

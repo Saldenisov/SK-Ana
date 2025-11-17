@@ -1,4 +1,4 @@
-updateSlider <- function (inputId, range, value, nsteps) {
+updateSlider <- safely(function (inputId, range, value, nsteps) {
   # Wrapper for generic function
   step    = signif(diff(range)/nsteps, 3)
   updateSliderInput(
@@ -9,9 +9,9 @@ updateSlider <- function (inputId, range, value, nsteps) {
     value   = value,
     step    = step
   )
-}
+}, return_on_error = NULL)
 
-initSliders <- function(config=NULL) {
+initSliders <- safely(function(config=NULL) {
   
   wavl  = Inputs$wavlOrig
   delay = Inputs$delayOrig/Inputs$dlScaleFacOrig
@@ -85,4 +85,4 @@ initSliders <- function(config=NULL) {
   # Empty glitches
   Inputs$delayGlitch  <<- NA
   
-}
+}, return_on_error = NULL)

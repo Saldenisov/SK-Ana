@@ -1,6 +1,6 @@
 # ALS plotting utilities
 
-plotAlsVec <- function(alsOut, type = "Kin",
+plotAlsVec <- safely(function(alsOut, type = "Kin",
                        xlim = NULL, ylim = NULL,
                        plotUQ = FALSE, nMC = 100, 
                        nonnegS = TRUE, 
@@ -141,9 +141,9 @@ plotAlsVec <- function(alsOut, type = "Kin",
     colorizeMask1D(axis = "wavl", ylim = ylim)
     box()
   }
-}
+}, return_on_error = NULL)
 
-plotResidAna <- function(delay, wavl, mat, C, S,
+plotResidAna <- safely(function(delay, wavl, mat, C, S,
                          d = rep(1, ncol(C)),
                          main = "Data", 
                          delayTrans = '',
@@ -213,9 +213,9 @@ plotResidAna <- function(delay, wavl, mat, C, S,
   abline(a = 0, b = 1, col = lineColors[6])
   grid()
   box()
-}
+}, return_on_error = NULL)
 
-plotAmbVec <- function(alsOut, solutions,
+plotAmbVec <- safely(function(alsOut, solutions,
                        type = "Kin",
                        displayLines = FALSE,
                        xlim = NULL, ylim = NULL, 
@@ -363,4 +363,4 @@ plotAmbVec <- function(alsOut, solutions,
     )
     box()
   }
-}
+}, return_on_error = NULL)

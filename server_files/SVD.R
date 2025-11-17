@@ -1,11 +1,12 @@
 # Functions ####
-lof <- function(model, data) {
+lof <- safely(function(model, data) {
   100 * (
     sum((data - model)^2, na.rm = TRUE) /
       sum(data^2, na.rm = TRUE)
   )^0.5
-}
-getGlitch <- function(delayMask, wavlMask, mat, level) {
+}, return_on_error = 100)
+
+getGlitch <- safely(function(delayMask, wavlMask, mat, level) {
   # Detect points with largest amplitude in  SVD vector (#level)
 
   ## Replace masks/NAs by 0 (do not eliminate to facilitate indexing)
@@ -20,8 +21,9 @@ getGlitch <- function(delayMask, wavlMask, mat, level) {
   out <- which.max(abs(s$u[, level]))
 
   return(out)
-}
-plotImage <- function(x, y, z, main = "Data", col= imgColors,
+}, return_on_error = NULL)
+
+plotImage <- safely(function(x, y, z, main = "Data", col= imgColors,
                       xlim = NULL, ylim = NULL, zlim = NULL,
                       colorBar = FALSE, cont = FALSE, 
                       delayTrans = '') {
@@ -69,8 +71,9 @@ plotImage <- function(x, y, z, main = "Data", col= imgColors,
       ylab = "Wavelength"
     )
   
-}
-plotResid <- function(delay, wavl, mat, C, S,
+}, return_on_error = NULL)
+
+plotResid <- safely(function(delay, wavl, mat, C, S,
                       d = rep(1, ncol(C)),
                       main = "",
                       delayTrans = '', ...) {
@@ -114,8 +117,9 @@ plotResid <- function(delay, wavl, mat, C, S,
     pch = 15,
     col = c(pink_tr2, cyan_tr2)
   )
-}
-plotConbtribs <- function(delay, wavl, mat, C, S,
+}, return_on_error = NULL)
+
+plotConbtribs <- safely(function(delay, wavl, mat, C, S,
                           d = rep(1, ncol(C)),
                           type = "als", 
                           delayTrans = '',
@@ -151,8 +155,9 @@ plotConbtribs <- function(delay, wavl, mat, C, S,
       delayTrans = delayTrans
     )
   }
-}
-plotDatavsMod <- function(delay, wavl, mat, C, S,
+}, return_on_error = NULL)
+
+plotDatavsMod <- safely(function(delay, wavl, mat, C, S,
                           d = rep(1, ncol(C)),
                           main = "Data",
                           cont = FALSE, 
@@ -182,10 +187,10 @@ plotDatavsMod <- function(delay, wavl, mat, C, S,
     main = paste0("Model ", ncol(S), " species"),
     cont = cont,
     delayTrans = delayTrans  )
-}
+}, return_on_error = NULL)
 
 
-plotSvdLof <- function(s, mat, ...) {
+plotSvdLof <- safely(function(s, mat, ...) {
   par(
     mfrow = c(1, 2),
     cex = cex, cex.main = cex, mar = mar,
@@ -242,8 +247,9 @@ plotSvdLof <- function(s, mat, ...) {
     col = lineColors[5], pos = 3, offset = 0.5
   )
   box()
-}
-plotSVDVecBloc <- function(C, S, axisC, axisS, delayTrans = '', ...) {
+}, return_on_error = NULL)
+
+plotSVDVecBloc <- safely(function(C, S, axisC, axisS, delayTrans = '', ...) {
   par(cex = cex, cex.main = cex)
   nco <- 2
   n <- min(floor(ncol(C) / 2), 5)

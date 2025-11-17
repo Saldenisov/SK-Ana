@@ -1,14 +1,14 @@
 # Shared helpers used across ALS and Kinet modules
 
-showMSE <- function(a, b, c) {
+showMSE <- safely(function(a, b, c) {
   if (is.null(a)) return(FALSE)
   if (a != "tileDel") return(FALSE)
   if (length(b) <= 1) return(FALSE)
   if (c <= 1) return(FALSE)
   return(TRUE)
-}
+}, return_on_error = FALSE)
 
-getExternalSpectra <- function(ui, inputFile, wavl, tag) {
+getExternalSpectra <- safely(function(ui, inputFile, wavl, tag) {
   # Get spectra on file(s), interpolate them on wavl grid
   # and generate selection ui
 
@@ -61,4 +61,4 @@ getExternalSpectra <- function(ui, inputFile, wavl, tag) {
     }
   }
   return(list(ui = ui, extSpectra = extSpectra))
-}
+}, return_on_error = list(ui = list(), extSpectra = list()))

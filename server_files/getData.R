@@ -1,5 +1,5 @@
 # Functions ####
-transformDelay <- function(delay,trans = 0) {
+transformDelay <- safely(function(delay,trans = 0) {
   # trans = 0: do nothing
   # trans = 1: return index
   # trans = 2: return log10 with management of neg or null values
@@ -26,8 +26,8 @@ transformDelay <- function(delay,trans = 0) {
   }
   
   return(del)
-}
-doMeanMatrix  <- function(sel) {
+}, return_on_error = NULL)
+doMeanMatrix  <- safely(function(sel) {
   
   # Assume all matrices are on same grid
   delay = RawData[[1]]$delay
@@ -66,8 +66,8 @@ doMeanMatrix  <- function(sel) {
   
   return(list(mat=matm, wavl=wavl, delay=delay, 
               delaySave=delay, delayId= rep(1,length(delay))))
-}
-doTileMatrix  <- function(sel, tileDel=TRUE) {
+}, return_on_error = NULL)
+doTileMatrix  <- safely(function(sel, tileDel=TRUE) {
   nbFiles = length(sel)
   for (i in 1:nbFiles) {
     j     = sel[i]
@@ -115,8 +115,8 @@ doTileMatrix  <- function(sel, tileDel=TRUE) {
   
   return(list(mat=mat, wavl=wavl, delay=delay, 
               delaySave=delaySave, delayId = delayId))
-}
-combineMatrix <- function(sel){
+}, return_on_error = NULL)
+combineMatrix <- safely(function(sel){
   if(is.null(sel)) 
     return(NULL)
 
@@ -144,7 +144,7 @@ combineMatrix <- function(sel){
             tileDel = doTileMatrix(sel,tileDel=TRUE)
     )
   }
-}
+}, return_on_error = NULL)
 
 # Interactive ####
 finishMatrix  <- reactive({

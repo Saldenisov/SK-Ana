@@ -22,7 +22,7 @@ function(input, output, session) {
   masksWl <- c()
   Inputs <- reactiveValues()
   
-  initInputs = function() {
+  initInputs = safely(function() {
     Inputs$gotData        <<- FALSE
     Inputs$process        <<- FALSE
     Inputs$finish         <<- FALSE
@@ -42,17 +42,17 @@ function(input, output, session) {
     Inputs$delaySave      <<- NULL # True delays used in saved kinetics
     Inputs$delayId        <<- NA   # Pointer to original matrices 
     Inputs$delayGlitch    <<- NA   # List of glitches to mask
-  }
+  }, return_on_error = NULL)
   
   initInputs()
   
-  checkInputsSanity <- function() {
+  checkInputsSanity <- safely(function() {
     listIn <- reactiveValuesToList(Inputs)
     nulVec <- unlist(lapply(listIn, is.null))
     # print(listIn)
     noNull <- !any(nulVec)
     return(noNull)
-  }
+  }, return_on_error = FALSE)
   
   # Load Server files ####
   files <- c(

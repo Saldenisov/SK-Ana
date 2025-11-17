@@ -1,33 +1,11 @@
 fluidRow(
   column(
     width = 6,
-    # withSpinner(
-      plotOutput(
-        "ambSpVectors",
-        height = "450px",
-        dblclick = "ambSp_dblclick",
-        brush = brushOpts(
-          id = "ambSp_brush",
-          resetOnNew = TRUE
-        )
-      # ),
-      # type=4
-    )
+    uiOutput("ambSpPlotOrStatus")
   ),
   column(
     width = 6,
-    # withSpinner(
-      plotOutput(
-        "ambKinVectors",
-        height = "450px",
-        dblclick = "ambKin_dblclick",
-        brush = brushOpts(
-          id = "ambKin_brush",
-          resetOnNew = TRUE
-        )
-      # ),
-      # type=4
-    )
+    uiOutput("ambKinPlotOrStatus")
   ),
   br(),
   column(

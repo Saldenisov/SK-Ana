@@ -1,6 +1,6 @@
 # Functions ####
 
-indxCuts <- function(xCut, coords, minx = 50) {
+indxCuts <- safely(function(xCut, coords, minx = 50) {
   delta <- 0
   # Select indices around cut
   if (xCut == coords[1]) {
@@ -23,9 +23,9 @@ indxCuts <- function(xCut, coords, minx = 50) {
     }
   }
   return(list(indx = indx, delta = delta))
-}
+}, return_on_error = NULL)
 
-autoDlMask <- function(mat, nmat) {
+autoDlMask <- safely(function(mat, nmat) {
   # Locate empty delay areas (experimental)
 
   # Integrate on wavl
@@ -47,9 +47,9 @@ autoDlMask <- function(mat, nmat) {
   }
   
   return(chp)
-}
+}, return_on_error = NULL)
 
-autoWlMask <- function(mat, nmat) {
+autoWlMask <- safely(function(mat, nmat) {
   # Locate useless wavl areas (experimental)
 
   # Integrate on wavl
@@ -66,7 +66,7 @@ autoWlMask <- function(mat, nmat) {
   chp <- sort(cpts(ans))
 
   return(chp)
-}
+}, return_on_error = NULL)
 
 
 # Interactive ####
@@ -612,7 +612,7 @@ selectArea <- reactive({
   )
 })
 
-reshapeCS <- function(U, V, n = NULL) {
+reshapeCS <- safely(function(U, V, n = NULL) {
   # Expand vectors wrt masks
   nC = ifelse(is.null(n),ncol(U),n)
   C <- matrix(NA, nrow = length(Inputs$delay), ncol = nC)
@@ -635,7 +635,7 @@ reshapeCS <- function(U, V, n = NULL) {
     }
   }
   return(list(C = C, S = S))
-}
+}, return_on_error = NULL)
 
 ## Manage masksDl ####
 observeEvent(
@@ -862,7 +862,7 @@ observeEvent(
 )
 
 ## Image ####
-colorizeBaselineMask <- function(ylim = NULL, eps = 1e-4) {
+colorizeBaselineMask <- safely(function(ylim = NULL, eps = 1e-4) {
   mask   <- Inputs$baselineMask
   values <- Inputs$delay
   masked <- which(is.na(mask))
@@ -883,9 +883,9 @@ colorizeBaselineMask <- function(ylim = NULL, eps = 1e-4) {
          border = NA, col = pink_tr2
     )
   }
-}
+}, return_on_error = NULL)
 
-colorizeMask1D <- function(axis = "delay", dir = "v",
+colorizeMask1D <- safely(function(axis = "delay", dir = "v",
                            ylim = NULL, eps = 1e-4) {
   if (axis == "delay") {
     mask   <- Inputs$delayMask
@@ -918,9 +918,9 @@ colorizeMask1D <- function(axis = "delay", dir = "v",
       rect(ylim[1], x1 + eps, ylim[2], x2 - eps,
            border = NA, col = mask_tr2
       )
-    }
+    )
   }
-}
+}, return_on_error = NULL)
 
 rangesImage1 <- reactiveValues(x = NULL, y = NULL)
 

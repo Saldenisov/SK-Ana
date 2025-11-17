@@ -10,7 +10,7 @@ dataLoaded = reactive({
   Inputs$gotData & Inputs$validData
 })
 # Functions ####
-downsizeMatrix <- function(delay, wavl, mat, fwD = 1, fwW = fwD) {
+downsizeMatrix <- safely(function(delay, wavl, mat, fwD = 1, fwW = fwD) {
   # Downsize matrix by factors fwD (delay) and fwW (wavl)
   
   # Pad matrix with Nas
@@ -59,8 +59,9 @@ downsizeMatrix <- function(delay, wavl, mat, fwD = 1, fwW = fwD) {
       wavl = awavl
     )
   )
-}
-getOneMatrix  <- function(dataFile) {
+}, return_on_error = NULL)
+
+getOneMatrix  <- safely(function(dataFile) {
   wavl = try(
     as.numeric(
       as.vector(
@@ -143,8 +144,9 @@ getOneMatrix  <- function(dataFile) {
   return(list(mat=mat, wavl=wavl, delay=delay, 
               delaySave=delay, delayId= rep(1,length(delay))))
   
-}
-getRawData    <- function(fileNames) {
+}, return_on_error = NULL)
+
+getRawData    <- safely(function(fileNames) {
   initInputs()  # (Re)initialize data tables
   RawData <<- list()  # Init list in upper environment
   
@@ -177,7 +179,7 @@ getRawData    <- function(fileNames) {
     RawData[[i]] <<- O
   }
   Inputs$gotData <<- TRUE
-}
+}, return_on_error = NULL)
 
 # Predefined input styles ####
 observeEvent(

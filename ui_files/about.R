@@ -1,10 +1,11 @@
 sidebarLayout(
   sidebarPanel(
     width = sideWidth,
-    h5("Author      : P. Pernot"),
-    h5("Affiliation : CNRS"),
-    h5(paste0("Version     : ", Version)),
-    h5(paste0("Date        : ", DateVersion)),
+    h5("Main Contributor : P. Pernot"),
+    h5("Developer        : Sergey A. Denisov"),
+    h5("Affiliation      : CNRS"),
+    h5(paste0("Version          : ", Version)),
+    h5(paste0("Date             : ", DateVersion)),
     hr( style="border-color: #666;"),
     a(href="https://github.com/ppernot/SK-Ana","How to cite..."),
     br(),

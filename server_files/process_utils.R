@@ -1,29 +1,33 @@
 # Process helper wrappers for background processes
-process_id = function(px) {
+process_id = safely(function(px) {
   if (is.null(px)) return(NULL)
   px$get_pid()
-}
-process_running = function(px) {
+}, return_on_error = NULL)
+
+process_running = safely(function(px) {
   if (is.null(px)) return(NULL)
   px$is_alive()
-}
-process_exit_status = function(px) {
+}, return_on_error = NULL)
+
+process_exit_status = safely(function(px) {
   if (is.null(px)) return(NULL)
   px$get_exit_status()
-}
-process_result = function(px) {
+}, return_on_error = NULL)
+
+process_result = safely(function(px) {
   if (is.null(px)) return(NULL)
   if (is.null(process_running(px))) return(NULL)
   if (process_running(px)) return(NULL)
   if (is.null(process_exit_status(px))) return(NULL)
   if (process_exit_status(px) != 0) return(NULL)
   px$get_result()
-}
-process_status = function(px) {
+}, return_on_error = NULL)
+
+process_status = safely(function(px) {
   list(
     pid         = process_id(px), 
     running     = process_running(px),
     exit_status = process_exit_status(px),
     result      = process_result(px) 
   )
-}
+}, return_on_error = NULL)

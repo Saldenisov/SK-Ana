@@ -1253,12 +1253,72 @@ output$alsKinVectors <- renderPlot({
     }
   }
   
-  plotAlsVec(alsOut,
-             type = "Kin",
-             xlim = xlim_custom,
-             ylim = ylim_custom,
-             delayTrans = Inputs$delayTrans
-  )
+  # Apply Savitzky-Golay smoothing if enabled
+  if (!is.null(input$alsKinDisplaySmoothed) && input$alsKinDisplaySmoothed) {
+    # Get smoothing parameters
+    window <- input$alsKinSGWindow
+    order <- input$alsKinSGOrder
+    
+    # Validate and adjust parameters
+    if (window %% 2 == 0) window <- window + 1
+    if (order >= window) order <- window - 2
+    
+    tryCatch({
+      # Apply SG filter to kinetics data
+      C_smoothed <- apply_sg_filter(alsOut$C, window, order)
+      
+      # Create modified alsOut with smoothed kinetics
+      alsOut_smooth <- alsOut
+      
+      if (!is.null(input$alsKinDisplayBoth) && input$alsKinDisplayBoth) {
+        # Plot both raw and smoothed
+        # First plot raw kinetics
+        plotAlsVec(alsOut,
+                   type = "Kin",
+                   xlim = xlim_custom,
+                   ylim = ylim_custom,
+                   delayTrans = Inputs$delayTrans
+        )
+        
+        # Overlay smoothed kinetics with transparency
+        par(new = TRUE)
+        alsOut_smooth$C <- C_smoothed
+        x <- alsOut_smooth$xC
+        y <- alsOut_smooth$C
+        
+        matlines(x, y,
+                type = "l", lwd = 3, lty = 1,
+                col = adjustcolor(lineColors[1:ncol(y)], alpha.f = 0.7)
+        )
+      } else {
+        # Plot only smoothed
+        alsOut_smooth$C <- C_smoothed
+        plotAlsVec(alsOut_smooth,
+                   type = "Kin",
+                   xlim = xlim_custom,
+                   ylim = ylim_custom,
+                   delayTrans = Inputs$delayTrans
+        )
+      }
+    }, error = function(e) {
+      log_warning(paste("Error applying SG filter to ALS kinetics:", e$message))
+      # Fall back to unsmoothed plot
+      plotAlsVec(alsOut,
+                 type = "Kin",
+                 xlim = xlim_custom,
+                 ylim = ylim_custom,
+                 delayTrans = Inputs$delayTrans
+      )
+    })
+  } else {
+    # No smoothing - plot raw kinetics
+    plotAlsVec(alsOut,
+               type = "Kin",
+               xlim = xlim_custom,
+               ylim = ylim_custom,
+               delayTrans = Inputs$delayTrans
+    )
+  }
 },
 height = plotHeight
 )
@@ -1746,6 +1806,39 @@ doAmbRot <- observeEvent(
 )
 rangesAmbSp <- reactiveValues(x = NULL, y = NULL)
 
+# Conditional UI: show status or plot for Spectra
+output$ambSpPlotOrStatus <- renderUI({
+  # Check if calculation is running
+  if (!is.null(bgAmb$status$running) && bgAmb$status$running) {
+    # Show running status
+    div(
+      style = "text-align: center; padding: 100px 20px; background-color: #f8f9fa; border: 2px dashed #007bff; border-radius: 8px; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center;",
+      icon("cog", class = "fa-spin fa-3x", style = "color: #007bff; margin-bottom: 20px;"),
+      h4("Ambiguity Calculation Running...", style = "color: #007bff; margin-bottom: 10px;"),
+      p("Exploring rotational/scaling ambiguity", style = "color: #6c757d;")
+    )
+  } else if (!is.null(resAmb$results) && length(resAmb$results$solutions) > 0) {
+    # Show plot when results available
+    plotOutput(
+      "ambSpVectors",
+      height = "450px",
+      dblclick = "ambSp_dblclick",
+      brush = brushOpts(
+        id = "ambSp_brush",
+        resetOnNew = TRUE
+      )
+    )
+  } else {
+    # Show instructions
+    div(
+      style = "text-align: center; padding: 100px 20px; background-color: #f8f9fa; border-radius: 8px; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center;",
+      icon("chart-line", class = "fa-3x", style = "color: #6c757d; margin-bottom: 20px;"),
+      h4("Ambiguity Spectra", style = "color: #6c757d; margin-bottom: 10px;"),
+      p("Click 'Start' to explore ambiguity", style = "color: #adb5bd;")
+    )
+  }
+})
+
 output$ambSpVectors <- renderPlot({
   req(resAmb$results)
   req(length(resAmb$results$solutions) > 0)
@@ -1776,6 +1869,39 @@ observeEvent(input$ambSp_dblclick, {
 })
 
 rangesAmbKin <- reactiveValues(x = NULL, y = NULL)
+
+# Conditional UI: show status or plot for Kinetics
+output$ambKinPlotOrStatus <- renderUI({
+  # Check if calculation is running
+  if (!is.null(bgAmb$status$running) && bgAmb$status$running) {
+    # Show running status
+    div(
+      style = "text-align: center; padding: 100px 20px; background-color: #f8f9fa; border: 2px dashed #007bff; border-radius: 8px; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center;",
+      icon("cog", class = "fa-spin fa-3x", style = "color: #007bff; margin-bottom: 20px;"),
+      h4("Ambiguity Calculation Running...", style = "color: #007bff; margin-bottom: 10px;"),
+      p("Exploring rotational/scaling ambiguity", style = "color: #6c757d;")
+    )
+  } else if (!is.null(resAmb$results) && length(resAmb$results$solutions) > 0) {
+    # Show plot when results available
+    plotOutput(
+      "ambKinVectors",
+      height = "450px",
+      dblclick = "ambKin_dblclick",
+      brush = brushOpts(
+        id = "ambKin_brush",
+        resetOnNew = TRUE
+      )
+    )
+  } else {
+    # Show instructions
+    div(
+      style = "text-align: center; padding: 100px 20px; background-color: #f8f9fa; border-radius: 8px; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center;",
+      icon("chart-line", class = "fa-3x", style = "color: #6c757d; margin-bottom: 20px;"),
+      h4("Ambiguity Kinetics", style = "color: #6c757d; margin-bottom: 10px;"),
+      p("Click 'Start' to explore ambiguity", style = "color: #adb5bd;")
+    )
+  }
+})
 
 output$ambKinVectors <- renderPlot({
   req(resAmb$results)
