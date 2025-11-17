@@ -2,7 +2,7 @@
 
 # Functions ####
 
-getC <- function(S, data, C, nonnegC = TRUE,
+getC <- safely(function(S, data, C, nonnegC = TRUE,
                  nullC = NA, closeC = FALSE, wCloseC = 0) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
@@ -52,8 +52,9 @@ getC <- function(S, data, C, nonnegC = TRUE,
   #   C = C / rowSums(C, na.rm = TRUE)
   
   return(C)
-}
-getS <- function(C, data, S, xS, nonnegS, uniS,
+}, return_on_error = NULL)
+
+getS <- safely(function(C, data, S, xS, nonnegS, uniS,
                  S0, normS, smooth, SumS, hardS0,
                  wHardS0, normMode = "intensity") {
   # Adapted from ALS package (KM Muellen)
@@ -161,8 +162,9 @@ getS <- function(C, data, S, xS, nonnegS, uniS,
   }
   
   return(S)
-}
-als <- function(
+}, return_on_error = NULL)
+
+als <- safely(function(
   delay, delayId, wavl, mat, nullC, S, C,
   nAls    = 2, 
   nStart  = 2,

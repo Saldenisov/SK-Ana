@@ -10,7 +10,7 @@ debug_logs <- reactiveValues(
 )
 
 # Capture console output and errors
-capture_log <- function(msg, level = "INFO") {
+capture_log <- safely(function(msg, level = "INFO") {
   timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   log_line <- paste0("[", timestamp, "] [", level, "] ", msg)
   
@@ -27,24 +27,24 @@ capture_log <- function(msg, level = "INFO") {
   
   # Also print to console
   cat(log_line, "\n")
-}
+}, return_on_error = NULL)
 
 # Override system messages
-log_info <- function(msg) {
+log_info <- safely(function(msg) {
   capture_log(msg, "INFO")
-}
+}, return_on_error = NULL)
 
-log_warning <- function(msg) {
+log_warning <- safely(function(msg) {
   capture_log(msg, "WARN")
-}
+}, return_on_error = NULL)
 
-log_error <- function(msg) {
+log_error <- safely(function(msg) {
   capture_log(msg, "ERROR")
-}
+}, return_on_error = NULL)
 
-log_debug <- function(msg) {
+log_debug <- safely(function(msg) {
   capture_log(msg, "DEBUG")
-}
+}, return_on_error = NULL)
 
 # Capture warnings
 old_warning <- getOption("warn")

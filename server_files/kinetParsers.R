@@ -1,4 +1,4 @@
-kinParse = function(scheme) {
+kinParse = safely(function(scheme) {
   
   # Extract relevant parts
   parts=c()

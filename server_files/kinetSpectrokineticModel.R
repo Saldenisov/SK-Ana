@@ -1,9 +1,10 @@
 # Spectrokinetic model ##############################################
-C.model = function(t,y,parms) {
+C.model = safely(function(t,y,parms) {
   dC = t(parms$kReac) %*% apply(parms$L,1,function(x) prod(y^x))
   return(list(dy=dC))
-}
-kinet   = function(pars,parms) {
+}, return_on_error = NULL)
+
+kinet   = safely(function(pars,parms) {
   with(parms,{
     
     nExp = length(startd)

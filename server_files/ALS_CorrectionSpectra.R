@@ -9,7 +9,7 @@
 #        and "Correction Spectra" option is checked
 
 # Get C with pairwise coupling constraint ####
-getC_Coupled <- function(S, data, C, nonnegC = TRUE,
+getC_Coupled <- safely(function(S, data, C, nonnegC = TRUE,
                          nullC = NA, closeC = FALSE, wCloseC = 0,
                          nFixed = 0) {
   # Adapted from getC() with pairwise coupling for corrections
@@ -75,10 +75,10 @@ getC_Coupled <- function(S, data, C, nonnegC = TRUE,
   }
   
   return(C)
-}
+}, return_on_error = NULL)
 
 # Get S with orthogonality constraint for corrections ####
-getS_Coupled <- function(C, data, S, xS, nonnegS, uniS,
+getS_Coupled <- safely(function(C, data, S, xS, nonnegS, uniS,
                          S0, normS, smooth, SumS, hardS0,
                          wHardS0, nFixed = 0, lambdaCorr = 0,
                          normMode = "intensity") {

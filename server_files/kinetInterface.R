@@ -1,5 +1,5 @@
 # Functions ####
-panel.hist <- function(x, ...) {
+panel.hist <- safely(function(x, ...) {
   usr <- par("usr")
   on.exit(par(usr))
   par(usr = c(usr[1:2], 0, 1.5))
@@ -10,8 +10,9 @@ panel.hist <- function(x, ...) {
   y <- y / max(y)
   grid(ny = 0)
   rect(breaks[-nB], 0, breaks[-1], y, col = lineColors[3], ...)
-}
-panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor) {
+}, return_on_error = NULL)
+
+panel.cor <- safely(function(x, y, digits = 2, prefix = "", cex.cor) {
   usr <- par("usr")
   on.exit(par(usr))
   par(usr = c(0, 1, 0, 1))
@@ -21,8 +22,9 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor) {
   txt <- paste(prefix, txt, sep = "")
   if (missing(cex.cor)) cex.cor <- 0.8 / strwidth(txt) * ra
   text(0.5, 0.5, txt, cex = cex.cor, col = ifelse(r >= 0, 4, 2))
-}
-panel.smooth <- function(x, y, cex = 1.5, col.smooth = "red",
+}, return_on_error = NULL)
+
+panel.smooth <- safely(function(x, y, cex = 1.5, col.smooth = "red",
                          span = 2 / 3, iter = 3, ...) {
   maxPoints <- 500
   nP <- min(maxPoints, length(x))
@@ -31,8 +33,9 @@ panel.smooth <- function(x, y, cex = 1.5, col.smooth = "red",
   y1 <- y[iSamp]
   grid()
   points(x1, y1, pch = 19, col = cyan_tr, lwd = 0, cex = cex)
-}
-SAPlot <- function(X, cex = 1) {
+}, return_on_error = NULL)
+
+SAPlot <- safely(function(X, cex = 1) {
   sdX <- apply(X, 2, sd)
   par(cex = cex, cex.axis = 1.5 * cex)
   pairs(X[, sdX != 0],
@@ -41,8 +44,9 @@ SAPlot <- function(X, cex = 1) {
     diag.panel = panel.hist,
     lower.panel = panel.smooth
   )
-}
-plotLofVsSvd <- function(s, opt, lmax = 10,...) {
+}, return_on_error = NULL)
+
+plotLofVsSvd <- safely(function(s, opt, lmax = 10,...) {
   par(
     mfrow = c(1, 2),
     cex = cex, cex.main = cex, mar = mar,

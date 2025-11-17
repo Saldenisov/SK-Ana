@@ -12,7 +12,7 @@ if (!requireNamespace("signal", quietly = TRUE)) {
 }
 
 # Apply Savitzky-Golay filter to smooth kinetics
-apply_sg_filter <- function(kinetics, window_length, poly_order) {
+apply_sg_filter <- safely(function(kinetics, window_length, poly_order) {
   # Ensure window length is odd
   if (window_length %% 2 == 0) {
     window_length <- window_length + 1
@@ -56,10 +56,10 @@ apply_sg_filter <- function(kinetics, window_length, poly_order) {
     log_error(paste("SG filter error:", e$message))
     return(kinetics)  # Return original on error
   })
-}
+}, return_on_error = NULL)
 
 # Fallback: simple moving average if signal package unavailable
-apply_moving_average <- function(kinetics, window_length) {
+apply_moving_average <- safely(function(kinetics, window_length) {
   if (window_length %% 2 == 0) {
     window_length <- window_length + 1
   }
