@@ -1,6 +1,6 @@
 SK-Ana User's Manual
 ================
-(2020-09-11)
+(2025-01-18)
 
 
 ## Introduction
@@ -8,18 +8,21 @@ SK-Ana User's Manual
 The `SK-Ana` graphical interface is organized in sequential order of
 project management:
 
-  - [__Project__](project.html): define a project’s name and load the data
+  - [__Project__](project.html): define a project's name and load the data
 
   - [__Data Selection__](data.html): define the data subset to be treated
 
   - [__SVD__](svd.html): perform Singular Values Decomposition analysis
 
-  - [__ALS__](als.html): perform Alternated Least-Squares decomposition
+  - [__ALS__](als.html): perform Alternated Least-Squares decomposition with optional
+    [Correction Spectra](correction_spectra.html) for refining fixed spectral shapes
 
   - [__Kinet__](kinet.html): constrain the analysis by a kinetic model
 
   - [__Downloads__](downloads.html): 
   download saved the results and/or a report
+
+  - [__Debug Console__](debug_console.html): real-time diagnostics and system logs
 
   - [__About__](about.html): information about the code
 

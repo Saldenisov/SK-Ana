@@ -65,7 +65,7 @@ Several tabs enable to fine tune the ALS analysis:
         as the data files (separator, decimal mark) and contain
         a header with the names of the species. The first column
         should contain the wavelength. It is possible to load several
-        files. Example: (https://github.com/ppernot/SK-Ana/blob/master/data/spectrum_ABC_Kinet.csv)
+        files. Example: (https://github.com/Saldenisov/SK-Ana/blob/master/data/spectrum_ABC_Kinet.csv)
         
         The spectra are interpolated on the wavl grid of the data matrix.
         By default, the spectra are used as such (hard constraint) which
@@ -73,6 +73,12 @@ Several tabs enable to fine tune the ALS analysis:
         `Soft constraint` enables to input a weight for the similarity
         constraint in the loss function of the ALS. The `logWeight`
         slider enables to tune this weight.
+      
+      - `Correction Spectra` enables an advanced decomposition mode where
+        each fixed spectrum is paired with a correction spectrum to account
+        for systematic deviations from the reference shape. See the detailed
+        [Correction Spectra](correction_spectra.html) documentation for
+        complete usage instructions and examples.
       
 
   - `C const.` tab: constraints on the kinetics vectors
