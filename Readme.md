@@ -47,7 +47,7 @@ On first launch, required packages will be installed automatically if missing (e
 
 ## User's manual
 
-__New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
+__New__: online [here](https://saldenisov.github.io/SK-Ana/)
 
 ---
 
@@ -274,8 +274,6 @@ Rayonnement et Radiochimie" (Oléron, 2017/09)
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
 * J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
-
-
 
 
 
