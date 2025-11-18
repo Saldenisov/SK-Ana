@@ -12,10 +12,10 @@ you use SK-Ana for a publication, namely
 where the version number is provided just above the `How to cite`
 link.
 
-- `code@github` links to the [Github page](https://github.com/ppernot/SK-Ana) for the source code
+- `code@github` links to the [Github page](https://github.com/Saldenisov/SK-Ana) for the source code
 
-- `Bugs report, Features request` guides you to the [‘Issues’
-page](https://github.com/ppernot/SK-Ana/issues) of the github
+- `Bugs report, Features request` guides you to the ['Issues'
+page](https://github.com/Saldenisov/SK-Ana/issues) of the github
 deposit, where you can interact with the author.
 
-- `Users Manual` should lead you to the present [documentation](index.html)…
+- `Users Manual` should lead you to the present [documentation](https://saldenisov.github.io/SK-Ana/)…

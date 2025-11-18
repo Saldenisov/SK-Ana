@@ -1,20 +1,20 @@
 sidebarLayout(
   sidebarPanel(
     width = sideWidth,
-    h5("Main Contributor : P. Pernot"),
-    h5("Developer        : Sergey A. Denisov"),
-    h5("Affiliation      : CNRS"),
+    h5("Creator          : Pascal PERNOT"),
+    h5("Developer        : Sergey A. DENISOV"),
+    h5("Affiliation      : CNRS ICP UMR8000"),
     h5(paste0("Version          : ", Version)),
     h5(paste0("Date             : ", DateVersion)),
     hr( style="border-color: #666;"),
-    a(href="https://github.com/ppernot/SK-Ana","How to cite..."),
+    a(href="https://github.com/Saldenisov/SK-Ana","How to cite..."),
     br(),
-    a(href="https://github.com/ppernot/SK-Ana","code@github"),
+    a(href="https://github.com/Saldenisov/SK-Ana","code@github"),
     br(),
-    a(href="https://github.com/ppernot/SK-Ana/issues",
+    a(href="https://github.com/Saldenisov/SK-Ana/issues",
       "Bugs report, Features request"),
     br(),
-    a(href="https://ppernot.github.io/SK-Ana/","Users Manual")
+    a(href="https://saldenisov.github.io/SK-Ana/","Users Manual")
   ),
   mainPanel(
     width = mainWidth,
