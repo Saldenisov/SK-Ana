@@ -8,6 +8,7 @@ wellPanel(
         choices = 
           list(
             "|SVD|"      = "SVD",
+            "PCA"        = "PCA",
             "NMF"        = "NMF",
             "Sequential" = "seq",
             "Restart"    = "rst"), 

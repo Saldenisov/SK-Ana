@@ -3,8 +3,17 @@ wellPanel(
     width = 4,
     checkboxInput(
       "nonnegS", 
-      label= "S > 0",
+      label= "S > 0 (All)",
       value = TRUE
+    ),
+    checkboxInput(
+      "perComponentS",
+      label= "Per-component constraints",
+      value = FALSE
+    ),
+    shinyBS::bsTooltip(
+      "perComponentS",
+      title = "Enable individual +/- constraints for each spectrum"
     ),
     checkboxInput(
       "uniS", 
@@ -53,6 +62,17 @@ wellPanel(
     shinyBS::bsTooltip(
       "SumS", 
       title = "If Normalize is set, set norm such as sum(S)=1 "
+    )
+  ),
+  # Per-component constraint controls
+  conditionalPanel(
+    condition = "input.perComponentS",
+    column(
+      width = 12,
+      hr(style = "border-color: #666;"),
+      h5("Spec non-negativity (S > 0)"),
+      uiOutput('perComponentSUI'),
+      hr(style = "border-color: #666;")
     )
   ),
   fixedRow(

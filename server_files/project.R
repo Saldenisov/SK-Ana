@@ -149,13 +149,38 @@ downsizeMatrix <- safely(function(delay, wavl, mat, fwD = 1, fwW = fwD) {
 }, return_on_error = NULL)
 
 getOneMatrix  <- safely(function(dataFile) {
+  # Read first row to check if it's a header or data
+  first_row_raw = try(
+    as.vector(
+      read.table(
+        dataFile,
+        nrows = 1,
+        header = FALSE,
+        sep = inputStyle$sep,
+        stringsAsFactors = FALSE,
+        dec = inputStyle$dec,
+        fileEncoding = "ISO-8859-1",
+        quote = ""
+      )
+    ),
+    silent = TRUE
+  )
+  
+  # Determine if first row is a header (has non-numeric first element)
+  has_header = FALSE
+  if(!is.null(first_row_raw) && length(first_row_raw) > 0) {
+    first_elem = suppressWarnings(as.numeric(first_row_raw[1]))
+    has_header = is.na(first_elem)
+  }
+  
+  # Read wavelength values from first row (skip first column)
   wavl = try(
     as.numeric(
       as.vector(
         read.table(
           dataFile,
           nrows = 1,
-          header = inputStyle$header,
+          header = FALSE,
           sep = inputStyle$sep,
           stringsAsFactors = FALSE,
           dec = inputStyle$dec,
@@ -172,8 +197,8 @@ getOneMatrix  <- safely(function(dataFile) {
   mat = try(
     read.table(
       dataFile, 
-      header = inputStyle$header, 
-      skip = 1,
+      header = FALSE, 
+      skip = if(has_header) 1 else 0,
       dec = inputStyle$dec, 
       sep = inputStyle$sep,
       colClasses= 'numeric',
@@ -190,13 +215,11 @@ getOneMatrix  <- safely(function(dataFile) {
     return(NULL) 
   mat   = mat[,-1]
   
-  # Remove duplicated delays and wavls
-  u     = !duplicated(delay)
-  delay = delay[u]
-  mat   = mat[u,]
-  u     = !duplicated(wavl)
-  wavl  = wavl[u]
-  mat   = mat[,u]
+  cat(sprintf("After reading: delay=%d, wavl=%d, mat=%dx%d\n", 
+              length(delay), length(wavl), nrow(mat), ncol(mat)))
+  
+  # Note: Duplicate removal was here but removed as it was causing data loss
+  # If needed, check for actual duplicates in your data file
   
   mat[!is.finite(mat)] = 0
 
@@ -206,7 +229,10 @@ getOneMatrix  <- safely(function(dataFile) {
   mat  = mat[, iord]
   iord = order(delay, decreasing = FALSE)
   delay = delay[iord]
-  mat = mat[iord, ] 
+  mat = mat[iord, ]
+  
+  cat(sprintf("After ordering: delay=%d, wavl=%d, mat=%dx%d\n", 
+              length(delay), length(wavl), nrow(mat), ncol(mat)))
   
   # Downsize
   if(input$compFacD >= 2 | input$compFacW >= 2) {
@@ -220,8 +246,9 @@ getOneMatrix  <- safely(function(dataFile) {
   }
   
   # Transpose if necessary
-  # if(inputStyle$datStr != 'dxw') {
-  if(input$datStr != 'dxw') {
+  # Use inputStyle$datStr (from preset) instead of input$datStr (from UI dropdown)
+  # The UI dropdown is only visible for 'otherStyle' but keeps its default value otherwise
+  if(inputStyle$datStr != 'dxw') {
     mat   = t(mat)
     tmp   = delay
     delay = wavl

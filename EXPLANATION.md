@@ -64,9 +64,56 @@ Where:
 
 **Initialization:**
 - Option 1: |SVD| (absolute values of SVD vectors)
-- Option 2: NMF (Non-negative Matrix Factorization)
-- Option 3: Sequential (build up dimensions iteratively)
-- Option 4: Restart (from previous run)
+- Option 2: PCA (Principal Component Analysis - centered data)
+- Option 3: NMF (Non-negative Matrix Factorization)
+- Option 4: Sequential (build up dimensions iteratively)
+- Option 5: Restart (from previous run)
+
+**Initialization Details:**
+
+*SVD Initialization:*
+```
+D = U · Σ · V^T
+C₀ = |U[:, 1:k]|
+S₀ = |V[:, 1:k]|
+```
+Deterministic, fast, works for all data types.
+
+*PCA Initialization:*
+```
+D_centered = D - mean(D)
+D_centered = U · Σ · V^T
+C₀ = |U[:, 1:k]| · Σ[:k]
+S₀ = |V[:, 1:k]|
+```
+Removes baseline offsets, focuses on variance. Beneficial when data has
+significant mean offsets or baseline drifts. The scaling preserves relative
+importance of components.
+
+*NMF Initialization:*
+```
+D_filtered = Σᵢ₌₁ᵏ U[:, i] ⊗ V[:, i] · d[i]
+D_filtered = W · H (via NMF)
+C₀ = W
+S₀ = Hᵀ
+```
+Non-negative from start, better for concentration/spectra data.
+
+*Sequential Initialization:*
+```
+Start with k=2, run ALS
+Increase to k=3, run ALS
+...
+Reach target k
+```
+Builds complexity gradually, helps avoid local minima.
+
+*Restart Initialization:*
+```
+C₀ = C_previous
+S₀ = S_previous
+```
+Continues from previous solution with modified constraints.
 
 **Iteration Loop:**
 ```
@@ -85,6 +132,11 @@ Where:
 
 **On Spectra (S):**
 - **Non-negativity** (S ≥ 0): Physical constraint
+  - **Global**: All spectra constrained to be positive
+  - **Per-component**: Individual control for each spectrum
+    - Enables mixed positive/negative spectra
+    - Useful for difference spectra and DAS analysis
+    - Example: S₁, S₂, S₃ > 0; S₄ unconstrained (can be negative)
 - **Unimodality**: Each spectrum has single peak
 - **Normalization**: 
   - max(S) = 1 (intensity)
@@ -392,7 +444,9 @@ MSE = (1/n) · ||D - D_model||²
 - Use filtered matrix for ALS if noise is high
 
 ### MCR-ALS
-- Start with |SVD| initialization
+- Start with |SVD| initialization for most cases
+- Try PCA initialization if data has baseline offsets or drifts
+- Use NMF initialization for strictly non-negative data (concentrations)
 - Enable non-negativity unless DAS analysis
 - Use sequential initialization for difficult datasets
 - Check residuals SVD for structured error

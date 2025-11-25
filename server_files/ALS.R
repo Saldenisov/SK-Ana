@@ -62,8 +62,22 @@ getS <- safely(function(C, data, S, xS, nonnegS, uniS,
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
   #   https://CRAN.R-project.org/package=ALS
   # 2017-12-07 : replaced direct substitution of S0 by direct elimination
+  # 2025-11-19 : added per-component non-negativity constraints
   
   C[which(is.nan(C))] <- 1
+  
+  # Handle nonnegS as either boolean (global) or vector (per-component)
+  if (length(nonnegS) == 1) {
+    # Global constraint: replicate for all components
+    nonnegS_vec <- rep(nonnegS, ncol(C))
+  } else {
+    # Per-component constraints
+    nonnegS_vec <- nonnegS
+    if (length(nonnegS_vec) != ncol(C)) {
+      warning("nonnegS vector length mismatch, using global TRUE")
+      nonnegS_vec <- rep(TRUE, ncol(C))
+    }
+  }
   
   if (!is.null(S0)) {
     nS0 <- ncol(S0)
@@ -76,6 +90,8 @@ getS <- safely(function(C, data, S, xS, nonnegS, uniS,
       C0 <- matrix(C[, 1:nS0], ncol = nS0)
       C <- matrix(C[, (nS0 + 1):ncol(C)], ncol = ncol(C) - nS0)
       S <- matrix(S[, (nS0 + 1):ncol(S)], ncol = ncol(S) - nS0)
+      # Adjust nonnegS_vec for remaining components
+      nonnegS_vec <- nonnegS_vec[(nS0 + 1):length(nonnegS_vec)]
       
       contrib <- matrix(0, nrow = nrow(data), ncol = ncol(data))
       for (i in 1:nS0)
@@ -92,20 +108,64 @@ getS <- safely(function(C, data, S, xS, nonnegS, uniS,
     }
   }
   
-  for (i in 1:ncol(data)) {
-    if (nonnegS) {
-      s <- try(nnls::nnls(C, data[, i]))
-    } else {
-      s <- try(qr.coef(qr(C), data[, i]))
-    }
-    
-    if (class(s) == "try-error") {
-      S[i, ] <- rep(1, ncol(C))
-    } else {
-      S[i, ] <- if (nonnegS) {
-        s$x
+  # Check if all components have same constraint (optimization)
+  all_same <- all(nonnegS_vec == nonnegS_vec[1])
+  
+  if (all_same) {
+    # Fast path: all components have same constraint
+    for (i in 1:ncol(data)) {
+      if (nonnegS_vec[1]) {
+        s <- try(nnls::nnls(C, data[, i]))
       } else {
-        s
+        s <- try(qr.coef(qr(C), data[, i]))
+      }
+      
+      if (class(s) == "try-error") {
+        S[i, ] <- rep(1, ncol(C))
+      } else {
+        S[i, ] <- if (nonnegS_vec[1]) {
+          s$x
+        } else {
+          s
+        }
+      }
+    }
+  } else {
+    # Slow path: mixed constraints, solve per-component
+    for (i in 1:ncol(data)) {
+      # Separate positive and unconstrained components
+      idx_pos <- which(nonnegS_vec)
+      idx_free <- which(!nonnegS_vec)
+      
+      if (length(idx_pos) > 0 && length(idx_free) > 0) {
+        # Mixed: use iterative approach
+        # Initialize solution
+        sol <- rep(0, ncol(C))
+        
+        # First solve for unconstrained components
+        C_free <- C[, idx_free, drop = FALSE]
+        s_free <- try(qr.coef(qr(C_free), data[, i]))
+        if (class(s_free) != "try-error") {
+          sol[idx_free] <- s_free
+        }
+        
+        # Then solve for positive components with residual
+        resid <- data[, i] - C_free %*% sol[idx_free]
+        C_pos <- C[, idx_pos, drop = FALSE]
+        s_pos <- try(nnls::nnls(C_pos, resid))
+        if (class(s_pos) != "try-error") {
+          sol[idx_pos] <- s_pos$x
+        }
+        
+        S[i, ] <- sol
+      } else if (length(idx_pos) > 0) {
+        # All positive
+        s <- try(nnls::nnls(C, data[, i]))
+        S[i, ] <- if (class(s) == "try-error") rep(1, ncol(C)) else s$x
+      } else {
+        # All unconstrained
+        s <- try(qr.coef(qr(C), data[, i]))
+        S[i, ] <- if (class(s) == "try-error") rep(1, ncol(C)) else s
       }
     }
   }
@@ -655,6 +715,32 @@ output$extSpectraALS <- renderUI({
   
 })
 
+## Per-component constraints UI ####
+output$perComponentSUI <- renderUI({
+  req(input$perComponentS)
+  req(input$nALS)
+  
+  nS <- input$nALS
+  
+  # Create checkboxes for each component
+  checkboxes <- lapply(1:nS, function(i) {
+    checkboxInput(
+      inputId = paste0("nonnegS_", i),
+      label = paste0("S_", i, " > 0"),
+      value = TRUE
+    )
+  })
+  
+  fluidRow(
+    column(
+      width = 12,
+      HTML("<small>Uncheck to allow negative values (e.g., for difference spectra)</small>"),
+      br(), br(),
+      do.call(tagList, checkboxes)
+    )
+  )
+})
+
 
 output$showMSE <- reactive({
   showMSE(
@@ -953,6 +1039,23 @@ doALS <- observeEvent(
       S = matrix(abs(svdRES$v[, 1:nStart]), ncol = nStart)
       C = matrix(abs(svdRES$u[, 1:nStart]), ncol = nStart)
 
+    } else if (initALS == "PCA") {
+      # Initialize with PCA (centered data)
+      # Center the data matrix
+      mat_centered <- scale(mat, center = TRUE, scale = FALSE)
+      
+      # Perform SVD on centered data
+      pcaRES <- svd(mat_centered, nu = nStart, nv = nStart)
+      
+      # Use absolute values and shift to positive range
+      S = matrix(abs(pcaRES$v[, 1:nStart]), ncol = nStart)
+      C = matrix(abs(pcaRES$u[, 1:nStart]), ncol = nStart)
+      
+      # Scale back to original data range
+      for (i in 1:nStart) {
+        S[, i] <- S[, i] * pcaRES$d[i] / max(S[, i])
+      }
+
     } else if (initALS == "NMF") {
       # initialize with SVD + NMF
       if (is.null(svdRES <- doSVD()))
@@ -987,6 +1090,18 @@ doALS <- observeEvent(
     # Get normMode with fallback for backward compatibility
     normMode <- if (!is.null(input$normMode)) input$normMode else "intensity"
     
+    # Build nonnegS vector (per-component or global)
+    if (!is.null(input$perComponentS) && input$perComponentS) {
+      # Per-component constraints
+      nonnegS_vec <- sapply(1:nAls, function(i) {
+        val <- input[[paste0("nonnegS_", i)]]
+        if (is.null(val)) TRUE else val  # Default to TRUE if not set yet
+      })
+    } else {
+      # Global constraint (backward compatible)
+      nonnegS_vec <- input$nonnegS
+    }
+    
     # Remove any previous live snapshot
     try({ if (file.exists(alsStateFile)) file.remove(alsStateFile) }, silent = TRUE)
 
@@ -1009,7 +1124,7 @@ doALS <- observeEvent(
             S0      = S0,
             maxiter = input$maxiter,
             uniS    = input$uniS,
-            nonnegS = input$nonnegS,
+            nonnegS = nonnegS_vec,
             nonnegC = input$nonnegC,
             thresh  = 10^input$alsThresh,
             normS   = input$normS,
@@ -1039,7 +1154,7 @@ doALS <- observeEvent(
             S0      = S0,
             maxiter = input$maxiter,
             uniS    = input$uniS,
-            nonnegS = input$nonnegS,
+            nonnegS = nonnegS_vec,
             nonnegC = input$nonnegC,
             thresh  = 10^input$alsThresh,
             normS   = input$normS,
@@ -1070,7 +1185,7 @@ doALS <- observeEvent(
           S0      = S0,
           maxiter = input$maxiter,
           uniS    = input$uniS,
-          nonnegS = input$nonnegS,
+          nonnegS = nonnegS_vec,
           nonnegC = input$nonnegC,
           thresh  = 10^input$alsThresh,
           normS   = input$normS,
@@ -1153,6 +1268,20 @@ output$alsOpt <- renderUI({
     )
   }
 })
+# Dynamic slider for row selection
+output$alsDataModDelayUI <- renderUI({
+  sliderInput(
+    "alsDataModDelay",
+    "Row index (delay/time)",
+    min = 1,
+    max = max(1, length(Inputs$delay)),
+    value = max(1, floor(length(Inputs$delay) / 2)),
+    step = 1,
+    sep = "",
+    width = '100%'
+  )
+})
+
 output$alsResid1 <- renderPlot({
   req(alsOut <- resALS$results)
   
@@ -1173,10 +1302,68 @@ output$alsResid1 <- renderPlot({
     mat <- Inputs$mat
     main <- "Raw data"
   }
-  plotDatavsMod(Inputs$delay, Inputs$wavl, mat,
-                CS$C, CS$S,
-                main = main,
-                delayTrans = Inputs$delayTrans)
+  
+  # Build model matrix
+  mod <- matrix(0, nrow = nrow(mat), ncol = ncol(mat))
+  for (i in 1:ncol(CS$S))
+    mod <- mod + CS$C[, i] %o% CS$S[, i]
+  
+  # Get row index from slider - use directly as index
+  rowIdx <- input$alsDataModDelay
+  if (is.null(rowIdx)) rowIdx <- 1
+  rowIdx <- max(1, min(rowIdx, nrow(mat)))  # Clamp to valid range
+  
+  delay <- Inputs$delay
+  
+  # Extract row data (signal vs wavelength at specific delay)
+  dataRow = mat[rowIdx, ]
+  modRow  = mod[rowIdx, ]
+  if (all(is.na(dataRow))) dataRow = dataRow * 0
+  if (all(is.na(modRow)))  modRow  = modRow  * 0
+  
+  # Create 3-panel comparison plot
+  par(
+    mfrow = c(1, 3),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = pty
+  )
+  
+  # Left panel: Row comparison plot (signal vs wavelength)
+  plot(
+    Inputs$wavl, dataRow,
+    type = "l", col = lineColors[3], lwd = 2,
+    xlab = "Wavelength (q)",
+    ylab = "O.D.",
+    main = paste0(
+      "Row ", rowIdx, " at delay: ", signif(delay[rowIdx], 3)
+    )
+  )
+  grid()
+  lines(Inputs$wavl, modRow, col = lineColors[6], lwd = 2)
+  legend(
+    "topright",
+    legend = c("Data", "Model"),
+    col = lineColors[c(3, 6)],
+    lwd = 2,
+    bty = "n"
+  )
+  box()
+  
+  # Middle panel: Data image
+  plotImage(
+    Inputs$delay, Inputs$wavl, mat,
+    main = "Data",
+    cont = if (!is.null(input$alsContours)) input$alsContours else FALSE,
+    delayTrans = Inputs$delayTrans
+  )
+  
+  # Right panel: Model image
+  plotImage(
+    Inputs$delay, Inputs$wavl, mod,
+    main = paste0("Model ", ncol(CS$S), " species"),
+    cont = if (!is.null(input$alsContours)) input$alsContours else FALSE,
+    delayTrans = Inputs$delayTrans
+  )
 },
 height = plotHeight)
 output$alsResid3 <- renderPlot({

@@ -44,29 +44,32 @@ tabsetPanel(
   tabPanel(
     value="kinResid1_5",
     title=h5("Data vs. Model"), br(),
-    # withSpinner(
-      plotOutput("kinDatavsMod", height=550),
-      # type=4
-    # ),
     wellPanel(
       fluidRow(
         column(
           6,
+          uiOutput("kinDataModDelayUI")
+        ),
+        column(
+          3,
+          checkboxInput(
+            "kinContours",
+            label = "Add contours",
+            value = FALSE)
+        ),
+        column(
+          3,
           actionButton(
             "modelKinSave",
             "Save Model",
             icon     = icon('save'))
-        ),
-        column(
-          6,
-          checkboxInput(
-            "kinContours",
-            label = "Add contours",
-            value = FALSE),
-          offset = 0
         )
       )
-    )
+    ),
+    # withSpinner(
+      plotOutput("kinDatavsMod", height=550)
+      # type=4
+    # )
   ),
   tabPanel(
     value="kinResid1_1",

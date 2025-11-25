@@ -1445,6 +1445,20 @@ output$kinLofVsSvd   <- renderPlot({
   plotLofVsSvd(s, opt)
 }, height = plotHeight)
 ## Data vs model ####
+# Dynamic slider for row selection
+output$kinDataModDelayUI <- renderUI({
+  sliderInput(
+    "kinDataModDelay",
+    "Row index (delay/time)",
+    min = 1,
+    max = max(1, length(Inputs$delay)),
+    value = max(1, floor(length(Inputs$delay) / 2)),
+    step = 1,
+    sep = "",
+    width = '100%'
+  )
+})
+
 output$kinDatavsMod  <- renderPlot({
   req(resLoc$results)
   opt    = isolate(resLoc$results)
@@ -1466,11 +1480,65 @@ output$kinDatavsMod  <- renderPlot({
     mat <- Inputs$mat
     main <- "Raw data"
   }
-  plotDatavsMod(Inputs$delay,
-    Inputs$wavl,
-    mat,
-    CS$C[,opt$active], CS$S,
-    main = main,
+  
+  # Build model matrix
+  mod <- matrix(0, nrow = nrow(mat), ncol = ncol(mat))
+  for (i in 1:ncol(CS$S))
+    mod <- mod + CS$C[,opt$active][, i] %o% CS$S[, i]
+  
+  # Get row index from slider - use directly as index
+  rowIdx <- input$kinDataModDelay
+  if (is.null(rowIdx)) rowIdx <- 1
+  rowIdx <- max(1, min(rowIdx, nrow(mat)))  # Clamp to valid range
+  
+  delay <- Inputs$delay
+  
+  # Extract row data (signal vs wavelength at specific delay)
+  dataRow = mat[rowIdx, ]
+  modRow  = mod[rowIdx, ]
+  if (all(is.na(dataRow))) dataRow = dataRow * 0
+  if (all(is.na(modRow)))  modRow  = modRow  * 0
+  
+  # Create 3-panel comparison plot
+  par(
+    mfrow = c(1, 3),
+    cex = cex, cex.main = cex, mar = mar,
+    mgp = mgp, tcl = tcl, pty = pty
+  )
+  
+  # Left panel: Row comparison plot (signal vs wavelength)
+  plot(
+    Inputs$wavl, dataRow,
+    type = "l", col = lineColors[3], lwd = 2,
+    xlab = "Wavelength (q)",
+    ylab = "O.D.",
+    main = paste0(
+      "Row ", rowIdx, " at delay: ", signif(delay[rowIdx], 3)
+    )
+  )
+  grid()
+  lines(Inputs$wavl, modRow, col = lineColors[6], lwd = 2)
+  legend(
+    "topright",
+    legend = c("Data", "Model"),
+    col = lineColors[c(3, 6)],
+    lwd = 2,
+    bty = "n"
+  )
+  box()
+  
+  # Middle panel: Data image
+  plotImage(
+    Inputs$delay, Inputs$wavl, mat,
+    main = "Data",
+    cont = input$kinContours,
+    delayTrans = Inputs$delayTrans
+  )
+  
+  # Right panel: Model image
+  plotImage(
+    Inputs$delay, Inputs$wavl, mod,
+    main = paste0("Model ", ncol(CS$S), " species"),
     cont = input$kinContours,
     delayTrans = Inputs$delayTrans
   )

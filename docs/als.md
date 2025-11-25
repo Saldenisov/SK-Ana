@@ -28,6 +28,11 @@ Several tabs enable to fine tune the ALS analysis:
         
           - `|SVD|` takes the absolute values of the SVD vectors
         
+          - `PCA` performs Principal Component Analysis by centering
+            the data before decomposition. This can be beneficial when
+            the data has significant baseline offsets or when you want
+            to focus on variance rather than absolute values.
+        
           - `NMF` takes the solution of a Non-negative Matrix
             Factorization algorithm
         
@@ -46,7 +51,16 @@ Several tabs enable to fine tune the ALS analysis:
 
   - `S const.` tab: constraints on the spectra vectors
     
-      - `S > 0`: positivity constraint
+      - `S > 0 (All)`: global positivity constraint for all spectra
+    
+      - `Per-component constraints`: enables individual control of
+        positivity for each spectrum. When activated, checkboxes appear
+        for each component (S_1, S_2, etc.), allowing you to specify
+        which should be positive and which can be negative. This is
+        useful for:
+        - Difference spectra (e.g., S_1 positive, S_2 can be negative)
+        - Mixed systems with absorption and bleaching
+        - Decay-Associated Spectra (DAS) analysis
     
       - `S unimodal`: unimodality constraint
     
