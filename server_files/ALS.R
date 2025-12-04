@@ -2,12 +2,183 @@
 
 # Functions ####
 
+# Convolution functions for broadening ####
+convolve_spectrum <- function(spectrum, sigma) {
+  # Apply Gaussian convolution to a single spectrum
+  # Args:
+  #   spectrum: vector of spectral intensities
+  #   sigma: standard deviation of Gaussian kernel (broadening parameter)
+  # Returns:
+  #   convolved spectrum
+  
+  if (sigma <= 0 || !is.finite(sigma)) {
+    return(spectrum)
+  }
+  
+  # Create Gaussian kernel
+  # Kernel size should be ~6*sigma to capture most of the distribution
+  kernel_size <- max(3, ceiling(3 * sigma))
+  x <- (-kernel_size):kernel_size
+  kernel <- exp(-x^2 / (2 * sigma^2))
+  kernel <- kernel / sum(kernel)  # Normalize
+  
+  # Convolve using stats::convolve with "same" mode approximation
+  # Pad the signal to handle edges
+  n <- length(spectrum)
+  padded <- c(rep(spectrum[1], kernel_size), spectrum, rep(spectrum[n], kernel_size))
+  
+  # Convolve
+  conv_result <- stats::convolve(padded, rev(kernel), type = "open")
+  
+  # Extract center part (same length as input)
+  start_idx <- kernel_size + 1
+  end_idx <- start_idx + n - 1
+  result <- conv_result[start_idx:end_idx]
+  
+  return(result)
+}
+
+convolve_S_matrix <- function(S, G_params) {
+  # Apply convolution to all spectra in S matrix
+  # Args:
+  #   S: matrix of pure spectra (rows = wavelengths, cols = components)
+  #   G_params: matrix of broadening parameters (rows = samples, cols = components)
+  #             Each component has 1 parameter: [sigma_1, sigma_2, ...]
+  # Returns:
+  #   List with one element per sample, each containing broadened S matrix
+  
+  n_samples <- nrow(G_params)
+  n_components <- ncol(S)
+  
+  S_broadened_list <- vector("list", n_samples)
+  
+  for (i in 1:n_samples) {
+    S_broad <- S
+    for (k in 1:n_components) {
+      # Get sigma parameter for this component and this sample
+      sigma <- G_params[i, k]
+      
+      # Apply single convolution
+      S_broad[, k] <- convolve_spectrum(S[, k], sigma)
+    }
+    S_broadened_list[[i]] <- S_broad
+  }
+  
+  return(S_broadened_list)
+}
+
+optimize_broadening_single <- function(data_row, C_row, S, G_init, sigma_max = NULL, broadening_vec = NULL) {
+  # Optimize broadening parameters using three-stage grid refinement
+  # Stage 1: Coarse grid (0 to max, 10 points)
+  # Stage 2: Medium grid (around best from stage 1, 10 points)
+  # Stage 3: Fine grid (around best from stage 2, 10 points)
+  # Args:
+  #   data_row: observed spectrum (vector)
+  #   C_row: concentration coefficients for this sample (vector)
+  #   S: pure spectral profiles (matrix: wavelengths x components)
+  #   G_init: initial broadening parameters (vector of length n_components)
+  #   sigma_max: maximum allowed sigma (upper bound)
+  #   broadening_vec: logical vector indicating which components to optimize (optional)
+  # Returns:
+  #   Optimized G parameters (vector of length n_components)
+  
+  n_components <- ncol(S)
+  spectral_range <- nrow(S)
+  
+  # Set bounds
+  sigma_min <- 0  # Start from 0
+  if (is.null(sigma_max)) {
+    sigma_max <- 0.10 * spectral_range  # 10%
+  }
+  
+  # Default: optimize all components
+  if (is.null(broadening_vec)) {
+    broadening_vec <- rep(TRUE, n_components)
+  }
+  
+  # Helper function to evaluate error for given G
+  eval_error <- function(G_vec) {
+    recon <- rep(0, length(data_row))
+    for (j in 1:n_components) {
+      S_broad <- convolve_spectrum(S[, j], G_vec[j])
+      recon <- recon + C_row[j] * S_broad
+    }
+    return(sum((data_row - recon)^2))
+  }
+  
+  # Optimize each component independently (only enabled ones)
+  G_opt <- G_init
+  
+  for (k in 1:n_components) {
+    # Skip if this component is not enabled for broadening
+    if (!broadening_vec[k]) {
+      next
+    }
+    # Stage 1: Coarse grid search (0 to max, 10 points)
+    grid_coarse <- seq(sigma_min, sigma_max, length.out = 10)
+    best_sigma <- G_init[k]
+    best_error <- Inf
+    
+    for (sigma_test in grid_coarse) {
+      G_temp <- G_opt
+      G_temp[k] <- sigma_test
+      error <- eval_error(G_temp)
+      
+      if (error < best_error) {
+        best_error <- error
+        best_sigma <- sigma_test
+      }
+    }
+    
+    # Stage 2: Medium grid (±10% of range around best from stage 1, 10 points)
+    range_medium <- (sigma_max - sigma_min) * 0.1
+    grid_medium_min <- max(sigma_min, best_sigma - range_medium)
+    grid_medium_max <- min(sigma_max, best_sigma + range_medium)
+    grid_medium <- seq(grid_medium_min, grid_medium_max, length.out = 10)
+    
+    for (sigma_test in grid_medium) {
+      G_temp <- G_opt
+      G_temp[k] <- sigma_test
+      error <- eval_error(G_temp)
+      
+      if (error < best_error) {
+        best_error <- error
+        best_sigma <- sigma_test
+      }
+    }
+    
+    # Stage 3: Fine grid (±2% of range around best from stage 2, 10 points)
+    range_fine <- (sigma_max - sigma_min) * 0.02
+    grid_fine_min <- max(sigma_min, best_sigma - range_fine)
+    grid_fine_max <- min(sigma_max, best_sigma + range_fine)
+    grid_fine <- seq(grid_fine_min, grid_fine_max, length.out = 10)
+    
+    for (sigma_test in grid_fine) {
+      G_temp <- G_opt
+      G_temp[k] <- sigma_test
+      error <- eval_error(G_temp)
+      
+      if (error < best_error) {
+        best_error <- error
+        best_sigma <- sigma_test
+      }
+    }
+    
+    # Update this component's sigma with refined value
+    G_opt[k] <- best_sigma
+  }
+  
+  return(G_opt)
+}
+
 getC <- safely(function(S, data, C, nonnegC = TRUE,
-                 nullC = NA, closeC = FALSE, wCloseC = 0) {
+                 nullC = NA, closeC = FALSE, wCloseC = 0,
+                 G = NULL) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
   #   https://CRAN.R-project.org/package=ALS
+  # 2025-11-27 : added broadening support via G parameter
   
   S[which(is.nan(S))] <- 1
   
@@ -19,11 +190,24 @@ getC <- safely(function(S, data, C, nonnegC = TRUE,
     }
   }
   
+  # Determine if broadening is enabled
+  use_broadening <- !is.null(G) && nrow(G) == nrow(data)
+  
   for (i in 1:nrow(data)) {
+    # Apply broadening if enabled
+    S_work <- S
+    if (use_broadening) {
+      # Convolve each component with its broadening parameter
+      for (k in 1:ncol(S)) {
+        sigma <- G[i, k]
+        S_work[, k] <- convolve_spectrum(S[, k], sigma)
+      }
+    }
+    
     if (nonnegC) {
-      cc <- try(nnls::nnls(S, data[i, ]))
+      cc <- try(nnls::nnls(S_work, data[i, ]))
     } else {
-      cc <- try(qr.coef(qr(S), data[i, ]))
+      cc <- try(qr.coef(qr(S_work), data[i, ]))
     }
     
     if (class(cc) == "try-error") {
@@ -56,13 +240,14 @@ getC <- safely(function(S, data, C, nonnegC = TRUE,
 
 getS <- safely(function(C, data, S, xS, nonnegS, uniS,
                  S0, normS, smooth, SumS, hardS0,
-                 wHardS0, normMode = "intensity") {
+                 wHardS0, normMode = "intensity", G = NULL) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
   #   https://CRAN.R-project.org/package=ALS
   # 2017-12-07 : replaced direct substitution of S0 by direct elimination
   # 2025-11-19 : added per-component non-negativity constraints
+  # 2025-11-27 : added broadening support via G parameter
   
   C[which(is.nan(C))] <- 1
   
@@ -111,22 +296,62 @@ getS <- safely(function(C, data, S, xS, nonnegS, uniS,
   # Check if all components have same constraint (optimization)
   all_same <- all(nonnegS_vec == nonnegS_vec[1])
   
+  # Determine if broadening is enabled
+  use_broadening <- !is.null(G) && nrow(G) == nrow(C)
+  
   if (all_same) {
     # Fast path: all components have same constraint
     for (i in 1:ncol(data)) {
-      if (nonnegS_vec[1]) {
-        s <- try(nnls::nnls(C, data[, i]))
-      } else {
-        s <- try(qr.coef(qr(C), data[, i]))
-      }
-      
-      if (class(s) == "try-error") {
-        S[i, ] <- rep(1, ncol(C))
-      } else {
-        S[i, ] <- if (nonnegS_vec[1]) {
-          s$x
+      if (use_broadening) {
+        # When broadening is active, we need to solve for unbroadened S
+        # Use weighted least squares approach
+        # For each wavelength, solve: data[:,i] = sum_j(C[j] * convolve(S[i,:], G[j,:]))
+        # This is complex, so we use iterative approach:
+        # Build augmented system where each sample contributes with its own broadening
+        
+        # Stack all samples with weighted contributions
+        C_aug <- NULL
+        data_aug <- NULL
+        for (j in 1:nrow(C)) {
+          # For sample j, we need C[j,k] * S_broad[i,k] ≈ data[j,i]
+          # Rearrange: we solve for S, then will need to account for broadening
+          # Simpler approach: solve for S_broadened first
+          C_aug <- rbind(C_aug, matrix(C[j,], nrow=1))
+          data_aug <- c(data_aug, data[j, i])
+        }
+        
+        # Solve for effective S at this wavelength
+        if (nonnegS_vec[1]) {
+          s <- try(nnls::nnls(C_aug, data_aug))
         } else {
-          s
+          s <- try(qr.coef(qr(C_aug), data_aug))
+        }
+        
+        if (class(s) == "try-error") {
+          S[i, ] <- rep(1, ncol(C))
+        } else {
+          S[i, ] <- if (nonnegS_vec[1]) {
+            s$x
+          } else {
+            s
+          }
+        }
+      } else {
+        # Standard ALS without broadening
+        if (nonnegS_vec[1]) {
+          s <- try(nnls::nnls(C, data[, i]))
+        } else {
+          s <- try(qr.coef(qr(C), data[, i]))
+        }
+        
+        if (class(s) == "try-error") {
+          S[i, ] <- rep(1, ncol(C))
+        } else {
+          S[i, ] <- if (nonnegS_vec[1]) {
+            s$x
+          } else {
+            s
+          }
         }
       }
     }
@@ -244,7 +469,9 @@ als <- safely(function(
   wCloseC = NA,
   normMode = "intensity",
   state_file = NULL,
-  update_interval = 10) {
+  update_interval = 10,
+  broadening = FALSE,
+  broadening_max_pct = 10) {
   
   # DOCKER FIX: Explicitly load required packages in subprocess
   # This ensures packages are available in callr background processes
@@ -285,7 +512,9 @@ als <- safely(function(
       normMode = normMode,
       silent = FALSE,
       state_file = state_file,
-      update_interval = update_interval
+      update_interval = update_interval,
+      broadening = broadening,
+      broadening_max_pct = broadening_max_pct
     )
     if(is.null(res[[n]]))
       return(NULL)
@@ -321,7 +550,9 @@ myals <- function(C, Psi, S,
                   wHardS0 = 1.0,
                   nullC = NA, closeC = FALSE, wCloseC = 0,
                   normMode = "intensity",
-                  state_file = NULL, update_interval = 10) {
+                  state_file = NULL, update_interval = 10,
+                  broadening = FALSE, G = NULL,
+                  broadening_max_pct = 10) {
   # Adapted from ALS package (KM Muellen)
   #   Katharine M. Mullen (2015). ALS: Multivariate Curve Resolution
   #   Alternating Least Squares (MCR-ALS). R package version 0.0.6.
@@ -368,23 +599,124 @@ myals <- function(C, Psi, S,
   if (!silent) 
     cat("Initial RSS = ", initialrss, "<br/>")
   
+  # Normalize broadening parameter (can be logical scalar or vector)
+  n_components <- ncol(C)
+  if (length(broadening) == 1) {
+    # Scalar: apply to all components
+    broadening_vec <- rep(broadening, n_components)
+  } else {
+    # Vector: per-component
+    broadening_vec <- broadening
+  }
+  
+  # Check if any broadening is enabled
+  broadening_enabled <- any(broadening_vec)
+  
+  # Initialize broadening parameters if enabled
+  if (broadening_enabled) {
+    if (is.null(G)) {
+      # Initialize G with small uniform broadening (1 param per component)
+      # Broadening is expressed as % of spectral range
+      # Default: start at 0.1%, max allowed is broadening_max_pct (default 10%)
+      
+      spectral_range <- length(xS)  # Number of wavelength points
+      
+      # Convert percentages to sigma values
+      # 0.1% of spectral range as starting point
+      sigma_init <- 0.001 * spectral_range
+      
+      # Maximum sigma (user-defined percentage)
+      sigma_max <- (broadening_max_pct / 100) * spectral_range
+      
+      # Initialize G parameters: 0.1% for enabled, 0 for disabled
+      # ONE parameter per component
+      G <- matrix(0, nrow = nrow(C), ncol = n_components)
+      for (k in 1:n_components) {
+        if (broadening_vec[k]) {
+          G[, k] <- sigma_init
+        }
+      }
+      
+      if (!silent) {
+        enabled_comps <- which(broadening_vec)
+        cat(paste0(
+          "Broadening: Components ", paste(enabled_comps, collapse=","),
+          " - Start=0.1% (σ=", signif(sigma_init, 3), 
+          "), Max=", broadening_max_pct, "% (σ=", signif(sigma_max, 3), ")<br/>"
+        ))
+      }
+    } else {
+      # G provided - compute sigma_max for bounds
+      spectral_range <- length(xS)
+      sigma_max <- (broadening_max_pct / 100) * spectral_range
+    }
+  }
+  
   b <- ifelse(optS1st, 1, 0)
   iter <- 0
   oneMore <- TRUE
   while ((abs(RD) > thresh && maxiter >= iter) || oneMore) {
     iter <- iter + 1
     
-    if (iter %% 2 == b) {
-      S <- getS(
-        C, Psi, S, xS, nonnegS, uniS,
-        S0, normS, smooth, SumS, hardS0, wHardS0, normMode
-      )
+    # Three-step optimization when broadening is enabled
+    if (broadening_enabled) {
+      step <- iter %% 3
+      
+      if (step == (b %% 3)) {
+        # Optimize S
+        S <- getS(
+          C, Psi, S, xS, nonnegS, uniS,
+          S0, normS, smooth, SumS, hardS0, wHardS0, normMode, G
+        )
+      } else if (step == ((b + 1) %% 3)) {
+        # Optimize C
+        C <- getC(S, Psi, C, nonnegC, nullC, closeC, wCloseC, G)
+      } else {
+        # Optimize G (broadening parameters) - only for enabled components
+        for (i in 1:nrow(Psi)) {
+          G_opt <- optimize_broadening_single(
+            data_row = Psi[i, ],
+            C_row = C[i, ],
+            S = S,
+            G_init = G[i, ],
+            sigma_max = sigma_max,
+            broadening_vec = broadening_vec
+          )
+          # Only update enabled components
+          for (k in 1:n_components) {
+            if (broadening_vec[k]) {
+              G[i, k] <- G_opt[k]
+            }
+          }
+        }
+      }
     } else {
-      C <- getC(S, Psi, C, nonnegC, nullC, closeC, wCloseC)
+      # Standard two-step optimization without broadening
+      if (iter %% 2 == b) {
+        S <- getS(
+          C, Psi, S, xS, nonnegS, uniS,
+          S0, normS, smooth, SumS, hardS0, wHardS0, normMode
+        )
+      } else {
+        C <- getC(S, Psi, C, nonnegC, nullC, closeC, wCloseC)
+      }
     }
     
+    # Compute reconstruction with broadening if enabled
     for (i in 1:nrow(Psi)) {
-      mod[i, ] <- C[i, ] %*% t(S)
+      if (broadening_enabled) {
+        # Apply broadening to enabled components before reconstruction
+        S_broad <- S
+        for (k in 1:ncol(S)) {
+          if (broadening_vec[k]) {
+            sigma <- G[i, k]
+            S_broad[, k] <- convolve_spectrum(S[, k], sigma)
+          }
+        }
+        mod[i, ] <- C[i, ] %*% t(S_broad)
+      } else {
+        mod[i, ] <- C[i, ] %*% t(S)
+      }
       resid[i, ] <- Psi[i, ] - mod[i, ]
     }
     
@@ -397,12 +729,29 @@ myals <- function(C, Psi, S,
     if (!silent && (iter %% update_interval == 1)) {
       # Iteration message with LOF (%) computed from current rss
       lof_iter <- 100 * sqrt(rss)
+      
+      # Determine optimization step for message
+      if (broadening_enabled) {
+        step_type <- if (iter %% 3 == (b %% 3)) "S" else if (iter %% 3 == ((b + 1) %% 3)) "C" else "G"
+      } else {
+        step_type <- ifelse(iter %% 2 == b, "S", "C")
+      }
+      
       msg <- paste0(
-        "Iter. (opt. ",
-        ifelse(iter %% 2 == b, "S", "C"), "): ", iter,
+        "Iter. (opt. ", step_type, "): ", iter,
         ", |RD| : ", signif(abs(RD), 3), " > ", thresh,
         ", LOF(%) : ", signif(lof_iter, 3)
       )
+      
+      # Add G values if broadening is enabled (only show enabled components)
+      if (broadening_enabled) {
+        # Show mean G values across samples for enabled components
+        G_mean <- colMeans(G)
+        G_mean_enabled <- G_mean[broadening_vec]
+        g_str <- paste0("(", paste(signif(G_mean_enabled, 3), collapse=", "), ")")
+        msg <- paste0(msg, ", σ=", g_str)
+      }
+      
       cat(msg, "<br/>")
       # Write live snapshot for UI every update_interval iterations
       if (!is.null(state_file)) {
@@ -417,6 +766,14 @@ myals <- function(C, Psi, S,
         # Set column names for consistency with final output
         colnames(snap$S) <- paste0("S_", 1:ncol(snap$S))
         colnames(snap$C) <- paste0("C_", 1:ncol(snap$C))
+        
+        # Add G parameters if broadening is enabled
+        if (broadening_enabled) {
+          snap$G <- G
+          snap$broadening_vec <- broadening_vec
+          colnames(snap$G) <- paste0("G_", 1:ncol(G))
+        }
+        
         try(saveRDS(snap, state_file), silent = TRUE)
       }
     }
@@ -434,13 +791,20 @@ myals <- function(C, Psi, S,
   # if (!silent)
   #   cat(msg)
   
-  return(
-    list(
-      C = C, S = S, xC = xC, xS = xS, Psi = Psi,
-      rss = rss, resid = resid, iter = iter,
-      msg = msg, lof = vlof
-    )
+  result <- list(
+    C = C, S = S, xC = xC, xS = xS, Psi = Psi,
+    rss = rss, resid = resid, iter = iter,
+    msg = msg, lof = vlof
   )
+  
+  # Add broadening parameters if enabled
+  if (broadening_enabled) {
+    result$G <- G
+    result$broadening_vec <- broadening_vec
+    colnames(result$G) <- paste0("G_", 1:ncol(G))
+  }
+  
+  return(result)
 }
 
 rotAmb2 <- function(C0, S0, data, rotVec = 1:2,
@@ -735,6 +1099,33 @@ output$perComponentSUI <- renderUI({
     column(
       width = 12,
       HTML("<small>Uncheck to allow negative values (e.g., for difference spectra)</small>"),
+      br(), br(),
+      do.call(tagList, checkboxes)
+    )
+  )
+})
+
+## Per-component broadening UI ####
+output$perComponentBroadeningUI <- renderUI({
+  req(input$perComponentBroadening)
+  req(input$broadeningS)
+  req(input$nALS)
+  
+  nS <- input$nALS
+  
+  # Create checkboxes for each component
+  checkboxes <- lapply(1:nS, function(i) {
+    checkboxInput(
+      inputId = paste0("broadenComp_", i),
+      label = paste0("Broaden C_", i),
+      value = TRUE
+    )
+  })
+  
+  fluidRow(
+    column(
+      width = 12,
+      HTML("<small>Uncheck to disable broadening for specific components</small>"),
       br(), br(),
       do.call(tagList, checkboxes)
     )
@@ -1102,6 +1493,19 @@ doALS <- observeEvent(
       nonnegS_vec <- input$nonnegS
     }
     
+    # Build broadening enable vector (per-component or global)
+    if (!is.null(input$perComponentBroadening) && input$perComponentBroadening && 
+        !is.null(input$broadeningS) && input$broadeningS) {
+      # Per-component broadening
+      broadening_vec <- sapply(1:nAls, function(i) {
+        val <- input[[paste0("broadenComp_", i)]]
+        if (is.null(val)) TRUE else val  # Default to TRUE if not set yet
+      })
+    } else {
+      # Global broadening (backward compatible)
+      broadening_vec <- if (!is.null(input$broadeningS)) input$broadeningS else FALSE
+    }
+    
     # Remove any previous live snapshot
     try({ if (file.exists(alsStateFile)) file.remove(alsStateFile) }, silent = TRUE)
 
@@ -1137,7 +1541,9 @@ doALS <- observeEvent(
             wCloseC = 10^input$wCloseC,
             normMode = normMode,
             state_file = alsStateFile,
-            update_interval = 10
+            update_interval = 10,
+            broadening = broadening_vec,
+            broadening_max_pct = if (!is.null(input$broadeningMaxPct)) input$broadeningMaxPct else 10
           ),
           package = TRUE,
           stdout = alsStdOut,
@@ -1165,14 +1571,16 @@ doALS <- observeEvent(
             SumS    = input$SumS,
             closeC  = input$closeC,
             wCloseC = 10^input$wCloseC,
-            normMode = normMode,
-            state_file = alsStateFile,
-            update_interval = 10
-          ),
-          package = TRUE,
-          stdout = alsStdOut,
-          stderr = alsStdOut
-        )
+          normMode = normMode,
+          state_file = alsStateFile,
+          update_interval = 10,
+          broadening = broadening_vec,
+          broadening_max_pct = if (!is.null(input$broadeningMaxPct)) input$broadeningMaxPct else 10
+        ),
+        package = TRUE,
+        stdout = alsStdOut,
+        stderr = alsStdOut
+      )
       }
     } else {
       # Linux/Docker - no special environment needed
@@ -1196,14 +1604,16 @@ doALS <- observeEvent(
           SumS    = input$SumS,
           closeC  = input$closeC,
           wCloseC = 10^input$wCloseC,
-          normMode = normMode,
-          state_file = alsStateFile,
-          update_interval = 10
-        ),
-        package = TRUE,
-        stdout = alsStdOut,
-        stderr = alsStdOut
-      )
+        normMode = normMode,
+        state_file = alsStateFile,
+        update_interval = 10,
+        broadening = broadening_vec,
+        broadening_max_pct = if (!is.null(input$broadeningMaxPct)) input$broadeningMaxPct else 10
+      ),
+      package = TRUE,
+      stdout = alsStdOut,
+      stderr = alsStdOut
+    )
     }
     resALS$results = NULL
     resAmb$results = NULL
@@ -1639,6 +2049,25 @@ observeEvent(
       row.names = FALSE
     )
     
+    # Save G parameters if broadening is enabled
+    if (!is.null(alsOut$G) && ncol(alsOut$G) > 0) {
+      G <- cbind(Inputs$delaySave, alsOut$G)
+      colnames(G) <- c("delay", colnames(alsOut$G))
+      write.csv(
+        G,
+        file = file.path(
+          "outputDir",
+          paste0(
+            input$projectTag,
+            "_alsBroadening_",
+            input$nALS, "sp",
+            ".csv"
+          )
+        ),
+        row.names = FALSE
+      )
+    }
+    
     showNotification(
       "ALS results saved to outputDir folder",
       type = "message",
@@ -1679,8 +2108,21 @@ output$alsSpKinDownload <- downloadHandler(
     ))
     write.csv(C, file = kinets_file, row.names = FALSE)
     
-    # Zip the files
+    # Save G parameters if broadening is enabled
     files_to_zip <- c(spectra_file, kinets_file)
+    if (!is.null(alsOut$G) && ncol(alsOut$G) > 0) {
+      G <- cbind(Inputs$delaySave, alsOut$G)
+      colnames(G) <- c("delay", colnames(alsOut$G))
+      broadening_file <- file.path(tmpdir, paste0(
+        input$projectTag,
+        "_alsBroadening_",
+        input$nALS, "sp.csv"
+      ))
+      write.csv(G, file = broadening_file, row.names = FALSE)
+      files_to_zip <- c(files_to_zip, broadening_file)
+    }
+    
+    # Zip the files
     zip(zipfile = fname, files = files_to_zip, flags = "-j")
     
     # Handle .zip extension issue

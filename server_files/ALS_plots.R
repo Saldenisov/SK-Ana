@@ -59,6 +59,12 @@ plotAlsVec <- safely(function(alsOut, type = "Kin",
     y <- alsOut$C
     if(activeOnly & !is.null(alsOut$active))
       y <- y[,alsOut$active]
+    
+    # Check if broadening parameters (G) are available
+    has_broadening <- !is.null(alsOut$G) && ncol(alsOut$G) > 0
+    
+    # Main plot: ALWAYS show only C (concentrations)
+    # G parameters go to the inset only
     if (is.null(ylim)) {
       if(plotBands){
         if(activeOnly & !is.null(alsOut$active))
@@ -69,6 +75,7 @@ plotAlsVec <- safely(function(alsOut, type = "Kin",
         ylim <- c(0, 1.1 * max(y))
       }
     }
+    
     sp = colnames(y)
     matplot(
       x, y,
@@ -79,7 +86,7 @@ plotAlsVec <- safely(function(alsOut, type = "Kin",
       ylab = "C",
       xlim = xlim,
       ylim = ylim,
-      main = paste0("Kinetics"),
+      main = if(has_broadening) paste0("Kinetics (G in inset)") else paste0("Kinetics"),
       xaxs = "i", yaxs = "i"
     )
     grid()
@@ -103,7 +110,87 @@ plotAlsVec <- safely(function(alsOut, type = "Kin",
     colorizeMask1D(axis = "delay", ylim = ylim)
     box()
     
+    # Add inset plot for G parameters if broadening is enabled
+    if (has_broadening) {
+      # Get G parameters (only G, not C)
+      n_comp <- ncol(alsOut$C)
+      G_only <- alsOut$G[, 1:n_comp, drop=FALSE]
+      
+      # Get broadening_vec to identify enabled components
+      broadening_vec <- if (!is.null(alsOut$broadening_vec)) {
+        alsOut$broadening_vec
+      } else {
+        rep(TRUE, n_comp)  # Default: all enabled
+      }
+      
+      # Filter to only enabled components
+      enabled_idx <- which(broadening_vec)
+      if (length(enabled_idx) > 0) {
+        G_enabled <- G_only[, enabled_idx, drop=FALSE]
+        
+        # Create inset in top-left corner
+        # 35% of total figure size for better visibility
+        # Position in NDC (Normalized Device Coordinates): 0 to 1
+        
+        # Get current figure region in NDC
+        fig_orig <- par("fig")
+        
+        # Define inset as 35% of figure width and height (larger for visibility)
+        inset_width <- 0.35
+        inset_height <- 0.35
+        
+        # Position in top-left with small margin (3% from edges)
+        inset_left <- 0.03
+        inset_right <- inset_left + inset_width
+        inset_bottom <- 1 - 0.03 - inset_height
+        inset_top <- 1 - 0.03
+        
+        # Create subplot region in NDC coordinates
+        par(fig = c(inset_left, inset_right, inset_bottom, inset_top),
+            new = TRUE,
+            mar = c(3, 3, 2, 1),
+            mgp = c(1.8, 0.5, 0),
+            tcl = -0.4)
+        
+        # Plot G parameters for enabled components (first and last)
+        if (ncol(G_enabled) >= 2) {
+          # Plot first and last enabled components
+          plot_cols <- c(enabled_idx[1], enabled_idx[length(enabled_idx)])
+          matplot(x, G_enabled[, c(1, ncol(G_enabled))],
+                  type = "l", lwd = 3,
+                  col = colF[plot_cols],
+                  xlab = "", ylab = expression(sigma),
+                  main = expression(paste("Broadening (", sigma, ")")),
+                  cex.main = 1.1, cex.axis = 1.0, cex.lab = 1.1,
+                  xaxs = "i", yaxs = "i")
+          legend("topright",
+                 legend = c(paste0("G_", enabled_idx[1]), 
+                           paste0("G_", enabled_idx[length(enabled_idx)])),
+                 lty = 1, lwd = 3,
+                 col = colF[plot_cols],
+                 cex = 1.0, bg = "white", box.lwd = 1)
+        } else {
+          # Only one enabled component
+          plot(x, G_enabled[, 1], type = "l", lwd = 3, col = colF[enabled_idx[1]],
+               xlab = "", ylab = expression(sigma),
+               main = expression(paste("Broadening (", sigma, ")")),
+               cex.main = 1.1, cex.axis = 1.0, cex.lab = 1.1,
+               xaxs = "i", yaxs = "i")
+          legend("topright",
+                 legend = paste0("G_", enabled_idx[1]),
+                 lty = 1, lwd = 3,
+                 col = colF[enabled_idx[1]],
+                 cex = 1.0, bg = "white", box.lwd = 1)
+        }
+        grid()
+        box(lwd = 2)
+      }
+    }
+    
   } else {
+    # Spectra plot
+    has_broadening <- !is.null(alsOut$G) && ncol(alsOut$G) > 0
+    
     if (is.null(ylim)) {
       if(nonnegS)
         ylim <- c(0, 1.1 * max(alsOut$S))
@@ -111,8 +198,10 @@ plotAlsVec <- safely(function(alsOut, type = "Kin",
         ylim <- 1.1 * range(alsOut$S)
     }
     x <- alsOut$xS
-    y <- alsOut$S
+    y <- alsOut$S  # Unbroadened profiles
     sp = colnames(y)
+    
+    # Plot unbroadened profiles first
     matplot(
       x, y,
       type = ifelse(length(x) > 20, "p", "b"),
@@ -122,11 +211,29 @@ plotAlsVec <- safely(function(alsOut, type = "Kin",
       xlim = xlim,
       ylim = ylim,
       main = paste0(
-        "Spectra / Lack-of-fit (%) : ",
-        signif(alsOut$lof, 3)
+        "Spectra",
+        if(has_broadening) " (solid=unbroadened, dashed=broadened)" else "",
+        " / LOF: ", signif(alsOut$lof, 3), "%"
       ),
       xaxs = "i", yaxs = "i"
     )
+    
+    # Overlay broadened profiles if available
+    if (has_broadening) {
+      # Compute average broadened profiles using mean G across samples
+      G_mean <- colMeans(alsOut$G)
+      S_broad <- alsOut$S
+      for (k in 1:ncol(alsOut$S)) {
+        S_broad[, k] <- convolve_spectrum(alsOut$S[, k], G_mean[k])
+      }
+      # Overlay as dashed lines with transparency
+      matlines(
+        x, S_broad,
+        type = "l", lwd = 2, lty = 2,
+        col = adjustcolor(if(is.null(cols)) colF[1:ncol(S_broad)] else colF[sp], alpha.f = 0.7)
+      )
+    }
+    
     if(!nonnegS)
       abline(h=0, lty=2)
     grid()
