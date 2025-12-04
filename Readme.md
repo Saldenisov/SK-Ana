@@ -1,6 +1,7 @@
 
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
-
+[![Docker Build](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml/badge.svg)](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/saldenisov/skana)](https://hub.docker.com/r/saldenisov/skana)
 
 # **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
@@ -173,52 +174,171 @@ Depending on your OS, you might have to install them manually.
 
 ## Docker container
 
-For cross-plateform compatibility issues, the preferred installation
-method is through a docker container.
+For cross-platform compatibility, the preferred installation method is through a Docker container. SK-Ana provides **multi-platform Docker images** that automatically work on **Windows, Linux, Intel Mac, and Apple Silicon Mac**.
 
-### Option 1: Updated Docker Image (Recommended)
+🔄 **Automated Builds**: Docker images are automatically built and published via GitHub Actions when new code is pushed. Both amd64 and arm64 architectures are built simultaneously and combined into a single multi-platform image.
+
+### Prerequisites
+
+0. Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
+   - **Windows**: Docker Desktop for Windows
+   - **Mac**: Docker Desktop for Mac (supports both Intel and Apple Silicon)
+   - **Linux**: Docker Engine or Docker Desktop
+
+### Option 1: Pull Pre-built Image (Recommended)
 
 The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image includes all latest fixes and R 4.4.1 compatibility.
 
-0. Install [Docker](https://www.docker.com/products/docker-desktop)
+#### All Platforms (Recommended - Multi-Architecture Image):
 
-1. Run the container:
+The `latest` tag is a multi-platform image that automatically selects the correct architecture:
+
 ```bash
 docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-2. Access SK-Ana in your browser:
-   - **Windows/Mac/Linux**: http://localhost:3840 or http://127.0.0.1:3840
-   - The application will be available at the above addresses once the container starts
+**Automatically works on:**
+- ✅ Windows (amd64)
+- ✅ Linux (amd64)
+- ✅ Mac Intel (amd64)
+- ✅ Mac Apple Silicon (arm64) - **No platform warnings!**
 
-3. When finished:
+Access at: **http://localhost:3840**
+
+#### Platform-Specific Images (Optional):
+
+If you want to explicitly specify the architecture:
+
+**For Windows/Linux/Intel Mac (amd64):**
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-amd64
+```
+
+**For Mac Apple Silicon (arm64):**
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-arm64
+```
+
+### Container Management
+
+**Stop container:**
+```bash
+docker stop skana
+```
+
+**Restart container:**
+```bash
+docker restart skana
+```
+
+**Remove container:**
 ```bash
 docker stop skana
 docker rm skana
 ```
 
-4. For further sessions (reuse existing container):
-```bash
-docker restart skana
-```
-
-5. To get the latest version:
+**Update to latest version:**
 ```bash
 docker pull saldenisov/skana:latest
+docker stop skana
+docker rm skana
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-### Option 2: Original Docker Image
+### Option 2: Build from Source
 
-The original [ppernot1/skana](https://hub.docker.com/repository/docker/ppernot1/skana) Docker container:
+For **Mac Apple Silicon users** or users who want to customize the image:
 
-1. Run the container:
+#### Mac Apple Silicon (arm64) - Native Build:
+
+1. Clone or download this repository
+2. Navigate to the SK-Ana directory
+3. Build the arm64-optimized image:
+
+```bash
+cd /path/to/SK-Ana
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+```
+
+4. Run the native arm64 container:
+
+```bash
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+```
+
+**Benefits of native arm64 build:**
+- No emulation overhead
+- Better performance
+- No platform mismatch warnings
+
+#### Windows/Linux/Intel Mac - Standard Build:
+
+```bash
+cd /path/to/SK-Ana
+docker build -t skana:latest .
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:latest
+```
+
+### Available Images
+
+| Image Tag | Architectures | Base Image | Use Case |
+|-----------|---------------|------------|----------|
+| `latest` | amd64, arm64 | Multi-platform | **Recommended** - Auto-selects architecture |
+| `latest-amd64` | amd64 only | rocker/shiny:4.4.1 | Windows, Linux, Intel Mac |
+| `latest-arm64` | arm64 only | r-base:4.4.1 | Mac Apple Silicon (M1/M2/M3) |
+
+**Note:** The `latest` tag automatically selects the correct architecture for your system. No need to specify platform explicitly!
+
+### Available Dockerfiles (For Building from Source)
+
+| Dockerfile | Platform | Base Image | Use Case |
+|------------|----------|------------|----------|
+| `Dockerfile` | amd64 (x86_64) | rocker/shiny:4.4.1 | Windows, Linux, Intel Mac |
+| `Dockerfile.arm64` | arm64 | r-base:4.4.1 | Mac Apple Silicon (M1/M2/M3) |
+
+### Option 3: Original Docker Image
+
+The original [ppernot1/skana](https://hub.docker.com/repository/docker/ppernot1/skana) Docker container (amd64 only):
+
 ```bash
 docker run -d -p 3840:3840 --name skana-original ppernot1/skana
 ```
 
-2. Access at http://localhost:3840
+Access at: **http://localhost:3840**
 
 **Note**: The updated `saldenisov/skana` image includes bug fixes and is recommended for new deployments.
+
+### Troubleshooting
+
+**Platform warning on Mac:**
+If you see:
+```
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
+```
+
+You have two options:
+1. Continue using emulation (works fine, slightly slower)
+2. Build native arm64 image using `Dockerfile.arm64` (see "Build from Source" section)
+
+**Port already in use:**
+```bash
+# Use a different port
+docker run -d -p 3841:3840 --name skana saldenisov/skana:latest
+# Access at http://localhost:3841
+```
+
+**Container won't start:**
+```bash
+# Check logs
+docker logs skana
+
+# Restart Docker Desktop and try again
+```
+
+For detailed Docker documentation, see:
+- **[DOCKER_PLATFORM_GUIDE.md](DOCKER_PLATFORM_GUIDE.md)** - Platform-specific quick reference (recommended starting point)
+- **[DOCKER.md](DOCKER.md)** - Complete Docker deployment guide
+- **[README_DOCKER.md](README_DOCKER.md)** - Cross-platform Docker instructions
 
 
 ## How to cite SK-Ana

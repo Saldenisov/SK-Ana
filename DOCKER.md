@@ -1,20 +1,48 @@
 # SK-Ana Docker Deployment Guide
 
-## Quick Start
+## Platform-Specific Quick Start
 
-### Using Pre-built Images
+SK-Ana provides Docker images optimized for different platforms:
+- **Windows/Linux**: amd64 architecture
+- **Mac Intel**: amd64 architecture  
+- **Mac Apple Silicon**: arm64 architecture (native or emulated)
 
-**Option 1: Updated Image (Recommended)**
+### Windows & Linux Users (amd64)
+
+**Using pre-built image (recommended):**
 ```bash
 docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-**Option 2: Original Image**
+Access at: **http://localhost:3840**
+
+### Mac Intel Users (amd64)
+
+**Using pre-built image (recommended):**
 ```bash
-docker run -d -p 3840:3840 --name skana-original ppernot1/skana
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-Access at: **http://localhost:3840** or **http://127.0.0.1:3840**
+Access at: **http://localhost:3840**
+
+### Mac Apple Silicon Users (M1/M2/M3 - arm64)
+
+**Option A: Use emulation (quick start, works immediately)**
+```bash
+docker run -d -p 3840:3840 --platform linux/amd64 --name skana saldenisov/skana:latest
+```
+
+**Option B: Build native arm64 (better performance, recommended)**
+```bash
+cd /path/to/SK-Ana
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+```
+
+Access at: **http://localhost:3840**
+
+**Note about platform warnings:**
+If you see `WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)`, the container will still work via emulation. For better performance, use Option B above to build a native arm64 image.
 
 ---
 
@@ -83,22 +111,58 @@ docker rmi saldenisov/skana:latest
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running
 - SK-Ana source code
 
-### Build from Source
+### Build from Source - Platform Specific
 
-**Navigate to project directory**
+#### Windows/Linux/Intel Mac (amd64)
+
+**Navigate to project directory:**
 ```bash
+# Windows
 cd E:\dev\SK-Ana
+
+# Mac/Linux
+cd /path/to/SK-Ana
 ```
 
-**Build image**
+**Build image:**
 ```bash
 docker build -t skana:latest .
 ```
 
-**Run your custom build**
+**Run your custom build:**
 ```bash
 docker run -d -p 3840:3840 --name skana -e PORT=3840 skana:latest
 ```
+
+#### Mac Apple Silicon (M1/M2/M3 - arm64)
+
+**Navigate to project directory:**
+```bash
+cd /path/to/SK-Ana
+```
+
+**Build native arm64 image:**
+```bash
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+```
+
+**Run your custom arm64 build:**
+```bash
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+```
+
+**Why build native arm64?**
+- No emulation overhead
+- Better performance (10-30% faster)
+- No platform mismatch warnings
+- Uses `r-base:4.4.1` which supports arm64 natively
+
+### Available Dockerfiles
+
+| Dockerfile | Platform | Base Image | Optimized For |
+|------------|----------|------------|---------------|
+| `Dockerfile` | linux/amd64 | rocker/shiny:4.4.1 | Windows, Linux, Intel Mac |
+| `Dockerfile.arm64` | linux/arm64 | r-base:4.4.1 | Mac Apple Silicon (M1/M2/M3) |
 
 ---
 
@@ -213,17 +277,46 @@ docker run -d -p 3840:3840 -v E:\data:/SK-Ana/data --name skana skana:latest
 
 ## Image Information
 
-| Property | saldenisov/skana | ppernot1/skana |
-|----------|------------------|----------------|
-| **Base** | rocker/shiny:4.4.1 | rocker/shiny |
-| **R Version** | 4.4.1 | 4.2.x |
-| **Size** | ~1.7 GB | ~1.5 GB |
-| **Features** | Latest fixes, Correction Spectra | Original |
-| **Status** | Actively maintained | Stable |
+| Property | saldenisov/skana | skana:arm64 (local build) | ppernot1/skana |
+|----------|------------------|---------------------------|----------------|
+| **Base** | rocker/shiny:4.4.1 | r-base:4.4.1 | rocker/shiny |
+| **R Version** | 4.4.1 | 4.4.1 | 4.2.x |
+| **Platform** | linux/amd64 | linux/arm64 | linux/amd64 |
+| **Size** | ~1.7 GB | ~1.5 GB | ~1.5 GB |
+| **Features** | Latest fixes, Correction Spectra | Native arm64, Latest fixes | Original |
+| **Best For** | Windows, Linux, Intel Mac | Mac Apple Silicon | Legacy deployments |
+| **Status** | Actively maintained | Build-it-yourself | Stable |
 
 ---
 
 ## Troubleshooting
+
+### Platform mismatch warning (Mac Apple Silicon)
+
+**Warning message:**
+```
+WARNING: The requested image's platform (linux/amd64) does not match 
+the detected host platform (linux/arm64/v8) and no specific platform was requested
+```
+
+**This is normal and the container will work via emulation.**
+
+**To eliminate the warning and improve performance:**
+```bash
+# Stop current container
+docker stop skana
+docker rm skana
+
+# Build native arm64 image
+cd /path/to/SK-Ana
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+
+# Run native arm64 container
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+
+# Verify no warning
+docker ps --filter "name=skana"
+```
 
 ### Container won't start
 ```bash

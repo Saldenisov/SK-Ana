@@ -17,15 +17,50 @@ Cross-platform Docker deployment instructions for Windows, Mac, and Linux.
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running
   - **Windows**: Docker Desktop for Windows
-  - **Mac**: Docker Desktop for Mac
+  - **Mac**: Docker Desktop for Mac (Intel or Apple Silicon)
   - **Linux**: Docker Engine or Docker Desktop
 
-### Run Pre-built Image
+### Run Pre-built Image - Platform Specific
+
+#### Windows & Linux Users (amd64/x86_64)
 
 **Using the updated image (Recommended):**
 ```bash
 docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
+
+**Access the application:**
+- Open your browser and go to: **http://localhost:3840**
+
+#### Mac Users
+
+**Intel Macs (x86_64):**
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
+```
+
+**Apple Silicon Macs (M1/M2/M3 - arm64):**
+
+You have two options:
+
+**Option A: Use emulation (quick, works immediately)**
+```bash
+# Works but uses emulation (slightly slower)
+docker run -d -p 3840:3840 --platform linux/amd64 --name skana saldenisov/skana:latest
+```
+
+**Option B: Build native arm64 (recommended for best performance)**
+```bash
+# Clone/download repository first, then:
+cd /path/to/SK-Ana
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+```
+
+**Benefits of native arm64 build:**
+- 10-30% better performance (no emulation)
+- No platform mismatch warnings
+- Native Apple Silicon optimization
 
 **Access the application:**
 - Open your browser and go to: **http://localhost:3840**
@@ -172,10 +207,16 @@ docker rmi saldenisov/skana:latest
 
 ## Building from Source
 
-### Build Custom Image
+### Build Custom Image - Platform Specific
+
+#### Windows/Linux/Intel Mac (amd64)
 
 **Navigate to project directory:**
 ```bash
+# Windows
+cd C:\path\to\SK-Ana
+
+# Mac/Linux  
 cd /path/to/SK-Ana
 ```
 
@@ -188,6 +229,36 @@ docker build -t skana:latest -f Dockerfile .
 ```bash
 docker run -d -p 3840:3840 --name skana -e PORT=3840 skana:latest
 ```
+
+#### Mac Apple Silicon (M1/M2/M3 - arm64)
+
+**Navigate to project directory:**
+```bash
+cd /path/to/SK-Ana
+```
+
+**Build native arm64 image:**
+```bash
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+```
+
+**Run your custom arm64 build:**
+```bash
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+```
+
+**Why use Dockerfile.arm64 on Apple Silicon?**
+- Built on `r-base:4.4.1` which natively supports arm64
+- No emulation overhead (faster execution)
+- No platform mismatch warnings
+- Better resource utilization
+
+### Available Dockerfiles
+
+| Dockerfile | Architecture | Base Image | Best For |
+|------------|--------------|------------|----------|
+| `Dockerfile` | linux/amd64 (x86_64) | rocker/shiny:4.4.1 | Windows, Linux, Intel Mac |
+| `Dockerfile.arm64` | linux/arm64 | r-base:4.4.1 | Mac Apple Silicon (M1/M2/M3) |
 
 ### Push to Docker Hub
 
@@ -299,6 +370,42 @@ docker-compose logs -f
 ---
 
 ## Troubleshooting
+
+### Platform mismatch warning (Mac Apple Silicon)
+
+**Warning message:**
+```
+WARNING: The requested image's platform (linux/amd64) does not match 
+the detected host platform (linux/arm64/v8) and no specific platform was requested
+```
+
+**What this means:**
+- The container runs via emulation (Rosetta 2)
+- It works correctly but with ~10-20% performance overhead
+- This is expected when using amd64 images on Apple Silicon
+
+**How to fix:**
+1. Stop the current container:
+   ```bash
+   docker stop skana
+   docker rm skana
+   ```
+
+2. Build native arm64 image:
+   ```bash
+   cd /path/to/SK-Ana
+   docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
+   ```
+
+3. Run native container:
+   ```bash
+   docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+   ```
+
+4. Verify (no warning should appear):
+   ```bash
+   docker ps --filter "name=skana"
+   ```
 
 ### Docker daemon not running
 
@@ -434,13 +541,15 @@ docker exec skana Rscript -e "sessionInfo()"
 
 ## Image Information
 
-| Property | saldenisov/skana | ppernot1/skana |
-|----------|------------------|----------------|
-| **Base** | rocker/shiny:4.4.1 | rocker/shiny |
-| **R Version** | 4.4.1 | 4.2.x |
-| **Size** | ~1.7 GB | ~1.5 GB |
-| **Features** | Latest fixes, Correction Spectra | Original |
-| **Status** | Actively maintained | Stable |
+| Property | saldenisov/skana | skana:arm64 (build from source) | ppernot1/skana |
+|----------|------------------|--------------------------------|----------------|
+| **Base** | rocker/shiny:4.4.1 | r-base:4.4.1 | rocker/shiny |
+| **R Version** | 4.4.1 | 4.4.1 | 4.2.x |
+| **Architecture** | linux/amd64 | linux/arm64 | linux/amd64 |
+| **Size** | ~1.7 GB | ~1.5 GB | ~1.5 GB |
+| **Features** | Latest fixes, Correction Spectra | Native arm64, Latest fixes | Original |
+| **Best For** | Windows, Linux, Intel Mac | Mac Apple Silicon | Legacy |
+| **Status** | Actively maintained | Build-it-yourself | Stable |
 
 ---
 
