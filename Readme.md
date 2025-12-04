@@ -336,9 +336,10 @@ docker logs skana
 ```
 
 For detailed Docker documentation, see:
-- **[DOCKER_PLATFORM_GUIDE.md](DOCKER_PLATFORM_GUIDE.md)** - Platform-specific quick reference (recommended starting point)
+- **[docs/deployment/DOCKER_PLATFORM_GUIDE.md](docs/deployment/DOCKER_PLATFORM_GUIDE.md)** - Platform-specific quick reference (recommended starting point)
 - **[DOCKER.md](DOCKER.md)** - Complete Docker deployment guide
 - **[README_DOCKER.md](README_DOCKER.md)** - Cross-platform Docker instructions
+- **[docs/deployment/](docs/deployment/)** - All deployment documentation
 
 
 ## How to cite SK-Ana
