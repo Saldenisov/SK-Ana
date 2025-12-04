@@ -32,8 +32,8 @@
    ```
    
    **Method B: Using the helper script**
-   - Double-click on `run_app_3840.R` in Windows Explorer, or
-   - In R console: `source("run_app_3840.R")` 
+   - Double-click on `scripts/run_app_3840.R` in Windows Explorer/Finder, or
+   - In R console: `source("scripts/run_app_3840.R")` 
    - This will launch the app on http://localhost:3840
    
    **Method C: Using RStudio**
@@ -121,11 +121,32 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 - Interactive GUI built with R/Shiny; runs locally or in Docker.
 - Compatible with R 4.4.x (tested with R 4.4.1)
 - Removed dependency on `inlmisc`; includes local `GetColors` implementation
-- Includes `run_app_3840.R` helper script for easy local deployment
+- Includes helper scripts in `scripts/` directory for easy local deployment
 - Recommended Docker deployment (see container section below):
   - `docker run -d -p 3840:3840 --name skana saldenisov/skana:latest`
   - Access via http://localhost:3840
 - Integrates visualization, matrix factorization, and model fitting in one app.
+
+## Project Structure
+
+```
+SK-Ana/
+├── README.md                    # This file
+├── app.R                        # Shiny app entry point
+├── ui.R, server.R, global.R     # Main application files
+├── error_handler.R              # Error handling
+├── Dockerfile, Dockerfile.arm64 # Docker build files
+├── ui_files/                    # UI components
+├── server_files/                # Server logic
+├── data/                        # Example datasets
+├── scripts/                     # Utility scripts (run_app_3840.R, etc.)
+├── tests/                       # Test files
+├── docs/                        # Documentation
+│   ├── deployment/              # Docker, CI/CD docs
+│   └── development/             # Technical docs
+├── .github/workflows/           # CI/CD automation
+└── renv/                        # R package management
+```
 
 ---
 
