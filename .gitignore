@@ -1,8 +1,21 @@
+# R project files
 .Rproj.user
 .Rhistory
 .RData
+
+# Output directory
 outputDir/*
 !outputDir/.gitkeep
+
+# Deployment
 rsconnect
+
+# Temporary files
 Readme.html
 *~
+
+# Build scripts (moved to hidden directory)
+.build-scripts/
+
+# Old dockerfiles (moved to hidden directory)
+.old-dockerfiles/
