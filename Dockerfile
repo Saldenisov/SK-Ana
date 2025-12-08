@@ -1,6 +1,11 @@
 # Use Rocker Shiny with R 4.4.x
 FROM rocker/shiny:4.4.1
 
+# Multi-platform Docker image for SK-Ana
+LABEL version="1.0.0" \
+      description="SK-Ana Spectrokinetic Analysis Shiny App" \
+      maintainer="saldenisov"
+
 # Workdir for the app
 WORKDIR /SK-Ana
 

@@ -1,6 +1,11 @@
 # Use R base image which supports arm64
 FROM r-base:4.4.1
 
+# Multi-platform Docker image for SK-Ana (ARM64/Apple Silicon)
+LABEL version="1.0.0" \
+      description="SK-Ana Spectrokinetic Analysis Shiny App - ARM64" \
+      maintainer="saldenisov"
+
 # Install system dependencies for Shiny and R packages
 RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
