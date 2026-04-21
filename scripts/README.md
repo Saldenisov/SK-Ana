@@ -6,10 +6,23 @@ Utility scripts for development and deployment.
 
 | File | Description | Usage |
 |------|-------------|-------|
+| `run_app_3840.sh` | Launch SK-Ana on port 3840 from the repo root | `./scripts/run_app_3840.sh` |
 | `run_app_3840.R` | Launch SK-Ana on port 3840 | `Rscript scripts/run_app_3840.R` or double-click |
 | `_dependencies.R` | Dependency management | Internal use |
 
 ## Running SK-Ana
+
+### Using run_app_3840.sh (recommended)
+
+**From terminal:**
+```bash
+./scripts/run_app_3840.sh
+```
+
+You can override the host or port:
+```bash
+HOST=127.0.0.1 PORT=3842 ./scripts/run_app_3840.sh
+```
 
 ### Using run_app_3840.R
 
@@ -44,5 +57,5 @@ The `_dependencies.R` script manages package dependencies. It's used internally 
 
 **Tip**: For Docker deployment, these scripts are not needed. Use:
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
+docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest
 ```

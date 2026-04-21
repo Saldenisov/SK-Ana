@@ -292,7 +292,7 @@ test_that("safely wrapper returns proper structure", {
 
 # Test 16: Non-existent file
 test_that("handles non-existent file", {
-  result <- detectFileFormat("nonexistent_file_xyz123.txt")
+  result <- suppressWarnings(detectFileFormat("nonexistent_file_xyz123.txt"))
   
   # Should return NULL or handle error gracefully
   expect_true(is.null(result))

@@ -1,7 +1,7 @@
 
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
 [![Docker Build](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml/badge.svg)](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/saldenisov/skana)](https://hub.docker.com/r/saldenisov/skana)
+[![Docker Pulls](https://img.shields.io/docker/pulls/saldenisov/sk-ana)](https://hub.docker.com/r/saldenisov/sk-ana)
 
 # **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
@@ -25,24 +25,33 @@
 3. Open a terminal in the project root (this folder).
 4. Start the app in one of the following ways:
    
-   **Method A: Using R console/terminal**
+   **Method A: Using the helper shell script (recommended)**
+   ```bash
+   ./scripts/run_app_3840.sh
+   ```
+   Optional host/port override:
+   ```bash
+   HOST=127.0.0.1 PORT=3842 ./scripts/run_app_3840.sh
+   ```
+
+   **Method B: Using R console/terminal**
    ```r
    setwd("C:/path/to/SK-Ana")  # Adjust path as needed
    shiny::runApp(".")
    ```
    
-   **Method B: Using the helper script**
+   **Method C: Using the helper R script**
    - Double-click on `scripts/run_app_3840.R` in Windows Explorer/Finder, or
    - In R console: `source("scripts/run_app_3840.R")` 
    - This will launch the app on http://localhost:3840
    
-   **Method C: Using RStudio**
+   **Method D: Using RStudio**
    - Open `server.R` or `ui.R` in RStudio
    - Click "Run App" button
 
 5. The app will open automatically in your browser, or go to:
    - http://localhost:3838 (default shiny port) or
-   - http://localhost:3840 (if using `run_app_3840.R`)
+   - http://localhost:3840 (if using `run_app_3840.R` or `run_app_3840.sh`)
 
 On first launch, required packages will be installed automatically if missing (e.g. `outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, `msm`, `xtable`). Depending on your OS, you may need to install some of them manually using `install.packages(...)` in R.
 
@@ -123,7 +132,7 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 - Removed dependency on `inlmisc`; includes local `GetColors` implementation
 - Includes helper scripts in `scripts/` directory for easy local deployment
 - Recommended Docker deployment (see container section below):
-  - `docker run -d -p 3840:3840 --name skana saldenisov/skana:latest`
+  - `docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest`
   - Access via http://localhost:3840
 - Integrates visualization, matrix factorization, and model fitting in one app.
 
@@ -131,7 +140,7 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 
 ```
 SK-Ana/
-├── README.md                    # This file
+├── Readme.md                    # This file
 ├── app.R                        # Shiny app entry point
 ├── ui.R, server.R, global.R     # Main application files
 ├── error_handler.R              # Error handling
@@ -139,7 +148,7 @@ SK-Ana/
 ├── ui_files/                    # UI components
 ├── server_files/                # Server logic
 ├── data/                        # Example datasets
-├── scripts/                     # Utility scripts (run_app_3840.R, etc.)
+├── scripts/                     # Utility scripts (run_app_3840.sh, run_app_3840.R, etc.)
 ├── tests/                       # Test files
 ├── docs/                        # Documentation
 │   ├── deployment/              # Docker, CI/CD docs
@@ -208,14 +217,14 @@ For cross-platform compatibility, the preferred installation method is through a
 
 ### Option 1: Pull Pre-built Image (Recommended)
 
-The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image includes all latest fixes and R 4.4.1 compatibility.
+The [saldenisov/sk-ana](https://hub.docker.com/r/saldenisov/sk-ana) Docker image includes all latest fixes and R 4.4.1 compatibility.
 
 #### All Platforms (Recommended - Multi-Architecture Image):
 
 The `latest` tag is a multi-platform image that automatically selects the correct architecture:
 
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
+docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest
 ```
 
 **Automatically works on:**
@@ -232,12 +241,12 @@ If you want to explicitly specify the architecture:
 
 **For Windows/Linux/Intel Mac (amd64):**
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-amd64
+docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest-amd64
 ```
 
 **For Mac Apple Silicon (arm64):**
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-arm64
+docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest-arm64
 ```
 
 ### Container Management
@@ -260,10 +269,10 @@ docker rm skana
 
 **Update to latest version:**
 ```bash
-docker pull saldenisov/skana:latest
+docker pull saldenisov/sk-ana:latest
 docker stop skana
 docker rm skana
-docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
+docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest
 ```
 
 ### Option 2: Build from Source
@@ -327,7 +336,7 @@ docker run -d -p 3840:3840 --name skana-original ppernot1/skana
 
 Access at: **http://localhost:3840**
 
-**Note**: The updated `saldenisov/skana` image includes bug fixes and is recommended for new deployments.
+**Note**: The updated `saldenisov/sk-ana` image includes bug fixes and is recommended for new deployments.
 
 ### Troubleshooting
 
@@ -344,7 +353,7 @@ You have two options:
 **Port already in use:**
 ```bash
 # Use a different port
-docker run -d -p 3841:3840 --name skana saldenisov/skana:latest
+docker run -d -p 3841:3840 --name skana saldenisov/sk-ana:latest
 # Access at http://localhost:3841
 ```
 
@@ -416,7 +425,6 @@ Rayonnement et Radiochimie" (Oléron, 2017/09)
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
 * J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
-
 
 
 

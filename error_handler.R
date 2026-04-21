@@ -32,9 +32,47 @@ main_error_handler <- function(error, func_name, func_args) {
   return(NULL)
 }
 
+fallback_error_handler <- function(error, func_name, func_args) {
+  error_msg <- sprintf(
+    paste0(
+      "\n========== ERROR CAUGHT ==========\n",
+      "Function: %s\n",
+      "Error Type: %s\n",
+      "Error Message: %s\n",
+      "Stack Trace:\n%s\n",
+      "Arguments: %s\n",
+      "Timestamp: %s\n",
+      "==================================\n"
+    ),
+    func_name,
+    class(error)[1],
+    conditionMessage(error),
+    paste(capture.output(traceback()), collapse = "\n"),
+    paste(capture.output(str(func_args)), collapse = "\n"),
+    Sys.time()
+  )
+
+  cat(error_msg, file = stderr())
+  invisible(NULL)
+}
+
+resolve_error_handler <- function() {
+  handler <- tryCatch(
+    get0("main_error_handler", mode = "function", inherits = TRUE),
+    error = function(e) NULL
+  )
+
+  if (is.function(handler)) {
+    handler
+  } else {
+    fallback_error_handler
+  }
+}
+
 # Decorator function that wraps any function with error handling
 safe_function <- function(func, return_on_error = NULL) {
   func_name <- deparse(substitute(func))
+  error_handler <- resolve_error_handler()
   
   wrapped_func <- function(...) {
     tryCatch(
@@ -48,7 +86,7 @@ safe_function <- function(func, return_on_error = NULL) {
         func_args <- list(...)
         
         # Send to main error handler
-        main_error_handler(e, func_name, func_args)
+        error_handler(e, func_name, func_args)
         
         # Return default value instead of terminating
         return(return_on_error)
@@ -76,6 +114,7 @@ with_error_handling <- function(func, func_name = NULL, return_on_error = NULL) 
   if (is.null(func_name)) {
     func_name <- deparse(substitute(func))
   }
+  error_handler <- resolve_error_handler()
   
   function(...) {
     tryCatch(
@@ -84,7 +123,7 @@ with_error_handling <- function(func, func_name = NULL, return_on_error = NULL) 
       },
       error = function(e) {
         func_args <- list(...)
-        main_error_handler(e, func_name, func_args)
+        error_handler(e, func_name, func_args)
         return(return_on_error)
       },
       warning = function(w) {
@@ -103,9 +142,11 @@ with_error_handling <- function(func, func_name = NULL, return_on_error = NULL) 
 # Decorator that can be used with assignment
 safely <- function(func, return_on_error = NULL) {
   func_name <- as.character(substitute(func))
+  error_handler <- resolve_error_handler()
   
   force(func)
   force(func_name)
+  force(error_handler)
   
   return(function(...) {
     tryCatch(
@@ -114,7 +155,7 @@ safely <- function(func, return_on_error = NULL) {
       },
       error = function(e) {
         func_args <- list(...)
-        main_error_handler(e, func_name, func_args)
+        error_handler(e, func_name, func_args)
         return(return_on_error)
       }
     )

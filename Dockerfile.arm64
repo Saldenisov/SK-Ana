@@ -8,8 +8,10 @@ LABEL version="1.0.0" \
 
 # Install system dependencies for Shiny and R packages
 RUN apt-get update && apt-get install -y \
+    cmake \
     libcurl4-openssl-dev \
     libssl-dev \
+    libuv1-dev \
     libxml2-dev \
     libfontconfig1-dev \
     libharfbuzz-dev \
@@ -28,10 +30,10 @@ RUN echo 'options(repos = c(POSIT = "https://packagemanager.posit.co/cran/__linu
 WORKDIR /SK-Ana
 
 # Install R packages needed by the app (using binary packages from Posit PPM for speed)
-RUN R -e "install.packages(c('shiny','shinythemes','shinycssloaders','DT','outliers','nnls','Iso','httpuv','Rsolnp','fields','NMFN','rgenoud','mvtnorm','deSolve','msm','xtable','magrittr','callr','processx','RColorBrewer','viridisLite','changepoint'))"
+RUN R -e "required <- c('shiny','shinythemes','shinycssloaders','DT','outliers','nnls','Iso','httpuv','Rsolnp','fields','NMFN','rgenoud','mvtnorm','deSolve','msm','xtable','magrittr','callr','processx','RColorBrewer','viridisLite','changepoint'); install.packages(required); missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) stop(paste('Missing required R packages:', paste(missing, collapse = ', ')))"
 
 # Ensure shinyBS is available (CRAN is archived sometimes); try CRAN then fallback to GitHub
-RUN R -e "if (!requireNamespace('shinyBS', quietly = TRUE)) { try(install.packages('shinyBS'), silent=TRUE); if (!requireNamespace('shinyBS', quietly=TRUE)) { install.packages('remotes'); remotes::install_github('ebailey78/shinyBS'); } }"
+RUN R -e "if (!requireNamespace('shinyBS', quietly = TRUE)) { try(install.packages('shinyBS'), silent=TRUE); if (!requireNamespace('shinyBS', quietly=TRUE)) { install.packages('remotes'); remotes::install_github('ebailey78/shinyBS'); } }; if (!requireNamespace('shinyBS', quietly = TRUE)) stop('shinyBS installation failed')"
 
 # Copy app files
 COPY global.R /SK-Ana/

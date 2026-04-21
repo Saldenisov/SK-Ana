@@ -9,8 +9,21 @@ function(request) {
   
   navbarPage(
     tags$head(
+      tags$script(HTML(
+        "document.documentElement.classList.add('startup-connection-pending');
+         document.addEventListener('shiny:connected', function() {
+           document.documentElement.classList.remove('startup-connection-pending');
+         }, { once: true });"
+      )),
       tags$style(
-        HTML(".shiny-notification {
+        HTML("html.startup-connection-pending #shiny-disconnected-overlay {
+             background-color: transparent !important;
+             opacity: 0 !important;
+             }
+             .recalculating {
+             opacity: 1 !important;
+             }
+             .shiny-notification {
              position:fixed;
              top: calc(50%);
              left: calc(50%);
@@ -84,4 +97,3 @@ function(request) {
     )
   )
 }
-

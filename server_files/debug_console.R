@@ -46,10 +46,6 @@ log_debug <- safely(function(msg) {
   capture_log(msg, "DEBUG")
 }, return_on_error = NULL)
 
-# Capture warnings
-old_warning <- getOption("warn")
-options(warn = 1)  # Print warnings immediately
-
 # Create debug console output
 output$debug_console <- renderUI({
   # Auto-refresh
@@ -62,7 +58,7 @@ output$debug_console <- renderUI({
         12,
         h4("Debug Console", style = "margin-top: 0;"),
         actionButton("debug_clear", "Clear Logs", icon = icon("trash"), size = "sm"),
-        actionButton("debug_download", "Download Logs", icon = icon("download"), size = "sm"),
+        downloadButton("debug_download", "Download Logs", icon = icon("download"), class = "btn btn-default btn-sm"),
         style = "margin-bottom: 10px;"
       )
     ),
@@ -97,16 +93,6 @@ output$debug_download <- downloadHandler(
 # Log initialization is deferred until after UI renders
 # to avoid reactive context issues
 
-# Set error option to log errors
-options(error = function() {
-  msg <- paste("R Error:", geterrmessage())
-  cat("[ERROR]", msg, "\n")
-  log_error(msg)
-})
-
-# Redirect warnings to logging
-options(warn = 1)
-
 # Wrapper function to safely execute render functions
 safe_render <- function(expr, error_msg = "Render error") {
   tryCatch(
@@ -136,13 +122,58 @@ safe_plot <- function(expr, error_msg = "Plot error") {
   )
 }
 
+# Cross-platform RAM detection for diagnostics panel
+get_available_ram_gb <- safely(function() {
+  sysname <- Sys.info()[["sysname"]]
+
+  if (identical(sysname, "Windows")) {
+    out <- tryCatch(
+      system2("wmic", c("OS", "get", "TotalVisibleMemorySize", "/Value"),
+              stdout = TRUE, stderr = FALSE),
+      error = function(e) character(0)
+    )
+    line <- grep("^TotalVisibleMemorySize=", out, value = TRUE)
+    if (length(line) > 0) {
+      kb <- suppressWarnings(as.numeric(sub("^TotalVisibleMemorySize=", "", line[1])))
+      if (is.finite(kb) && kb > 0) return(round(kb / 1024 / 1024, 2))
+    }
+  }
+
+  if (identical(sysname, "Linux")) {
+    out <- tryCatch(readLines("/proc/meminfo", warn = FALSE), error = function(e) character(0))
+    line <- grep("^MemTotal:", out, value = TRUE)
+    if (length(line) > 0) {
+      kb <- suppressWarnings(as.numeric(gsub("[^0-9.]", "", line[1])))
+      if (is.finite(kb) && kb > 0) return(round(kb / 1024 / 1024, 2))
+    }
+  }
+
+  if (identical(sysname, "Darwin")) {
+    out <- tryCatch(
+      suppressWarnings(
+        system2("sysctl", c("-n", "hw.memsize"), stdout = TRUE, stderr = FALSE)
+      ),
+      error = function(e) character(0)
+    )
+    if (length(out) > 0) {
+      bytes <- suppressWarnings(as.numeric(out[1]))
+      if (is.finite(bytes) && bytes > 0) return(round(bytes / (1024^3), 2))
+    }
+  }
+
+  NA_real_
+}, return_on_error = NA_real_)
+
 # System information output
 output$system_info <- renderPrint({
+  ram_gb <- get_available_ram_gb()
+  ram_text <- if (is.finite(ram_gb)) paste(ram_gb, "GB") else "Unknown"
+
   cat("=== System Information ===", "\n")
   cat("R Version:", R.version$version.string, "\n")
   cat("Platform:", R.version$platform, "\n")
   cat("Working Directory:", getwd(), "\n")
-  cat("Available RAM:", paste(round(as.numeric(system2('wmic', c('OS', 'get', 'TotalVisibleMemorySize'), stdout=TRUE)[2]) / 1024 / 1024, 2), 'GB'), "\n")
+  cat("Available RAM:", ram_text, "\n")
   cat("\n")
   cat("=== Session Info ===", "\n")
   cat("Application Started:", format(Sys.time()), "\n")

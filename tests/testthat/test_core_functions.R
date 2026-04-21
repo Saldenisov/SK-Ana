@@ -1,4 +1,8 @@
-server <- source("../../server.R")$value
+repo_root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
+old_wd <- setwd(repo_root)
+withr::defer(setwd(old_wd))
+source("global.R")
+server <- source("server.R")$value
 
 # Unit tests for a subset of pure functions within the server environment
 
@@ -20,6 +24,25 @@ shiny::testServer(server, {
     s <- process_status(NULL)
     testthat::expect_true(is.null(s$running))
     testthat::expect_true(is.null(s$result))
+  })
+
+  testthat::test_that("background runner availability check is safe", {
+    testthat::expect_true(exists("background_runner_available"))
+    available <- background_runner_available()
+    testthat::expect_type(available, "logical")
+    testthat::expect_length(available, 1)
+  })
+
+  testthat::test_that("ALS helper functions compute expected defaults", {
+    testthat::expect_equal(als_nstart(4, "seq"), 2L)
+    testthat::expect_equal(als_nstart(4, "SVD"), 4L)
+
+    Inputs$maskSpExp <- matrix(c(1, 0, 0, 1), nrow = 2, byrow = TRUE)
+    delay_id <- c(1, 1, 2, 2)
+    null_c <- als_null_constraints(delay_id, 2)
+    testthat::expect_true(is.matrix(null_c))
+    testthat::expect_equal(null_c[, 1], c(1, 1, 0, 0))
+    testthat::expect_equal(null_c[, 2], c(0, 0, 1, 1))
   })
   
   testthat::test_that("getC/getS with linear solve (nonneg=FALSE)", {

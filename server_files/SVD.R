@@ -352,20 +352,13 @@ observeEvent(
       isolate(input$cleanLevel)
     )
     dlgl <- Inputs$delay[gl]
-    if (anyNA(Inputs$delayGlitch)) {
-      Inputs$delayGlitch <<- dlgl
-    } else {
-      Inputs$delayGlitch <<- unique(c(Inputs$delayGlitch, dlgl))
-    }
+    addDelayGlitch(dlgl)
   }
 )
 observeEvent(
   input$cleanCancel, {
     # Remove last glitch
-    if (!anyNA(Inputs$delayGlitch)) {
-      Inputs$delayGlitch <<-
-        Inputs$delayGlitch[-length(Inputs$delayGlitch)]
-    }
+    removeLastDelayGlitch()
   }
 )
 

@@ -21,27 +21,93 @@ function(input, output, session) {
   masksDl <- c()
   masksWl <- c()
   Inputs <- reactiveValues()
+
+  setInputValue <- safely(function(name, value) {
+    Inputs[[name]] <- value
+    invisible(value)
+  }, return_on_error = NULL)
+
+  setInputValues <- safely(function(values) {
+    for (name in names(values)) {
+      Inputs[[name]] <- values[[name]]
+    }
+    invisible(values)
+  }, return_on_error = NULL)
+
+  setProjectConfig <- safely(function(value) {
+    projConfig <<- value
+    invisible(value)
+  }, return_on_error = NULL)
+
+  clearProjectConfig <- safely(function() {
+    setProjectConfig(NULL)
+  }, return_on_error = NULL)
+
+  projectConfigValue <- safely(function() {
+    projConfig
+  }, return_on_error = NULL)
+
+  replaceRawData <- safely(function(value) {
+    RawData <<- value
+    invisible(value)
+  }, return_on_error = NULL)
+
+  resetDelayGlitch <- safely(function() {
+    setInputValue("delayGlitch", NA)
+  }, return_on_error = NULL)
+
+  addDelayGlitch <- safely(function(values) {
+    if (length(values) == 0 || all(is.na(values))) {
+      return(Inputs$delayGlitch)
+    }
+
+    values <- unique(values)
+
+    if (anyNA(Inputs$delayGlitch)) {
+      updated <- values
+    } else {
+      updated <- unique(c(Inputs$delayGlitch, values))
+    }
+
+    setInputValue("delayGlitch", updated)
+  }, return_on_error = NA)
+
+  removeLastDelayGlitch <- safely(function() {
+    current <- Inputs$delayGlitch
+    if (anyNA(current) || length(current) == 0) {
+      return(current)
+    }
+
+    updated <- current[-length(current)]
+    if (length(updated) == 0) {
+      resetDelayGlitch()
+    } else {
+      setInputValue("delayGlitch", updated)
+    }
+  }, return_on_error = NA)
   
   initInputs = safely(function() {
-    Inputs$gotData        <<- FALSE
-    Inputs$process        <<- FALSE
-    Inputs$finish         <<- FALSE
-    Inputs$validData      <<- TRUE
-    Inputs$fileOrig       <<- NULL
-    Inputs$matOrig        <<- NULL
-    Inputs$wavlOrig       <<- NULL
-    Inputs$delayOrig      <<- NULL
-    Inputs$dlScaleFacOrig <<- NULL
-    Inputs$baselineMask   <<- NA
-    Inputs$delayMask      <<- NA
-    Inputs$wavlMask       <<- NA
-    Inputs$maskSpExp      <<- NA
-    Inputs$mat            <<- NULL
-    Inputs$wavl           <<- NULL
-    Inputs$delay          <<- NULL
-    Inputs$delaySave      <<- NULL # True delays used in saved kinetics
-    Inputs$delayId        <<- NA   # Pointer to original matrices 
-    Inputs$delayGlitch    <<- NA   # List of glitches to mask
+    setInputValues(list(
+      gotData = FALSE,
+      process = FALSE,
+      finish = FALSE,
+      validData = TRUE,
+      fileOrig = NULL,
+      matOrig = NULL,
+      wavlOrig = NULL,
+      delayOrig = NULL,
+      dlScaleFacOrig = NULL,
+      baselineMask = NA,
+      delayMask = NA,
+      wavlMask = NA,
+      maskSpExp = NA,
+      mat = NULL,
+      wavl = NULL,
+      delay = NULL,
+      delaySave = NULL, # True delays used in saved kinetics
+      delayId = NA, # Pointer to original matrices
+      delayGlitch = NA # List of glitches to mask
+    ))
   }, return_on_error = NULL)
   
   initInputs()
@@ -82,4 +148,3 @@ function(input, output, session) {
       local = TRUE
     )
 }
-

@@ -25,7 +25,7 @@ libs <- c(
   "changepoint", "shiny", "shinyBS", "DT", "Rsolnp",
   "fields", "NMFN", "tools", "shinycssloaders",
   "rgenoud", "mvtnorm", "deSolve", "msm", "xtable",
-  "shinythemes","magrittr","callr","processx"
+  "shinythemes","magrittr"
   # ,"readr", "shinyCopy2clipboard"
 )
 #remotes::install_github("deepanshu88/shinyCopy2clipboard")

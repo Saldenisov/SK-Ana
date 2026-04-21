@@ -83,6 +83,6 @@ initSliders <- safely(function(config=NULL) {
                            inputId = 'inReport',
                            selected = c('SVD'))
   # Empty glitches
-  Inputs$delayGlitch  <<- NA
+  resetDelayGlitch()
   
 }, return_on_error = NULL)
