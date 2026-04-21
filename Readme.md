@@ -1,7 +1,7 @@
 
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
 [![Docker Build](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml/badge.svg)](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/saldenisov/sk-ana)](https://hub.docker.com/r/saldenisov/sk-ana)
+[![Docker Pulls](https://img.shields.io/docker/pulls/saldenisov/skana)](https://hub.docker.com/r/saldenisov/skana)
 
 # **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
@@ -143,7 +143,7 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 - Removed dependency on `inlmisc`; includes local `GetColors` implementation
 - Includes helper scripts in `scripts/` directory for easy local deployment
 - Recommended Docker deployment (see container section below):
-  - `docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest`
+  - `docker run -d -p 3840:3840 --name skana saldenisov/skana:latest`
   - Access via http://localhost:3840
 - Integrates visualization, matrix factorization, and model fitting in one app.
 
@@ -228,14 +228,14 @@ For cross-platform compatibility, the preferred installation method is through a
 
 ### Option 1: Pull Pre-built Image (Recommended)
 
-The [saldenisov/sk-ana](https://hub.docker.com/r/saldenisov/sk-ana) Docker image includes all latest fixes and R 4.4.1 compatibility.
+The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image includes all latest fixes and R 4.4.1 compatibility.
 
 #### All Platforms (Recommended - Multi-Architecture Image):
 
 The `latest` tag is a multi-platform image that automatically selects the correct architecture:
 
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
 **Automatically works on:**
@@ -252,12 +252,12 @@ If you want to explicitly specify the architecture:
 
 **For Windows/Linux/Intel Mac (amd64):**
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest-amd64
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-amd64
 ```
 
 **For Mac Apple Silicon (arm64):**
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest-arm64
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-arm64
 ```
 
 ### Container Management
@@ -280,10 +280,10 @@ docker rm skana
 
 **Update to latest version:**
 ```bash
-docker pull saldenisov/sk-ana:latest
+docker pull saldenisov/skana:latest
 docker stop skana
 docker rm skana
-docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
 ### Option 2: Build from Source
@@ -347,7 +347,7 @@ docker run -d -p 3840:3840 --name skana-original ppernot1/skana
 
 Access at: **http://localhost:3840**
 
-**Note**: The updated `saldenisov/sk-ana` image includes bug fixes and is recommended for new deployments.
+**Note**: The updated `saldenisov/skana` image includes bug fixes and is recommended for new deployments.
 
 ### Troubleshooting
 
@@ -364,7 +364,7 @@ You have two options:
 **Port already in use:**
 ```bash
 # Use a different port
-docker run -d -p 3841:3840 --name skana saldenisov/sk-ana:latest
+docker run -d -p 3841:3840 --name skana saldenisov/skana:latest
 # Access at http://localhost:3841
 ```
 
@@ -436,7 +436,6 @@ Rayonnement et Radiochimie" (Oléron, 2017/09)
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
 * J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
-
 
 
 

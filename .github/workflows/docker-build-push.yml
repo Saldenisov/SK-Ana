@@ -19,7 +19,7 @@ on:
 
 env:
   DOCKER_USERNAME: saldenisov
-  IMAGE_NAME: sk-ana
+  IMAGE_NAME: skana
 
 jobs:
   r-tests:

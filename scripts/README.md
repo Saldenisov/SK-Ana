@@ -72,5 +72,5 @@ The `_dependencies.R` script manages package dependencies. It's used internally 
 
 **Tip**: For Docker deployment, these scripts are not needed. Use:
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/sk-ana:latest
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
