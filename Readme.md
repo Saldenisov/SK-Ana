@@ -25,7 +25,7 @@
 3. Open a terminal in the project root (this folder).
 4. Start the app in one of the following ways:
    
-   **Method A: Using the helper shell script (recommended)**
+   **Method A: Using the helper shell script (recommended on macOS/Linux)**
    ```bash
    ./scripts/run_app_3840.sh
    ```
@@ -34,18 +34,29 @@
    HOST=127.0.0.1 PORT=3842 ./scripts/run_app_3840.sh
    ```
 
-   **Method B: Using R console/terminal**
+   **Method B: Using the Windows batch script**
+   ```bat
+   scripts\run_app_3840.bat
+   ```
+   Optional host/port override:
+   ```bat
+   set HOST=127.0.0.1
+   set PORT=3842
+   scripts\run_app_3840.bat
+   ```
+
+   **Method C: Using R console/terminal**
    ```r
    setwd("C:/path/to/SK-Ana")  # Adjust path as needed
    shiny::runApp(".")
    ```
    
-   **Method C: Using the helper R script**
+   **Method D: Using the helper R script**
    - Double-click on `scripts/run_app_3840.R` in Windows Explorer/Finder, or
    - In R console: `source("scripts/run_app_3840.R")` 
    - This will launch the app on http://localhost:3840
    
-   **Method D: Using RStudio**
+   **Method E: Using RStudio**
    - Open `server.R` or `ui.R` in RStudio
    - Click "Run App" button
 
@@ -148,7 +159,7 @@ SK-Ana/
 ├── ui_files/                    # UI components
 ├── server_files/                # Server logic
 ├── data/                        # Example datasets
-├── scripts/                     # Utility scripts (run_app_3840.sh, run_app_3840.R, etc.)
+├── scripts/                     # Utility scripts (run_app_3840.sh, run_app_3840.bat, run_app_3840.R, etc.)
 ├── tests/                       # Test files
 ├── docs/                        # Documentation
 │   ├── deployment/              # Docker, CI/CD docs
@@ -425,7 +436,6 @@ Rayonnement et Radiochimie" (Oléron, 2017/09)
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
 * J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
-
 
 
 

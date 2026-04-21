@@ -7,6 +7,7 @@ Utility scripts for development and deployment.
 | File | Description | Usage |
 |------|-------------|-------|
 | `run_app_3840.sh` | Launch SK-Ana on port 3840 from the repo root | `./scripts/run_app_3840.sh` |
+| `run_app_3840.bat` | Launch SK-Ana on port 3840 on Windows | `scripts\\run_app_3840.bat` |
 | `run_app_3840.R` | Launch SK-Ana on port 3840 | `Rscript scripts/run_app_3840.R` or double-click |
 | `_dependencies.R` | Dependency management | Internal use |
 
@@ -22,6 +23,20 @@ Utility scripts for development and deployment.
 You can override the host or port:
 ```bash
 HOST=127.0.0.1 PORT=3842 ./scripts/run_app_3840.sh
+```
+
+### Using run_app_3840.bat (Windows)
+
+**From Command Prompt:**
+```bat
+scripts\run_app_3840.bat
+```
+
+You can override the host or port:
+```bat
+set HOST=127.0.0.1
+set PORT=3842
+scripts\run_app_3840.bat
 ```
 
 ### Using run_app_3840.R

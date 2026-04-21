@@ -15,7 +15,12 @@ try({
   }
   repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = FALSE)
   setwd(repo_root)
-  options(shiny.port = 3840, shiny.host = '127.0.0.1')
+  host <- Sys.getenv("HOST", unset = "127.0.0.1")
+  port <- suppressWarnings(as.integer(Sys.getenv("PORT", unset = "3840")))
+  if (!is.finite(port) || is.na(port)) {
+    port <- 3840L
+  }
+  options(shiny.port = port, shiny.host = host)
   if (!requireNamespace('shiny', quietly = TRUE)) {
     message('shiny package not found. Exiting with status 11.')
     quit(status = 11)
