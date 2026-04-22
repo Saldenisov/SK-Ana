@@ -28,6 +28,11 @@ Several tabs enable to fine tune the ALS analysis:
         
           - `|SVD|` takes the absolute values of the SVD vectors
         
+          - `PCA` performs Principal Component Analysis by centering
+            the data before decomposition. This can be beneficial when
+            the data has significant baseline offsets or when you want
+            to focus on variance rather than absolute values.
+        
           - `NMF` takes the solution of a Non-negative Matrix
             Factorization algorithm
         
@@ -46,7 +51,16 @@ Several tabs enable to fine tune the ALS analysis:
 
   - `S const.` tab: constraints on the spectra vectors
     
-      - `S > 0`: positivity constraint
+      - `S > 0 (All)`: global positivity constraint for all spectra
+    
+      - `Per-component constraints`: enables individual control of
+        positivity for each spectrum. When activated, checkboxes appear
+        for each component (S_1, S_2, etc.), allowing you to specify
+        which should be positive and which can be negative. This is
+        useful for:
+        - Difference spectra (e.g., S_1 positive, S_2 can be negative)
+        - Mixed systems with absorption and bleaching
+        - Decay-Associated Spectra (DAS) analysis
     
       - `S unimodal`: unimodality constraint
     
@@ -65,7 +79,7 @@ Several tabs enable to fine tune the ALS analysis:
         as the data files (separator, decimal mark) and contain
         a header with the names of the species. The first column
         should contain the wavelength. It is possible to load several
-        files. Example: (https://github.com/ppernot/SK-Ana/blob/master/data/spectrum_ABC_Kinet.csv)
+        files. Example: (https://github.com/Saldenisov/SK-Ana/blob/master/data/spectrum_ABC_Kinet.csv)
         
         The spectra are interpolated on the wavl grid of the data matrix.
         By default, the spectra are used as such (hard constraint) which
@@ -73,6 +87,12 @@ Several tabs enable to fine tune the ALS analysis:
         `Soft constraint` enables to input a weight for the similarity
         constraint in the loss function of the ALS. The `logWeight`
         slider enables to tune this weight.
+      
+      - `Correction Spectra` enables an advanced decomposition mode where
+        each fixed spectrum is paired with a correction spectrum to account
+        for systematic deviations from the reference shape. See the detailed
+        [Correction Spectra](correction_spectra.html) documentation for
+        complete usage instructions and examples.
       
 
   - `C const.` tab: constraints on the kinetics vectors

@@ -1,6 +1,7 @@
 
 [![DOI](https://zenodo.org/badge/87315085.svg)](https://zenodo.org/badge/latestdoi/87315085)
-
+[![Docker Build](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml/badge.svg)](https://github.com/Saldenisov/SK-Ana/actions/workflows/docker-build-push.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/saldenisov/skana)](https://hub.docker.com/r/saldenisov/skana)
 
 # **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
@@ -15,46 +16,155 @@
 
 <!--The code can be tested here: https://upsa.shinyapps.io/SK-Ana/-->
 
-## Dev44 branch (R 4.4)
+## Running SK-Ana
 
-This branch (`dev44`) updates SK-Ana for R 4.4 compatibility and diverges from the original `master` as follows:
+### Run locally with isolated `R_skana` runtime (recommended)
 
-- Uses R 4.4.x (tested with 4.4.1)
-- Removed dependency on `inlmisc`; added a local `GetColors` implementation
-- Added `run_app_3840.R` helper script to launch the app on port 3840
-- Minor package/dependency adjustments and configuration cleanups
+SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safest setup on a new machine because it:
 
-### Run locally without Docker (R 4.2+)
+- installs its own pinned R runtime in a local environment
+- keeps SK-Ana packages, cache, and sandbox isolated from any existing system or user R libraries
+- avoids replacing or reconfiguring another R installation that may already exist
+- leaves the machine-wide R installation untouched if one is already present
 
-1. Install R 4.2+ from CRAN (tested with R 4.2.3 and 4.4.1).
-2. (Optional) Install RStudio.
-3. Open a terminal in the project root (this folder).
-4. Start the app in one of the following ways:
-   
-   **Method A: Using R console/terminal**
-   ```r
-   setwd("C:/path/to/SK-Ana")  # Adjust path as needed
-   shiny::runApp(".")
+1. Get the project in one of these two ways:
+
+   `git clone` workflow:
+
+   ```bash
+   git clone https://github.com/Saldenisov/SK-Ana.git
+   cd SK-Ana
    ```
-   
-   **Method B: Using the helper script**
-   - Double-click on `run_app_3840.R` in Windows Explorer, or
-   - In R console: `source("run_app_3840.R")` 
-   - This will launch the app on http://localhost:3840
-   
-   **Method C: Using RStudio**
-   - Open `server.R` or `ui.R` in RStudio
-   - Click "Run App" button
 
-5. The app will open automatically in your browser, or go to:
-   - http://localhost:3838 (default shiny port) or
-   - http://localhost:3840 (if using `run_app_3840.R`)
+   ZIP workflow:
+   Download the project ZIP from GitHub, unpack it, and open a terminal in the extracted `SK-Ana` folder.
 
-On first launch, required packages will be installed automatically if missing (e.g. `outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, `msm`, `xtable`). Depending on your OS, you may need to install some of them manually using `install.packages(...)` in R.
+2. Start the app directly:
+
+   macOS / Linux:
+   ```bash
+   ./run_app.sh
+   ```
+
+   Windows:
+   ```bat
+   run_app.bat
+   ```
+
+   What happens automatically on first run:
+   - if this is a normal git checkout, the launcher updates it from `origin/master`
+   - if this came from a ZIP without `.git`, the launcher initializes git in that extracted folder and then updates it from `origin/master`
+   - if Git is missing, the launcher tries to install or bootstrap Git first
+   - the launcher then creates the isolated `R_skana` runtime and installs required R packages
+   - finally, it starts the app
+
+   This means a user can either clone the repo or download the ZIP, unpack it, and just run `run_app`.
+
+3. If you want to preinstall or refresh the runtime without launching the app, run:
+
+   macOS / Linux:
+   ```bash
+   ./scripts/setup_r_skana.sh
+   ```
+
+   Windows:
+   ```bat
+   scripts\setup_r_skana.bat
+   ```
+
+   On restricted Windows machines, this still runs fully in user space and does not need administrator rights.
+   If outbound downloads are blocked by IT, place a pre-approved `micromamba.exe` at
+   `scripts\vendor\windows\micromamba.exe` or set `SK_ANA_MICROMAMBA_EXE` to its path before running the script.
+
+4. The app will open automatically in your browser, or go to:
+   - http://localhost:3838 (default Shiny port)
+   - http://localhost:3840 (default for `run_app.sh` / `run_app.bat`)
+   - if port `3840` is already busy, SK-Ana will try to reuse it by stopping a previous R-based SK-Ana process, or fall back to `3841`, `3842`, and so on
+
+The isolated runtime setup installs:
+
+- local `micromamba`
+- environment `R_skana`
+- pinned base `R 4.3.3` (`R 4.2+` supported target)
+- repo-local `renv` library, cache, and sandbox under `.R_skana/`
+- core app and test packages from `conda-forge` where available
+- any remaining SK-Ana packages from R package sources inside the isolated runtime
+
+### Windows without admin rights
+
+For lab or enterprise Windows machines where users do not have administrator privileges:
+
+- `scripts\setup_r_skana.bat` installs everything under the project folder
+- it does not write into `Program Files` or require a system-wide R installation
+- it can use a local pre-approved `micromamba.exe` instead of downloading one
+
+Example with a pre-staged executable:
+
+```bat
+set SK_ANA_MICROMAMBA_EXE=Z:\approved-tools\micromamba.exe
+scripts\setup_r_skana.bat
+run_app.bat
+```
+
+This is the recommended non-Docker path for locked-down Windows environments.
+
+### Use `R_skana` directly
+
+Open an R console inside the isolated runtime:
+
+macOS / Linux:
+```bash
+./R_skana.sh
+```
+
+Windows:
+```bat
+R_skana.bat
+```
+
+Run one-off commands in the same isolated runtime:
+
+macOS / Linux:
+```bash
+./R_skana.sh Rscript tests/testthat.R
+```
+
+Windows:
+```bat
+R_skana.bat Rscript tests\testthat.R
+```
+
+Optional host/port override for app launch:
+
+macOS / Linux:
+```bash
+SK_ANA_HOST=127.0.0.1 PORT=3842 ./run_app.sh
+```
+
+Windows:
+```bat
+set SK_ANA_HOST=127.0.0.1
+set PORT=3842
+run_app.bat
+```
+
+### Refresh the lockfile (maintainers)
+
+After changing package requirements, refresh the lockfile from inside the isolated runtime so `renv.lock` matches `R_skana`:
+
+macOS / Linux:
+```bash
+./R_skana.sh Rscript scripts/relock_r_skana.R
+```
+
+Windows:
+```bat
+R_skana.bat Rscript scripts\relock_r_skana.R
+```
 
 ## User's manual
 
-__New__: online [here](https://ppernot.github.io/SK-Ana/index.html)
+__New__: online [here](https://saldenisov.github.io/SK-Ana/)
 
 ---
 
@@ -125,10 +235,34 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 
 ## Technical notes
 - Interactive GUI built with R/Shiny; runs locally or in Docker.
-- Recommended Docker one‑liner (see container section below):
-  - docker run -d -p 3840:3840 --name skana saldenisov/skana
-  - Access via http://localhost:3840 (or http://127.0.0.1:3840)
+- Compatible with isolated `R_skana` runtime using pinned `R 4.3.3` and repo-local package isolation
+- Removed dependency on `inlmisc`; includes local `GetColors` implementation
+- Includes helper scripts in `scripts/` directory for easy local deployment
+- Recommended Docker deployment (see container section below):
+  - `docker run -d -p 3840:3840 --name skana saldenisov/skana:latest`
+  - Access via http://localhost:3840
 - Integrates visualization, matrix factorization, and model fitting in one app.
+
+## Project Structure
+
+```
+SK-Ana/
+├── Readme.md                    # This file
+├── app.R                        # Shiny app entry point
+├── ui.R, server.R, global.R     # Main application files
+├── error_handler.R              # Error handling
+├── Dockerfile, Dockerfile.arm64 # Docker build files
+├── ui_files/                    # UI components
+├── server_files/                # Server logic
+├── data/                        # Example datasets
+├── scripts/                     # Utility scripts for runtime/bootstrap and launch
+├── tests/                       # Test files
+├── docs/                        # Documentation
+│   ├── deployment/              # Docker, CI/CD docs
+│   └── development/             # Technical docs
+├── .github/workflows/           # CI/CD automation
+└── renv/                        # R package management
+```
 
 ---
 
@@ -177,52 +311,172 @@ Depending on your OS, you might have to install them manually.
 
 ## Docker container
 
-For cross-plateform compatibility issues, the preferred installation
-method is through a docker container.
+For cross-platform compatibility, the preferred installation method is through a Docker container. SK-Ana provides **multi-platform Docker images** that automatically work on **Windows, Linux, Intel Mac, and Apple Silicon Mac**.
 
-### Option 1: Updated Docker Image (Recommended)
+🔄 **Automated Builds**: Docker images are automatically built and published via GitHub Actions when new code is pushed. Both amd64 and arm64 architectures are built simultaneously and combined into a single multi-platform image.
+
+### Prerequisites
+
+0. Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
+   - **Windows**: Docker Desktop for Windows
+   - **Mac**: Docker Desktop for Mac (supports both Intel and Apple Silicon)
+   - **Linux**: Docker Engine or Docker Desktop
+
+### Option 1: Pull Pre-built Image (Recommended)
 
 The [saldenisov/skana](https://hub.docker.com/r/saldenisov/skana) Docker image includes all latest fixes and R 4.4.1 compatibility.
 
-0. Install [Docker](https://www.docker.com/products/docker-desktop)
+#### All Platforms (Recommended - Multi-Architecture Image):
 
-1. Run the container:
+The `latest` tag is a multi-platform image that automatically selects the correct architecture:
+
 ```bash
-docker run -d -p 3840:3840 --name skana saldenisov/skana
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-2. Access SK-Ana in your browser:
-   - **Windows/Mac/Linux**: http://localhost:3840 or http://127.0.0.1:3840
-   - The application will be available at the above addresses once the container starts
+**Automatically works on:**
+- ✅ Windows (amd64)
+- ✅ Linux (amd64)
+- ✅ Mac Intel (amd64)
+- ✅ Mac Apple Silicon (arm64) - **No platform warnings!**
 
-3. When finished:
+Access at: **http://localhost:3840**
+
+#### Platform-Specific Images (Optional):
+
+If you want to explicitly specify the architecture:
+
+**For Windows/Linux/Intel Mac (amd64):**
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-amd64
+```
+
+**For Mac Apple Silicon (arm64):**
+```bash
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest-arm64
+```
+
+### Container Management
+
+**Stop container:**
+```bash
+docker stop skana
+```
+
+**Restart container:**
+```bash
+docker restart skana
+```
+
+**Remove container:**
 ```bash
 docker stop skana
 docker rm skana
 ```
 
-4. For further sessions (reuse existing container):
+**Update to latest version:**
 ```bash
-docker restart skana
+docker pull saldenisov/skana:latest
+docker stop skana
+docker rm skana
+docker run -d -p 3840:3840 --name skana saldenisov/skana:latest
 ```
 
-5. To get the latest version:
+### Option 2: Build from Source
+
+For **Mac Apple Silicon users** or users who want to customize the image:
+
+#### Mac Apple Silicon (arm64) - Native Build:
+
+1. Clone or download this repository
+2. Navigate to the SK-Ana directory
+3. Build the arm64-optimized image:
+
 ```bash
-docker pull saldenisov/skana
+cd /path/to/SK-Ana
+docker build --platform linux/arm64 -f Dockerfile.arm64 -t skana:arm64 .
 ```
 
-### Option 2: Original Docker Image
+4. Run the native arm64 container:
 
-The original [ppernot1/skana](https://hub.docker.com/repository/docker/ppernot1/skana) Docker container:
+```bash
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:arm64
+```
 
-1. Run the container:
+**Benefits of native arm64 build:**
+- No emulation overhead
+- Better performance
+- No platform mismatch warnings
+
+#### Windows/Linux/Intel Mac - Standard Build:
+
+```bash
+cd /path/to/SK-Ana
+docker build -t skana:latest .
+docker run -d -p 3840:3840 -e PORT=3840 --name skana skana:latest
+```
+
+### Available Images
+
+| Image Tag | Architectures | Base Image | Use Case |
+|-----------|---------------|------------|----------|
+| `latest` | amd64, arm64 | Multi-platform | **Recommended** - Auto-selects architecture |
+| `latest-amd64` | amd64 only | rocker/shiny:4.4.1 | Windows, Linux, Intel Mac |
+| `latest-arm64` | arm64 only | r-base:4.4.1 | Mac Apple Silicon (M1/M2/M3) |
+
+**Note:** The `latest` tag automatically selects the correct architecture for your system. No need to specify platform explicitly!
+
+### Available Dockerfiles (For Building from Source)
+
+| Dockerfile | Platform | Base Image | Use Case |
+|------------|----------|------------|----------|
+| `Dockerfile` | amd64 (x86_64) | rocker/shiny:4.4.1 | Windows, Linux, Intel Mac |
+| `Dockerfile.arm64` | arm64 | r-base:4.4.1 | Mac Apple Silicon (M1/M2/M3) |
+
+### Option 3: Original Docker Image
+
+The original [ppernot1/skana](https://hub.docker.com/repository/docker/ppernot1/skana) Docker container (amd64 only):
+
 ```bash
 docker run -d -p 3840:3840 --name skana-original ppernot1/skana
 ```
 
-2. Access at http://localhost:3840
+Access at: **http://localhost:3840**
 
 **Note**: The updated `saldenisov/skana` image includes bug fixes and is recommended for new deployments.
+
+### Troubleshooting
+
+**Platform warning on Mac:**
+If you see:
+```
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
+```
+
+You have two options:
+1. Continue using emulation (works fine, slightly slower)
+2. Build native arm64 image using `Dockerfile.arm64` (see "Build from Source" section)
+
+**Port already in use:**
+```bash
+# Use a different port
+docker run -d -p 3841:3840 --name skana saldenisov/skana:latest
+# Access at http://localhost:3841
+```
+
+**Container won't start:**
+```bash
+# Check logs
+docker logs skana
+
+# Restart Docker Desktop and try again
+```
+
+For detailed Docker documentation, see:
+- **[docs/deployment/DOCKER_PLATFORM_GUIDE.md](docs/deployment/DOCKER_PLATFORM_GUIDE.md)** - Platform-specific quick reference (recommended starting point)
+- **[DOCKER.md](DOCKER.md)** - Complete Docker deployment guide
+- **[README_DOCKER.md](README_DOCKER.md)** - Cross-platform Docker instructions
+- **[docs/deployment/](docs/deployment/)** - All deployment documentation
 
 
 ## How to cite SK-Ana
@@ -278,13 +532,3 @@ Rayonnement et Radiochimie" (Oléron, 2017/09)
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
 * J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
-
-
-
-
-
-
-
-
-
-

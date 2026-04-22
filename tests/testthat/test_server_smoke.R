@@ -1,4 +1,8 @@
-server <- source("../../server.R")$value
+repo_root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
+old_wd <- setwd(repo_root)
+withr::defer(setwd(old_wd))
+source("global.R")
+server <- source("server.R")$value
 
 # Smoke test: server loads and core utilities are present
 

@@ -17,14 +17,15 @@ sidebarLayout(
           inputId='style', 
           label = 'Predefined File Formats', 
           choices = list(
+            "Auto"    = "autoStyle",
+            "ELYSE (TSV)" = 'elyseStyle',
             "CSV"     = "csvStyle",
-            "ELYSE"   = 'elyseStyle',
             "Fluo"    = 'heleneStyle',
             # "Münich"  = 'munichStyle',
             "Streak"  = 'streakStyle',
             "Other..."= 'otherStyle'
           ), 
-          # selected = 'csvStyle', 
+          selected = 'elyseStyle',
           multiple = FALSE,
           selectize = FALSE, 
           width = NULL, 
@@ -61,28 +62,6 @@ sidebarLayout(
             inline = TRUE)
         ),
         hr( style="border-color: #666;"),
-        strong('Load-time compression factors'),
-        br(),br(),
-        fluidRow(
-          # Warning: permutation of the meanings for
-          # compFacW et compFacD, to compensate for
-          # default choice of matrix structure (wxd)
-          column(3,
-                 numericInput(
-                   inputId = 'compFacW', 
-                   label   = 'Delay', 
-                   value   = 1, min=1, max=20, step=1,
-                   width   = '100px')
-          ),
-          column(3,
-                 numericInput(
-                   inputId = 'compFacD', 
-                   label   = 'Wavl', 
-                   value   = 1, min=1, max=20, step=1,
-                   width   = '100px')
-          )
-        ),
-        hr( style="border-color: #666;"),
         fluidRow(
           column(
             12,
@@ -103,23 +82,86 @@ sidebarLayout(
           multiple= TRUE,
           accept  = c('.dat','.txt','.csv')
         ),
-        hr( style="border-color: #666;"),
-        strong('Post-process compression factor'),
-        br(),br(),
         fluidRow(
-          column(3,
-                 numericInput(
-                   inputId = 'postCompFacD', 
-                   label   = 'Delay', 
-                   value   = 1, min=1, max=20, step=1,
-                   width   = '100px')
+          column(
+            6,
+            checkboxInput(
+              inputId = 'appendFiles',
+              label   = 'Append to existing files',
+              value   = FALSE
+            )
           ),
-          column(3,
-                 numericInput(
-                   inputId = 'postCompFacW', 
-                   label   = 'Wavl', 
-                   value   = 1, min=1, max=20, step=1,
-                   width   = '100px')
+          column(
+            6,
+            actionButton(
+              inputId = 'clearFiles',
+              label   = 'Clear All Files',
+              icon    = icon('trash')
+            )
+          )
+        ),
+        hr( style="border-color: #666;"),
+        div(
+          title = "Reduce data size during file loading by averaging neighboring points",
+          style = "cursor: help;",
+          fluidRow(
+            column(
+              12,
+              tags$strong("Load-time compression"),
+              tags$small(" (reduces data during import)")
+            )
+          ),
+          fluidRow(
+            column(
+              6,
+              numericInput(
+                inputId = 'compFacW',
+                label   = 'Delay',
+                value   = 1, min=1, max=20, step=1,
+                width   = '80px'
+              )
+            ),
+            column(
+              6,
+              numericInput(
+                inputId = 'compFacD',
+                label   = 'Wavl',
+                value   = 1, min=1, max=20, step=1,
+                width   = '80px'
+              )
+            )
+          )
+        ),
+        br(),
+        div(
+          title = "Further reduce data size after combining/processing multiple files",
+          style = "cursor: help;",
+          fluidRow(
+            column(
+              12,
+              tags$strong("Post-process compression"),
+              tags$small(" (after file combination)")
+            )
+          ),
+          fluidRow(
+            column(
+              6,
+              numericInput(
+                inputId = 'postCompFacD',
+                label   = 'Delay',
+                value   = 1, min=1, max=20, step=1,
+                width   = '80px'
+              )
+            ),
+            column(
+              6,
+              numericInput(
+                inputId = 'postCompFacW',
+                label   = 'Wavl',
+                value   = 1, min=1, max=20, step=1,
+                width   = '80px'
+              )
+            )
           )
         )
       ),

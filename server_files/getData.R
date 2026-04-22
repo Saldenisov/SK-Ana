@@ -1,15 +1,15 @@
 # Functions ####
-transformDelay <- function(delay,trans = 0) {
+transformDelay <- safely(function(delay,trans = 0) {
   # trans = 0: do nothing
   # trans = 1: return index
   # trans = 2: return log10 with management of neg or null values
   
   del = delay
-  Inputs$delayTrans <<- ''
+  setInputValue("delayTrans", "")
   
   if(trans == 1) {
     del = 1:length(del)
-    Inputs$delayTrans <<- 'index'
+    setInputValue("delayTrans", "index")
     
   } else if(trans == 2) {
     minLoc = which(del>0)[1]
@@ -21,13 +21,13 @@ transformDelay <- function(delay,trans = 0) {
         del[i] = del[minLoc] - (minLoc-i)*step
     }
     del = log10(del)
-    Inputs$delayTrans <<- 'log10'
+    setInputValue("delayTrans", "log10")
     
   }
   
   return(del)
-}
-doMeanMatrix  <- function(sel) {
+}, return_on_error = NULL)
+doMeanMatrix  <- safely(function(sel) {
   
   # Assume all matrices are on same grid
   delay = RawData[[1]]$delay
@@ -66,8 +66,8 @@ doMeanMatrix  <- function(sel) {
   
   return(list(mat=matm, wavl=wavl, delay=delay, 
               delaySave=delay, delayId= rep(1,length(delay))))
-}
-doTileMatrix  <- function(sel, tileDel=TRUE) {
+}, return_on_error = NULL)
+doTileMatrix  <- safely(function(sel, tileDel=TRUE) {
   nbFiles = length(sel)
   for (i in 1:nbFiles) {
     j     = sel[i]
@@ -115,8 +115,8 @@ doTileMatrix  <- function(sel, tileDel=TRUE) {
   
   return(list(mat=mat, wavl=wavl, delay=delay, 
               delaySave=delaySave, delayId = delayId))
-}
-combineMatrix <- function(sel){
+}, return_on_error = NULL)
+combineMatrix <- safely(function(sel){
   if(is.null(sel)) 
     return(NULL)
 
@@ -144,14 +144,14 @@ combineMatrix <- function(sel){
             tileDel = doTileMatrix(sel,tileDel=TRUE)
     )
   }
-}
+}, return_on_error = NULL)
 
 # Interactive ####
 finishMatrix  <- reactive({
   if(!Inputs$process)
     return(NULL)
   
-  Inputs$finish <<- FALSE
+  setInputValue("finish", FALSE)
   data = combineMatrix(input$rawData_rows_selected)
   validate(need(!is.null(data),"--> Bad data type"))
   
@@ -174,7 +174,7 @@ finishMatrix  <- reactive({
   }
   
   if(is.null(data)) {
-    Inputs$fileOrig       <<- NULL
+    setInputValue("fileOrig", NULL)
     
   } else {
     isolate({
@@ -207,7 +207,7 @@ finishMatrix  <- reactive({
           footer = modalButton("Close"),
           size = 's'
         ))
-        Inputs$fileOrig  <<- NULL
+        setInputValue("fileOrig", NULL)
         
       } else {
         
@@ -242,29 +242,32 @@ finishMatrix  <- reactive({
            ) {
           # Scale factor for neater delay selectors
           dlScaleFac = 1 #10^(floor(log10(diff(range(data$delay)))-1))
-          Inputs$fileOrig       <<- 
-            input$dataFile$name[input$rawData_rows_selected]
-          Inputs$dlScaleFacOrig <<- dlScaleFac
-          Inputs$matOrig        <<- data$mat
-          Inputs$wavlOrig       <<- data$wavl
-          Inputs$delayOrig      <<- data$delay
-          Inputs$delayIdOrig    <<- data$delayId
-          Inputs$delaySaveOrig  <<- data$delaySave
+          setInputValues(list(
+            fileOrig = input$dataFile$name[input$rawData_rows_selected],
+            dlScaleFacOrig = dlScaleFac,
+            matOrig = data$mat,
+            wavlOrig = data$wavl,
+            delayOrig = data$delay,
+            delayIdOrig = data$delayId,
+            delaySaveOrig = data$delaySave
+          ))
         } 
         
         # Update
-        Inputs$mat            <<- data$mat
-        Inputs$wavl           <<- data$wavl
-        Inputs$delay          <<- data$delay
-        Inputs$delayId        <<- data$delayId
-        Inputs$delaySave      <<- data$delaySave
+        setInputValues(list(
+          mat = data$mat,
+          wavl = data$wavl,
+          delay = data$delay,
+          delayId = data$delayId,
+          delaySave = data$delaySave
+        ))
         
         # Initialize config
         initSliders()
-        projConfig <<- NULL
+        clearProjectConfig()
       }
     })
     # browser()
-    Inputs$finish <<- TRUE
+    setInputValue("finish", TRUE)
   }
 })

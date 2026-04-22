@@ -9,8 +9,21 @@ function(request) {
   
   navbarPage(
     tags$head(
+      tags$script(HTML(
+        "document.documentElement.classList.add('startup-connection-pending');
+         document.addEventListener('shiny:connected', function() {
+           document.documentElement.classList.remove('startup-connection-pending');
+         }, { once: true });"
+      )),
       tags$style(
-        HTML(".shiny-notification {
+        HTML("html.startup-connection-pending #shiny-disconnected-overlay {
+             background-color: transparent !important;
+             opacity: 0 !important;
+             }
+             .recalculating {
+             opacity: 1 !important;
+             }
+             .shiny-notification {
              position:fixed;
              top: calc(50%);
              left: calc(50%);
@@ -61,9 +74,26 @@ function(request) {
       title = "About",
       source_ui("about.R")
     ),
+    tabPanel(
+      title = "Debug Console",
+      icon = icon("terminal"),
+      style = "padding: 20px;",
+      fluidPage(
+        h2("Debug & Diagnostics"),
+        hr(),
+        p(
+          "This tab shows real-time logs from all processes including ALS analysis, ambiguity explorer, and system events.",
+          "Use this to diagnose issues and monitor application performance.",
+          style = "color: #666; font-size: 14px;"
+        ),
+        uiOutput("debug_console"),
+        hr(),
+        h4("System Information"),
+        verbatimTextOutput("system_info")
+      )
+    ),
     theme = shinythemes::shinytheme(
       c("cosmo", "cerulean", "spacelab", "yeti")[3]
     )
   )
 }
-

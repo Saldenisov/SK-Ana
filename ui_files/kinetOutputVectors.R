@@ -40,5 +40,6 @@ fluidRow(
                            value = FALSE)
       )
     )
-  )
+  ),
+  source_ui("kinetSmoothingOptions.R")
 )

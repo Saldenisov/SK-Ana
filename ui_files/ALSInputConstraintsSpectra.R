@@ -3,13 +3,56 @@ wellPanel(
     width = 4,
     checkboxInput(
       "nonnegS", 
-      label= "S > 0",
+      label= "S > 0 (All)",
       value = TRUE
+    ),
+    checkboxInput(
+      "perComponentS",
+      label= "Per-component constraints",
+      value = FALSE
+    ),
+    shinyBS::bsTooltip(
+      "perComponentS",
+      title = "Enable individual +/- constraints for each spectrum"
     ),
     checkboxInput(
       "uniS", 
       label= "S Unimodal",
       value = FALSE
+    ),
+    checkboxInput(
+      "broadeningS",
+      label= "Broadening",
+      value = FALSE
+    ),
+    shinyBS::bsTooltip(
+      "broadeningS",
+      title = "Account for sample-specific peak broadening via Gaussian convolution"
+    ),
+    conditionalPanel(
+      condition = "input.broadeningS",
+      numericInput(
+        "broadeningMaxPct",
+        label = "Max broadening (%)",
+        value = 10,
+        min = 0.1,
+        max = 50,
+        step = 0.5,
+        width = '100px'
+      ),
+      shinyBS::bsTooltip(
+        "broadeningMaxPct",
+        title = "Maximum broadening as percentage of spectral range. Start: 1%, Max: this value"
+      ),
+      checkboxInput(
+        "perComponentBroadening",
+        label= "Per-component broadening",
+        value = FALSE
+      ),
+      shinyBS::bsTooltip(
+        "perComponentBroadening",
+        title = "Enable/disable broadening for individual components"
+      )
     ),
     checkboxInput(
       "normS", 
@@ -18,7 +61,20 @@ wellPanel(
     ),
     shinyBS::bsTooltip(
       "normS",
-      title = "Enforces the normalization of S ( default: max(S)=1 )"
+      title = "Enforces the normalization of S"
+    ),
+    conditionalPanel(
+      condition = "input.normS",
+      radioButtons(
+        "normMode",
+        label = "Norm mode",
+        choices = list(
+          "Intensity" = "intensity",
+          "L1" = "l1"
+        ),
+        selected = "intensity",
+        inline = TRUE
+      )
     )
   ),
   column(
@@ -40,6 +96,28 @@ wellPanel(
     shinyBS::bsTooltip(
       "SumS", 
       title = "If Normalize is set, set norm such as sum(S)=1 "
+    )
+  ),
+  # Per-component constraint controls
+  conditionalPanel(
+    condition = "input.perComponentS",
+    column(
+      width = 12,
+      hr(style = "border-color: #666;"),
+      h5("Spec non-negativity (S > 0)"),
+      uiOutput('perComponentSUI'),
+      hr(style = "border-color: #666;")
+    )
+  ),
+  # Per-component broadening controls
+  conditionalPanel(
+    condition = "input.broadeningS && input.perComponentBroadening",
+    column(
+      width = 12,
+      hr(style = "border-color: #666;"),
+      h5("Component broadening"),
+      uiOutput('perComponentBroadeningUI'),
+      hr(style = "border-color: #666;")
     )
   ),
   fixedRow(
@@ -70,7 +148,9 @@ wellPanel(
           step  = 0.5,
           sep   = ""
         )
-      )
+      ),
+      # Correction spectra extension
+      source('ui_files/ALSInputConstraintsCorrectionSpectra.R')
     )
   )
 )

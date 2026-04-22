@@ -23,6 +23,28 @@ tabsetPanel(
   tabPanel(
     title=h5("Data vs. Model"), 
     br(),
+    wellPanel(
+      fluidRow(
+        column(
+          6,
+          uiOutput("alsDataModDelayUI")
+        ),
+        column(
+          3,
+          checkboxInput(
+            "alsContours",
+            label = "Add contours",
+            value = FALSE)
+        ),
+        column(
+          3,
+          actionButton(
+            "alsDataModSave",
+            "Save",
+            icon = icon('save'))
+        )
+      )
+    ),
     # withSpinner(
     plotOutput("alsResid1", height=550),
     #   type=4
