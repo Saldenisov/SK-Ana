@@ -26,6 +26,14 @@ ensure_dir <- function(path) {
   invisible(path)
 }
 
+isolated_library_path <- function(project_root) {
+  if (requireNamespace("renv", quietly = TRUE)) {
+    return(renv::paths$library(project = project_root))
+  }
+
+  file.path(project_root, ".R_skana", "renv", "library")
+}
+
 install_if_missing <- function(package) {
   if (!requireNamespace(package, quietly = TRUE)) {
     install.packages(package, repos = "https://cloud.r-project.org")
@@ -92,18 +100,20 @@ if (identical(current_stamp, existing_stamp)) {
 }
 
 setwd(repo_root)
-renv::load(project = repo_root)
+isolated_library <- isolated_library_path(repo_root)
+ensure_dir(isolated_library)
+.libPaths(unique(c(isolated_library, .libPaths())))
 
 if (lockfile_supports_current_runtime(lockfile)) {
-  renv::restore(project = repo_root, lockfile = lockfile, prompt = FALSE)
+  message("Using the isolated SK-Ana library path for runtime packages.")
 } else {
-  message("Skipping restore from stale lockfile; installing current SK-Ana dependencies for R 4.2+.")
+  message("Lockfile is stale for this runtime; installing current SK-Ana dependencies for R 4.2+.")
 }
 
-missing_after_restore <- required_sk_ana_packages[
+missing_packages <- required_sk_ana_packages[
   !vapply(required_sk_ana_packages, requireNamespace, logical(1), quietly = TRUE)
 ]
-if (length(missing_after_restore)) {
+if (length(missing_packages)) {
   ensure_sk_ana_dependencies()
 }
 

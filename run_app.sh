@@ -7,9 +7,7 @@ ORIGINAL_CWD="$(pwd)"
 REPO_URL="${SK_ANA_REPO_URL:-https://github.com/Saldenisov/SK-Ana.git}"
 REPO_BRANCH="${SK_ANA_BRANCH:-master}"
 BOOTSTRAP_DIR_NAME="${SK_ANA_BOOTSTRAP_DIR:-SK-Ana}"
-MANAGED_CHECKOUT_DIR_NAME="${SK_ANA_MANAGED_CHECKOUT_DIR:-.sk_ana_checkout}"
 LAUNCH_MODE="standalone"
-SNAPSHOT_ROOT=""
 REPO_ROOT=""
 
 log_step() {
@@ -28,11 +26,6 @@ looks_like_repo_root() {
 is_git_checkout() {
   local path="$1"
   [[ -d "${path}/.git" ]]
-}
-
-managed_checkout_root() {
-  local source_root="$1"
-  printf '%s\n' "${source_root}/${MANAGED_CHECKOUT_DIR_NAME}/${BOOTSTRAP_DIR_NAME}"
 }
 
 resolve_repo_root() {
@@ -59,8 +52,7 @@ resolve_repo_root() {
   do
     if looks_like_repo_root "${candidate}"; then
       LAUNCH_MODE="snapshot"
-      SNAPSHOT_ROOT="${candidate}"
-      REPO_ROOT="$(managed_checkout_root "${candidate}")"
+      REPO_ROOT="${candidate}"
       return 0
     fi
   done
@@ -73,9 +65,97 @@ have_git() {
   command -v git >/dev/null 2>&1
 }
 
-repo_is_dirty() {
+run_with_optional_sudo() {
+  if command -v sudo >/dev/null 2>&1 && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+    sudo "$@"
+    return $?
+  fi
+
+  "$@"
+}
+
+install_git() {
+  if have_git; then
+    return 0
+  fi
+
+  log_step "Installing Git"
+
+  if command -v brew >/dev/null 2>&1; then
+    brew install git
+    return $?
+  fi
+
+  if command -v apt-get >/dev/null 2>&1; then
+    run_with_optional_sudo apt-get update
+    run_with_optional_sudo apt-get install -y git
+    return $?
+  fi
+
+  if command -v dnf >/dev/null 2>&1; then
+    run_with_optional_sudo dnf install -y git
+    return $?
+  fi
+
+  if command -v yum >/dev/null 2>&1; then
+    run_with_optional_sudo yum install -y git
+    return $?
+  fi
+
+  if command -v pacman >/dev/null 2>&1; then
+    run_with_optional_sudo pacman -Sy --noconfirm git
+    return $?
+  fi
+
+  if command -v zypper >/dev/null 2>&1; then
+    run_with_optional_sudo zypper --non-interactive install git
+    return $?
+  fi
+
+  if command -v apk >/dev/null 2>&1; then
+    run_with_optional_sudo apk add --no-cache git
+    return $?
+  fi
+
+  echo "Git is required but no supported installer was found." >&2
+  return 1
+}
+
+ensure_git() {
+  if have_git; then
+    return 0
+  fi
+
+  install_git
+  have_git
+}
+
+sync_repo_to_remote() {
   local repo_root="$1"
-  [[ -n "$(git -C "${repo_root}" status --porcelain 2>/dev/null)" ]]
+
+  log_step "Synchronizing SK-Ana checkout"
+  log_info "Discarding local tracked changes and resetting to origin/${REPO_BRANCH}"
+
+  git -C "${repo_root}" fetch --depth 1 origin "${REPO_BRANCH}"
+  git -C "${repo_root}" reset --hard "origin/${REPO_BRANCH}"
+  git -C "${repo_root}" clean -fd
+}
+
+initialize_snapshot_repo() {
+  local repo_root="$1"
+
+  ensure_git
+  if ! have_git; then
+    echo "Git is required to initialize the local snapshot checkout, but installation failed." >&2
+    return 1
+  fi
+
+  log_step "Initializing git checkout in the extracted SK-Ana folder"
+  git -C "${repo_root}" init
+  git -C "${repo_root}" remote remove origin >/dev/null 2>&1 || true
+  git -C "${repo_root}" remote add origin "${REPO_URL}"
+
+  sync_repo_to_remote "${repo_root}"
 }
 
 update_repo_if_possible() {
@@ -85,18 +165,13 @@ update_repo_if_possible() {
     return 0
   fi
 
+  ensure_git
   if ! have_git; then
-    log_info "Git is not available. Using existing local checkout without updating."
-    return 0
+    echo "Git is required to update the local checkout, but installation failed." >&2
+    return 1
   fi
 
-  if repo_is_dirty "${repo_root}"; then
-    log_info "Local checkout has uncommitted changes. Skipping automatic git pull."
-    return 0
-  fi
-
-  log_step "Updating SK-Ana checkout"
-  git -C "${repo_root}" pull --ff-only origin "${REPO_BRANCH}"
+  sync_repo_to_remote "${repo_root}"
 }
 
 download_repo_archive() {
@@ -146,13 +221,18 @@ bootstrap_repo_if_needed() {
     return 1
   fi
 
-  if have_git; then
-    clone_repo "${repo_root}"
-    return 0
+  if looks_like_repo_root "${repo_root}"; then
+    initialize_snapshot_repo "${repo_root}"
+    return $?
   fi
 
-  log_info "Git is not installed. Falling back to a direct GitHub source download."
-  download_repo_archive "${repo_root}"
+  ensure_git
+  if ! have_git; then
+    echo "Git is required to bootstrap the repository, but installation failed." >&2
+    return 1
+  fi
+
+  clone_repo "${repo_root}"
 }
 
 main() {
@@ -167,7 +247,7 @@ main() {
       ;;
     snapshot)
       log_info "Detected a snapshot copy without .git."
-      log_info "Bootstrapping a managed checkout in ${REPO_ROOT}"
+      log_info "Initializing git in this extracted folder and synchronizing from origin/${REPO_BRANCH}"
       ;;
     *)
       log_info "Detected a standalone launcher."

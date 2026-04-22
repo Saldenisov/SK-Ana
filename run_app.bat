@@ -8,11 +8,9 @@ set "ORIGINAL_CWD=%CD%"
 if "%SK_ANA_REPO_URL%"=="" set "SK_ANA_REPO_URL=https://github.com/Saldenisov/SK-Ana.git"
 if "%SK_ANA_BRANCH%"=="" set "SK_ANA_BRANCH=master"
 if "%SK_ANA_BOOTSTRAP_DIR%"=="" set "SK_ANA_BOOTSTRAP_DIR=SK-Ana"
-if "%SK_ANA_MANAGED_CHECKOUT_DIR%"=="" set "SK_ANA_MANAGED_CHECKOUT_DIR=.sk_ana_checkout"
 set "PORTABLE_GIT_DIR=%SCRIPT_DIR%\.bootstrap-tools\git"
 set "PORTABLE_GIT_CMD=%PORTABLE_GIT_DIR%\cmd\git.exe"
 set "LAUNCH_MODE=standalone"
-set "SNAPSHOT_ROOT="
 
 call :resolve_repo_root
 if errorlevel 1 exit /b %errorlevel%
@@ -24,7 +22,7 @@ echo     Target repo: %REPO_ROOT%
 if /I "%LAUNCH_MODE%"=="git_checkout" echo     Detected a git checkout. Using it directly.
 if /I "%LAUNCH_MODE%"=="snapshot" (
   echo     Detected a snapshot copy without .git.
-  echo     Bootstrapping a managed checkout in %REPO_ROOT%
+  echo     Initializing git in this extracted folder and synchronizing from origin/%SK_ANA_BRANCH%
 )
 if /I "%LAUNCH_MODE%"=="standalone" echo     Detected a standalone launcher.
 
@@ -74,8 +72,7 @@ for %%P in ("%SCRIPT_DIR%" "%ORIGINAL_CWD%" "%SCRIPT_DIR%\%SK_ANA_BOOTSTRAP_DIR%
   call :looks_like_repo_root "%%~fP"
   if not errorlevel 1 (
     set "LAUNCH_MODE=snapshot"
-    set "SNAPSHOT_ROOT=%%~fP"
-    set "REPO_ROOT=%%~fP\%SK_ANA_MANAGED_CHECKOUT_DIR%\%SK_ANA_BOOTSTRAP_DIR%"
+    set "REPO_ROOT=%%~fP"
     exit /b 0
   )
 )
@@ -146,24 +143,23 @@ exit /b 0
 :update_repo_if_possible
 if not exist "%REPO_ROOT%\.git" exit /b 0
 
-call :have_git
+call :ensure_portable_git
 if errorlevel 1 (
-  echo     Git is not available. Using existing local checkout without updating.
-  exit /b 0
-)
-
-call :repo_is_dirty "%REPO_ROOT%"
-if not errorlevel 1 (
-  echo     Local checkout has uncommitted changes. Skipping automatic git pull.
-  exit /b 0
+  echo Git is required to update the local checkout, but installation failed.
+  exit /b 1
 )
 
 call :set_git_command
 if errorlevel 1 exit /b 1
 
 echo.
-echo ==> Updating SK-Ana checkout
-"%GIT_CMD%" -C "%REPO_ROOT%" pull --ff-only origin "%SK_ANA_BRANCH%"
+echo ==> Synchronizing SK-Ana checkout
+echo     Discarding local tracked changes and resetting to origin/%SK_ANA_BRANCH%
+"%GIT_CMD%" -C "%REPO_ROOT%" fetch --depth 1 origin "%SK_ANA_BRANCH%"
+if errorlevel 1 exit /b %errorlevel%
+"%GIT_CMD%" -C "%REPO_ROOT%" reset --hard "origin/%SK_ANA_BRANCH%"
+if errorlevel 1 exit /b %errorlevel%
+"%GIT_CMD%" -C "%REPO_ROOT%" clean -fd
 exit /b %errorlevel%
 
 :clone_repo
@@ -197,7 +193,10 @@ exit /b %errorlevel%
 
 :bootstrap_repo_if_needed
 call :looks_like_repo_root "%REPO_ROOT%"
-if not errorlevel 1 exit /b 0
+if not errorlevel 1 (
+  call :initialize_snapshot_repo
+  exit /b %errorlevel%
+)
 
 if exist "%REPO_ROOT%" (
   if not exist "%REPO_ROOT%\" (
@@ -206,9 +205,32 @@ if exist "%REPO_ROOT%" (
   )
 )
 
-call :clone_repo
-if not errorlevel 1 exit /b 0
+call :ensure_portable_git
+if errorlevel 1 (
+  echo Git is required to bootstrap the repository, but installation failed.
+  exit /b 1
+)
 
-echo     Git bootstrap failed. Falling back to direct GitHub source download.
-call :download_repo_archive
+call :clone_repo
+exit /b %errorlevel%
+
+:initialize_snapshot_repo
+call :ensure_portable_git
+if errorlevel 1 (
+  echo Git is required to initialize the local snapshot checkout, but installation failed.
+  exit /b 1
+)
+
+call :set_git_command
+if errorlevel 1 exit /b 1
+
+echo.
+echo ==> Initializing git checkout in the extracted SK-Ana folder
+"%GIT_CMD%" -C "%REPO_ROOT%" init
+if errorlevel 1 exit /b %errorlevel%
+"%GIT_CMD%" -C "%REPO_ROOT%" remote remove origin >nul 2>nul
+"%GIT_CMD%" -C "%REPO_ROOT%" remote add origin "%SK_ANA_REPO_URL%"
+if errorlevel 1 exit /b %errorlevel%
+
+call :update_repo_if_possible
 exit /b %errorlevel%

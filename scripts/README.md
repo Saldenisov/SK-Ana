@@ -19,6 +19,20 @@ Utility scripts for the isolated `R_skana` runtime and app launch.
 
 ## Recommended flow
 
+1. Get SK-Ana in one of these ways:
+
+`git clone`:
+
+```bash
+git clone https://github.com/Saldenisov/SK-Ana.git
+cd SK-Ana
+```
+
+ZIP download:
+Download the ZIP from GitHub, unpack it, and open a terminal in the extracted `SK-Ana` folder.
+
+2. Run the launcher:
+
 ### macOS / Linux
 
 ```bash
@@ -31,7 +45,13 @@ Utility scripts for the isolated `R_skana` runtime and app launch.
 run_app.bat
 ```
 
-On a fresh machine, `run_app.sh` / `run_app.bat` will bootstrap `R_skana` automatically before launching the app.
+What the launcher does automatically:
+
+- if the folder is already a git checkout, it updates it from `origin/master`
+- if the folder came from a ZIP without `.git`, it initializes git in that extracted folder and then updates it from `origin/master`
+- if Git is missing, it tries to install or bootstrap Git first
+- it creates or refreshes the isolated `R_skana` runtime
+- it launches the app
 
 If you want to prepare the runtime in advance without starting Shiny, run `setup_r_skana.sh` / `setup_r_skana.bat` directly.
 
@@ -77,11 +97,11 @@ R_skana.bat Rscript tests\testthat.R
 ### Host/port override for app launch
 
 ```bash
-HOST=127.0.0.1 PORT=3842 ./run_app.sh
+SK_ANA_HOST=127.0.0.1 PORT=3842 ./run_app.sh
 ```
 
 ```bat
-set HOST=127.0.0.1
+set SK_ANA_HOST=127.0.0.1
 set PORT=3842
 run_app.bat
 ```

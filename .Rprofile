@@ -17,6 +17,10 @@ local({
   options(renv.consent = TRUE)
 
   if (requireNamespace("renv", quietly = TRUE)) {
-    renv::load(project = project_root)
+    isolated_library <- renv::paths$library(project = project_root)
+    if (!dir.exists(isolated_library)) {
+      dir.create(isolated_library, recursive = TRUE, showWarnings = FALSE)
+    }
+    .libPaths(unique(c(isolated_library, .libPaths())))
   }
 })

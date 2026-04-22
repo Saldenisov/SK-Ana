@@ -27,7 +27,18 @@ SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safes
 - avoids replacing or reconfiguring another R installation that may already exist
 - leaves the machine-wide R installation untouched if one is already present
 
-1. Open a terminal in the project root.
+1. Get the project in one of these two ways:
+
+   `git clone` workflow:
+
+   ```bash
+   git clone https://github.com/Saldenisov/SK-Ana.git
+   cd SK-Ana
+   ```
+
+   ZIP workflow:
+   Download the project ZIP from GitHub, unpack it, and open a terminal in the extracted `SK-Ana` folder.
+
 2. Start the app directly:
 
    macOS / Linux:
@@ -40,7 +51,14 @@ SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safes
    run_app.bat
    ```
 
-   On a fresh machine, the launcher will first create the isolated `R_skana` runtime and install required packages automatically.
+   What happens automatically on first run:
+   - if this is a normal git checkout, the launcher updates it from `origin/master`
+   - if this came from a ZIP without `.git`, the launcher initializes git in that extracted folder and then updates it from `origin/master`
+   - if Git is missing, the launcher tries to install or bootstrap Git first
+   - the launcher then creates the isolated `R_skana` runtime and installs required R packages
+   - finally, it starts the app
+
+   This means a user can either clone the repo or download the ZIP, unpack it, and just run `run_app`.
 
 3. If you want to preinstall or refresh the runtime without launching the app, run:
 
@@ -61,6 +79,7 @@ SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safes
 4. The app will open automatically in your browser, or go to:
    - http://localhost:3838 (default Shiny port)
    - http://localhost:3840 (default for `run_app.sh` / `run_app.bat`)
+   - if port `3840` is already busy, SK-Ana will try to reuse it by stopping a previous R-based SK-Ana process, or fall back to `3841`, `3842`, and so on
 
 The isolated runtime setup installs:
 
@@ -119,12 +138,12 @@ Optional host/port override for app launch:
 
 macOS / Linux:
 ```bash
-HOST=127.0.0.1 PORT=3842 ./run_app.sh
+SK_ANA_HOST=127.0.0.1 PORT=3842 ./run_app.sh
 ```
 
 Windows:
 ```bat
-set HOST=127.0.0.1
+set SK_ANA_HOST=127.0.0.1
 set PORT=3842
 run_app.bat
 ```
@@ -236,7 +255,7 @@ SK-Ana/
 ├── ui_files/                    # UI components
 ├── server_files/                # Server logic
 ├── data/                        # Example datasets
-├── scripts/                     # Utility scripts (run_app_3840.sh, run_app_3840.bat, run_app_3840.R, etc.)
+├── scripts/                     # Utility scripts for runtime/bootstrap and launch
 ├── tests/                       # Test files
 ├── docs/                        # Documentation
 │   ├── deployment/              # Docker, CI/CD docs

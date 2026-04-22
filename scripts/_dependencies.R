@@ -18,20 +18,36 @@ sk_ana_cran_repo <- function() {
   repo
 }
 
+sk_ana_pkg_type <- function() {
+  explicit_type <- Sys.getenv("SK_ANA_R_PKG_TYPE", unset = "")
+  if (nzchar(explicit_type)) {
+    return(explicit_type)
+  }
+
+  if (.Platform$OS.type == "windows") {
+    return("binary")
+  }
+
+  getOption("pkgType", default = "source")
+}
+
 install_cran_packages <- function(packages, repos = sk_ana_cran_repo()) {
   if (!length(packages)) {
     return(invisible(character()))
   }
 
+  pkg_type <- sk_ana_pkg_type()
   message(sprintf(
-    "Installing missing R packages from %s: %s",
+    "Installing missing R packages from %s (%s): %s",
     repos,
+    pkg_type,
     paste(packages, collapse = ", ")
   ))
 
   utils::install.packages(
     packages,
     repos = repos,
+    type = pkg_type,
     dependencies = c("Depends", "Imports", "LinkingTo")
   )
   invisible(packages)
@@ -47,6 +63,7 @@ ensure_shinybs <- function(repos = sk_ana_cran_repo()) {
     utils::install.packages(
       "shinyBS",
       repos = repos,
+      type = sk_ana_pkg_type(),
       dependencies = c("Depends", "Imports", "LinkingTo")
     ),
     error = function(err) {

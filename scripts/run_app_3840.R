@@ -39,6 +39,14 @@ safe_bind_host <- function(default = "127.0.0.1") {
   default
 }
 
+isolated_library_path <- function(project_root) {
+  if (requireNamespace("renv", quietly = TRUE)) {
+    return(renv::paths$library(project = project_root))
+  }
+
+  file.path(project_root, ".R_skana", "renv", "library")
+}
+
 port_is_available <- function(port) {
   if (length(list_listening_pids(port))) {
     return(FALSE)
@@ -257,7 +265,11 @@ try({
   options(renv.consent = TRUE)
 
   if (requireNamespace("renv", quietly = TRUE)) {
-    renv::load(project = repo_root)
+    isolated_library <- isolated_library_path(repo_root)
+    if (!dir.exists(isolated_library)) {
+      dir.create(isolated_library, recursive = TRUE, showWarnings = FALSE)
+    }
+    .libPaths(unique(c(isolated_library, .libPaths())))
   }
 
   source(dependency_script, local = TRUE)
