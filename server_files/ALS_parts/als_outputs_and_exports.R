@@ -1,7 +1,7 @@
 
 ### Outputs ####
 stdALSOut = reactiveFileReader(
-  intervalMillis = 500,
+  intervalMillis = 1000,
   session  = session,
   filePath = alsStdOut,
   readFunc = readLines,
@@ -9,7 +9,7 @@ stdALSOut = reactiveFileReader(
 )
 # Live preview of ALS state (updated by background process)
 alsPreview <- reactiveFileReader(
-  intervalMillis = 500,
+  intervalMillis = 1000,
   session = session,
   filePath = alsStateFile,
   readFunc = function(fp) {
@@ -72,27 +72,11 @@ output$alsResid1 <- renderPlot({
   req(alsOut <- resALS$results)
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
-  
-  if (isolate(input$useFiltered)) {
-    # Choose SVD filtered matrix
-    s <- doSVD()
-    CS1 <- reshapeCS(s$u, s$v, input$nSV)
-    mat <- matrix(0,
-                  nrow = length(Inputs$delay),
-                  ncol = length(Inputs$wavl))
-    for (ic in 1:input$nSV)
-      mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
-    
-    main <- "SVD-filtered data"
-  } else {
-    mat <- Inputs$mat
-    main <- "Raw data"
-  }
+  display <- selected_plot_matrix()
+  mat <- display$mat
   
   # Build model matrix
-  mod <- matrix(0, nrow = nrow(mat), ncol = ncol(mat))
-  for (i in 1:ncol(CS$S))
-    mod <- mod + CS$C[, i] %o% CS$S[, i]
+  mod <- component_matrix(CS$C, CS$S)
   
   # Get row index from slider - use directly as index
   rowIdx <- input$alsDataModDelay
@@ -156,25 +140,11 @@ output$alsResid3 <- renderPlot({
   req(alsOut <- resALS$results)
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
-  
-  if (isolate(input$useFiltered)) {
-    # Choose SVD filtered matrix
-    s <- doSVD()
-    CS1 <- reshapeCS(s$u, s$v, input$nSV)
-    mat <- matrix(0,
-                  nrow = length(Inputs$delay),
-                  ncol = length(Inputs$wavl))
-    for (ic in 1:input$nSV)
-      mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
-    
-    main <- "SVD-filtered data"
-  } else {
-    mat <- Inputs$mat
-    main <- "Raw data"
-  }
+  display <- selected_plot_matrix()
+  mat <- display$mat
   plotResid(Inputs$delay, Inputs$wavl, mat,
             CS$C, CS$S,
-            main = main,
+            main = display$main,
             delayTrans = Inputs$delayTrans)
 },
 height = plotHeight)
@@ -182,25 +152,11 @@ output$alsResid2 <- renderPlot({
   req(alsOut <- resALS$results)
   
   CS <- reshapeCS(alsOut$C, alsOut$S, ncol(alsOut$C))
-  
-  if (isolate(input$useFiltered)) {
-    # Choose SVD filtered matrix
-    s <- doSVD()
-    CS1 <- reshapeCS(s$u, s$v, input$nSV)
-    mat <- matrix(0,
-                  nrow = length(Inputs$delay),
-                  ncol = length(Inputs$wavl))
-    for (ic in 1:input$nSV)
-      mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
-    
-    main <- "SVD-filtered data"
-  } else {
-    mat <- Inputs$mat
-    main <- "Raw data"
-  }
+  display <- selected_plot_matrix()
+  mat <- display$mat
   plotResidAna(Inputs$delay, Inputs$wavl, mat,
                CS$C, CS$S,
-               main = main,
+               main = display$main,
                delayTrans = Inputs$delayTrans)
 },
 height = plotHeight)

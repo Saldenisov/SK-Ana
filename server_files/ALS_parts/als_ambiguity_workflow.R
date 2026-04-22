@@ -69,7 +69,7 @@ resAmb  = reactiveValues(results = NULL)
 bgAmb   = reactiveValues(status = process_status(NULL))
 obsAmbStatus = observe(
   {
-    invalidateLater(millis = 500)
+    invalidateLater(millis = 1000)
     bgAmb$status = process_status(bgAmbpx())
   },
   suspended = TRUE

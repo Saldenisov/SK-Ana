@@ -48,8 +48,7 @@ log_debug <- safely(function(msg) {
 
 # Create debug console output
 output$debug_console <- renderUI({
-  # Auto-refresh
-  invalidateLater(500)
+  debug_logs$last_update
   
   # Create scrollable text area with logs
   tagList(

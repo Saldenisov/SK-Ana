@@ -342,6 +342,80 @@ doSVD <- reactive({
   svd(mat, nu = nsvMax, nv = nsvMax)
 })
 
+svd_reconstruct_matrix <- safely(function(C, S, d) {
+  nsv <- min(ncol(C), ncol(S), length(d))
+  if (nsv < 1) {
+    return(matrix(0, nrow = nrow(C), ncol = nrow(S)))
+  }
+
+  C_use <- C[, seq_len(nsv), drop = FALSE]
+  S_use <- S[, seq_len(nsv), drop = FALSE]
+  d_use <- d[seq_len(nsv)]
+
+  sweep(C_use, 2, d_use, FUN = "*") %*% t(S_use)
+}, return_on_error = NULL)
+
+component_matrix <- safely(function(C, S) {
+  if (is.null(C) || is.null(S)) {
+    return(NULL)
+  }
+  if (ncol(C) < 1 || ncol(S) < 1) {
+    return(matrix(0, nrow = nrow(C), ncol = nrow(S)))
+  }
+
+  C %*% t(S)
+}, return_on_error = NULL)
+
+svd_plot_matrix <- reactive({
+  if (!isTRUE(input$useFiltered)) {
+    return(NULL)
+  }
+
+  s <- doSVD()
+  req(s)
+
+  nsv <- min(
+    input$nSV %||% 0,
+    length(s$d),
+    ncol(s$u),
+    ncol(s$v)
+  )
+  validate(need(nsv >= 1, FALSE))
+
+  CS <- reshapeCS(s$u, s$v, nsv)
+  svd_reconstruct_matrix(CS$C, CS$S, s$d[seq_len(nsv)])
+})
+
+selected_plot_matrix <- reactive({
+  if (isTRUE(input$useFiltered)) {
+    list(
+      mat = svd_plot_matrix(),
+      main = "SVD-filtered data"
+    )
+  } else {
+    list(
+      mat = Inputs$mat,
+      main = "Raw data"
+    )
+  }
+})
+
+svd_masked_matrix <- reactive({
+  s <- doSVD()
+  req(s)
+
+  nsv <- min(
+    input$nSV %||% 0,
+    length(s$d),
+    ncol(s$u),
+    ncol(s$v)
+  )
+  validate(need(nsv >= 1, FALSE))
+
+  CS <- reshapeCS(s$u, s$v, nsv)
+  svd_reconstruct_matrix(CS$C, CS$S, s$d[seq_len(nsv)])
+})
+
 observeEvent(
   input$clean, {
     # Build vector of glitches

@@ -362,7 +362,7 @@ output$kinOpt <- DT::renderDataTable({
 })
 # Trace ####
 stdGlobOut = reactiveFileReader(
-  intervalMillis = 500,
+  intervalMillis = 1000,
   session  = session,
   filePath = glOptOut,
   readFunc = readLines,
@@ -373,7 +373,7 @@ output$kinGlPrint <- renderPrint({
   cat(stdGlobOut(), sep = '\n')
 })
 stdLocOut = reactiveFileReader(
-  intervalMillis = 500,
+  intervalMillis = 1000,
   session  = session,
   filePath = locOptOut,
   readFunc = readLines,
@@ -413,25 +413,11 @@ output$kinResid      <- renderPlot({
   opt    = isolate(resLoc$results)
 
   CS <- reshapeCS(opt$C, opt$S)
-
-  if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
-    s <- doSVD()
-    CS1 <- reshapeCS(s$u, s$v, input$nSV)
-    mat <- matrix(0,
-      nrow = length(Inputs$delay),
-      ncol = length(Inputs$wavl)
-    )
-    for (ic in 1:input$nSV)
-      mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
-
-    main <- "SVD-filtered data"
-  } else {
-    mat <- Inputs$mat
-    main <- "Raw data"
-  }
+  display <- selected_plot_matrix()
+  mat <- display$mat
   plotResid(Inputs$delay, Inputs$wavl, mat,
     CS$C[,opt$active], CS$S,
-    main = main,
+    main = display$main,
     delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)
@@ -440,25 +426,11 @@ output$kinResidAna   <- renderPlot({
   opt    = isolate(resLoc$results)
 
   CS <- reshapeCS(opt$C, opt$S)
-
-  if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
-    s <- doSVD()
-    CS1 <- reshapeCS(s$u, s$v, input$nSV)
-    mat <- matrix(0,
-      nrow = length(Inputs$delay),
-      ncol = length(Inputs$wavl)
-    )
-    for (ic in 1:input$nSV)
-      mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
-
-    main <- "SVD-filtered data"
-  } else {
-    mat <- Inputs$mat
-    main <- "Raw data"
-  }
+  display <- selected_plot_matrix()
+  mat <- display$mat
   plotResidAna(Inputs$delay, Inputs$wavl, mat,
     CS$C[,opt$active], CS$S,
-    main = main,
+    main = display$main,
     delayTrans = Inputs$delayTrans
   )
 }, height = plotHeight)

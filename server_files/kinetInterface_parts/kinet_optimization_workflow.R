@@ -343,9 +343,14 @@ observeEvent(input$kinSigmaIndex, {
         mat <- Inputs$mat
         mat <- mat[!is.na(Inputs$delayMask), ]
         mat <- mat[, !is.na(Inputs$wavlMask)]
-        mat1 <- rep(0, nrow = nrow(s$u), ncol = ncol(s$v))
-        for (i in 1:input$kinSigmaIndex)
-          mat1 <- mat1 + s$u[, i] %o% s$v[, i] * s$d[i]
+        nsv <- min(
+          input$kinSigmaIndex,
+          length(s$d),
+          ncol(s$u),
+          ncol(s$v)
+        )
+        CS1 <- reshapeCS(s$u, s$v, nsv)
+        mat1 <- svd_reconstruct_matrix(CS1$C, CS1$S, s$d[seq_len(nsv)])
         resid <- mat - mat1
         val <- signif(sd(resid), 2)
         updateNumericInput(session,
@@ -390,7 +395,7 @@ resGlob  = reactiveValues(results = NULL)
 bgGlob   = reactiveValues(status = process_status(NULL))
 obsGlobStatus = observe(
   {
-    invalidateLater(millis = 500)
+    invalidateLater(millis = 1000)
     bgGlob$status = process_status(bgGlobpx())
   },
   suspended = TRUE
@@ -404,7 +409,7 @@ resLoc  = reactiveValues(results = NULL)
 bgLoc   = reactiveValues(status = process_status(NULL))
 obsLocStatus = observe(
   {
-    invalidateLater(millis = 500)
+    invalidateLater(millis = 1000)
     bgLoc$status = process_status(bgLocpx())
   },
   suspended = TRUE

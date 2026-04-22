@@ -83,27 +83,11 @@ output$kinDatavsMod  <- renderPlot({
   opt    = isolate(resLoc$results)
 
   CS <- reshapeCS(opt$C, opt$S)
-
-  if (isolate(input$useFiltered)) { # Choose SVD filtered matrix
-    s <- doSVD()
-    CS1 <- reshapeCS(s$u, s$v, input$nSV)
-    mat <- matrix(0,
-      nrow = length(Inputs$delay),
-      ncol = length(Inputs$wavl)
-    )
-    for (ic in 1:input$nSV)
-      mat <- mat + CS1$C[, ic] %o% CS1$S[, ic] * s$d[ic]
-
-    main <- "SVD-filtered data"
-  } else {
-    mat <- Inputs$mat
-    main <- "Raw data"
-  }
+  display <- selected_plot_matrix()
+  mat <- display$mat
   
   # Build model matrix
-  mod <- matrix(0, nrow = nrow(mat), ncol = ncol(mat))
-  for (i in 1:ncol(CS$S))
-    mod <- mod + CS$C[,opt$active][, i] %o% CS$S[, i]
+  mod <- component_matrix(CS$C[, opt$active, drop = FALSE], CS$S)
   
   # Get row index from slider - use directly as index
   rowIdx <- input$kinDataModDelay
@@ -291,4 +275,3 @@ outputOptions(output, "concentrations", suspendWhenHidden = FALSE)
 outputOptions(output, "epsilon", suspendWhenHidden = FALSE)
 outputOptions(output, "kinGlPrint", suspendWhenHidden = FALSE)
 outputOptions(output, "kinOptPrint", suspendWhenHidden = FALSE)
-

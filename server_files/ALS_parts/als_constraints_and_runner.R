@@ -202,13 +202,9 @@ als_selected_data <- safely(function(use_filtered = isTRUE(input$useFiltered)) {
   wavl <- Inputs$wavl[!is.na(Inputs$wavlMask)]
 
   if (use_filtered) {
-    svdRES <- doSVD()
-    if (is.null(svdRES)) {
+    mat <- svd_masked_matrix()
+    if (is.null(mat)) {
       return(NULL)
-    }
-    mat <- matrix(0, nrow = length(delay), ncol = length(wavl))
-    for (ic in 1:input$nSV) {
-      mat <- mat + svdRES$u[, ic] %o% svdRES$v[, ic] * svdRES$d[ic]
     }
   } else {
     mat <- Inputs$mat
@@ -358,7 +354,7 @@ tryCatch({
 }, error = function(e) {})
 obsALSStatus = observe(
   {
-    invalidateLater(millis = 500)
+    invalidateLater(millis = 1000)
     bgALS$status = process_status(bgALSpx())
   },
   suspended = TRUE
