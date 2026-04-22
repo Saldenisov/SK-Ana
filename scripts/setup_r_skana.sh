@@ -120,7 +120,7 @@ ensure_base_env() {
   if [[ -x "${ENV_RSCRIPT}" ]]; then
     log_step "Updating existing R_skana environment"
     "${MICROMAMBA_BIN}" env update -y -r "${MAMBA_ROOT_PREFIX}" -n R_skana \
-      --override-channels -c conda-forge -f "${ENV_FILE}" --prune
+      -f "${ENV_FILE}" --prune
     write_env_stamp
     return 0
   fi

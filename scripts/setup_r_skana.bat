@@ -154,7 +154,7 @@ exit /b 0
 if exist "%ENV_RSCRIPT%" (
   echo.
   echo ==> Updating existing R_skana environment
-  "%MICROMAMBA_BIN%" env update -y -r "%MAMBA_ROOT_PREFIX%" -n R_skana --override-channels -c conda-forge -f "%ENV_FILE%" --prune
+  "%MICROMAMBA_BIN%" env update -y -r "%MAMBA_ROOT_PREFIX%" -n R_skana -f "%ENV_FILE%" --prune
   if errorlevel 1 exit /b %errorlevel%
   call :write_env_stamp
   exit /b %errorlevel%
