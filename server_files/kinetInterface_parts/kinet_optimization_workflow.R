@@ -384,7 +384,7 @@ RefineKin  = reactiveValues(map=NULL)
 
 ## Global Opt. Process ####
 bgGlobpx = reactiveVal(NULL)
-glOptOut = tempfile(tmpdir = '/tmp',fileext = '_glob.stdout')
+glOptOut = tempfile(pattern = "glob_", tmpdir = tempdir(), fileext = ".stdout")
 file.create(glOptOut, showWarnings = FALSE)
 resGlob  = reactiveValues(results = NULL)
 bgGlob   = reactiveValues(status = process_status(NULL))
@@ -398,7 +398,7 @@ obsGlobStatus = observe(
 
 ## Local Opt. Process ####
 bgLocpx   = reactiveVal(NULL)
-locOptOut = tempfile(tmpdir = '/tmp',fileext = '_loc.stdout')
+locOptOut = tempfile(pattern = "loc_", tmpdir = tempdir(), fileext = ".stdout")
 file.create(locOptOut, showWarnings = FALSE)
 resLoc  = reactiveValues(results = NULL)
 bgLoc   = reactiveValues(status = process_status(NULL))

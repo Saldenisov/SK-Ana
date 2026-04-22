@@ -14,6 +14,13 @@ options(
   warn = 0
 )
 
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0 || (length(x) == 1 && is.na(x))) {
+    return(y)
+  }
+  x
+}
+
 # options(shiny.json.digits=32)
 
 # Controle reactivity of sliders
