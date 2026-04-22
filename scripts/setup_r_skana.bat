@@ -12,6 +12,11 @@ set "ENV_FILE=%SCRIPT_DIR%r_skana.environment.yml"
 set "ENV_RSCRIPT=%MAMBA_ROOT_PREFIX%\envs\R_skana\Scripts\Rscript.exe"
 set "VENDOR_DIR=%SCRIPT_DIR%vendor\windows"
 set "VENDOR_MICROMAMBA=%VENDOR_DIR%\micromamba.exe"
+if "%SK_ANA_MICROMAMBA_VERSION%"=="" (
+  set "MICROMAMBA_RELEASE_URL=https://github.com/mamba-org/micromamba-releases/releases/latest/download/micromamba-win-64"
+) else (
+  set "MICROMAMBA_RELEASE_URL=https://github.com/mamba-org/micromamba-releases/releases/download/%SK_ANA_MICROMAMBA_VERSION%/micromamba-win-64"
+)
 
 call :ensure_dir "%R_SKANA_DIR%"
 if errorlevel 1 exit /b %errorlevel%
@@ -112,17 +117,8 @@ exit /b 1
 :download_micromamba
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference='Stop';" ^
-  "$tmp = Join-Path $env:TEMP ('micromamba-' + [guid]::NewGuid().ToString());" ^
-  "New-Item -ItemType Directory -Path $tmp | Out-Null;" ^
-  "$archive = Join-Path $tmp 'micromamba.tar.bz2';" ^
-  "Invoke-WebRequest -Uri 'https://micro.mamba.pm/api/micromamba/win-64/latest' -OutFile $archive;" ^
-  "tar -xf $archive -C $tmp;" ^
-  "$srcCandidates = @((Join-Path $tmp 'Library\bin\micromamba.exe'), (Join-Path $tmp 'bin\micromamba.exe'));" ^
-  "$src = $srcCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1;" ^
-  "if (-not $src) { throw 'Could not find micromamba.exe in downloaded archive.' }" ^
   "New-Item -ItemType Directory -Path (Split-Path '%MICROMAMBA_BIN%') -Force | Out-Null;" ^
-  "Copy-Item -Force $src '%MICROMAMBA_BIN%';" ^
-  "Remove-Item -LiteralPath $tmp -Recurse -Force;"
+  "Invoke-WebRequest -Uri '%MICROMAMBA_RELEASE_URL%' -OutFile '%MICROMAMBA_BIN%';"
 if not errorlevel 1 exit /b 0
 
 where curl.exe >nul 2>nul
@@ -130,17 +126,8 @@ if errorlevel 1 exit /b 1
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference='Stop';" ^
-  "$tmp = Join-Path $env:TEMP ('micromamba-' + [guid]::NewGuid().ToString());" ^
-  "New-Item -ItemType Directory -Path $tmp | Out-Null;" ^
-  "$archive = Join-Path $tmp 'micromamba.tar.bz2';" ^
-  "& curl.exe -L 'https://micro.mamba.pm/api/micromamba/win-64/latest' -o $archive | Out-Null;" ^
-  "tar -xf $archive -C $tmp;" ^
-  "$srcCandidates = @((Join-Path $tmp 'Library\bin\micromamba.exe'), (Join-Path $tmp 'bin\micromamba.exe'));" ^
-  "$src = $srcCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1;" ^
-  "if (-not $src) { throw 'Could not find micromamba.exe in downloaded archive.' }" ^
   "New-Item -ItemType Directory -Path (Split-Path '%MICROMAMBA_BIN%') -Force | Out-Null;" ^
-  "Copy-Item -Force $src '%MICROMAMBA_BIN%';" ^
-  "Remove-Item -LiteralPath $tmp -Recurse -Force;"
+  "& curl.exe -L '%MICROMAMBA_RELEASE_URL%' -o '%MICROMAMBA_BIN%' | Out-Null;"
 if errorlevel 1 exit /b 1
 exit /b 0
 
