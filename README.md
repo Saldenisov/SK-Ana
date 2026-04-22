@@ -5,6 +5,8 @@
 
 # **SK-Ana**: **S**pectro**K**inetic **Ana**lysis
 
+This repository started as a fork of Pascal Pernot's `ppernot/SK-Ana` and is now maintained as a standalone SK-Ana repository. It was detached from the fork network because the codebase, runtime bootstrap, packaging, and deployment workflow have diverged substantially while preserving attribution to the original project.
+
 `Shiny` interface for the analysis of spectrokinetic matrices:
 
 * Singular Value Decomposition (SVD)
@@ -279,9 +281,9 @@ SK‑Ana provides a unified workflow to deconvolve, model, and interpret time‑
 <!--
 ## Local install 
 
-* Download the latest release [here](https://github.com/ppernot/SK-Ana/releases/latest) 
+* Download the latest release [here](https://github.com/Saldenisov/SK-Ana/releases/latest) 
   and decompress the archive in a dedicated directory. If you want the most recent code
-  version (with more bugs risks) download it [here](https://github.com/ppernot/SK-Ana/archive/master.zip)
+  version (with more bugs risks) download it [here](https://github.com/Saldenisov/SK-Ana/archive/master.zip)
 
 * You will also need
 
