@@ -19,3 +19,6 @@ Readme.html
 
 # Old dockerfiles (moved to hidden directory)
 .old-dockerfiles/
+
+# Local isolated SK-Ana runtime
+.R_skana/

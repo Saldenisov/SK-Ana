@@ -1,0 +1,44 @@
+name: R_skana
+channels:
+  - conda-forge
+channel_priority: strict
+dependencies:
+  - r-base=4.3.3
+  - r-recommended=4.3
+  - pandoc>=3
+  - make
+  - pkg-config
+  - c-compiler
+  - cxx-compiler
+  - fortran-compiler
+  - r-renv
+  - r-remotes
+  - r-shiny
+  - r-dt
+  - r-httpuv
+  - r-rmarkdown
+  - r-knitr
+  - r-zoo
+  - r-fields
+  - r-desolve
+  - r-mvtnorm
+  - r-changepoint
+  - r-rcolorbrewer
+  - r-processx
+  - r-callr
+  - r-viridislite
+  - r-magrittr
+  - r-lifecycle
+  - r-xtable
+  - r-shinythemes
+  - r-shinycssloaders
+  - r-outliers
+  - r-nnls
+  - r-rsolnp
+  - r-signal
+  - r-expm
+  - r-msm
+  - r-vgam
+  - r-withr
+  - r-purrr
+  - r-testthat

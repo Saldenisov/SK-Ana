@@ -2,15 +2,6 @@
 # ============================
 # Implements Savitzky-Golay filtering for kinetics curves
 
-# Install signal package if needed for SG filter
-if (!requireNamespace("signal", quietly = TRUE)) {
-  tryCatch({
-    install.packages("signal", repos = "https://cloud.r-project.org")
-  }, error = function(e) {
-    log_warning("Could not install 'signal' package for SG filtering")
-  })
-}
-
 # Apply Savitzky-Golay filter to smooth kinetics
 apply_sg_filter <- safely(function(kinetics, window_length, poly_order) {
   # Ensure window length is odd

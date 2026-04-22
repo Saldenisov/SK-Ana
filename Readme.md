@@ -18,53 +18,130 @@
 
 ## Running SK-Ana
 
-### Run locally without Docker (R 4.2+)
+### Run locally with isolated `R_skana` runtime (recommended)
 
-1. Install R 4.2+ from CRAN (tested with R 4.2.3 and 4.4.1).
-2. (Optional) Install RStudio.
-3. Open a terminal in the project root (this folder).
-4. Start the app in one of the following ways:
-   
-   **Method A: Using the helper shell script (recommended on macOS/Linux)**
+SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safest setup on a new machine because it:
+
+- installs its own pinned R runtime in a local environment
+- keeps SK-Ana packages, cache, and sandbox isolated from any existing system or user R libraries
+- avoids replacing or reconfiguring another R installation that may already exist
+- leaves the machine-wide R installation untouched if one is already present
+
+1. Open a terminal in the project root.
+2. Start the app directly:
+
+   macOS / Linux:
    ```bash
-   ./scripts/run_app_3840.sh
+   ./run_app.sh
    ```
-   Optional host/port override:
+
+   Windows:
+   ```bat
+   run_app.bat
+   ```
+
+   On a fresh machine, the launcher will first create the isolated `R_skana` runtime and install required packages automatically.
+
+3. If you want to preinstall or refresh the runtime without launching the app, run:
+
+   macOS / Linux:
    ```bash
-   HOST=127.0.0.1 PORT=3842 ./scripts/run_app_3840.sh
+   ./scripts/setup_r_skana.sh
    ```
 
-   **Method B: Using the Windows batch script**
+   Windows:
    ```bat
-   scripts\run_app_3840.bat
-   ```
-   Optional host/port override:
-   ```bat
-   set HOST=127.0.0.1
-   set PORT=3842
-   scripts\run_app_3840.bat
+   scripts\setup_r_skana.bat
    ```
 
-   **Method C: Using R console/terminal**
-   ```r
-   setwd("C:/path/to/SK-Ana")  # Adjust path as needed
-   shiny::runApp(".")
-   ```
-   
-   **Method D: Using the helper R script**
-   - Double-click on `scripts/run_app_3840.R` in Windows Explorer/Finder, or
-   - In R console: `source("scripts/run_app_3840.R")` 
-   - This will launch the app on http://localhost:3840
-   
-   **Method E: Using RStudio**
-   - Open `server.R` or `ui.R` in RStudio
-   - Click "Run App" button
+   On restricted Windows machines, this still runs fully in user space and does not need administrator rights.
+   If outbound downloads are blocked by IT, place a pre-approved `micromamba.exe` at
+   `scripts\vendor\windows\micromamba.exe` or set `SK_ANA_MICROMAMBA_EXE` to its path before running the script.
 
-5. The app will open automatically in your browser, or go to:
-   - http://localhost:3838 (default shiny port) or
-   - http://localhost:3840 (if using `run_app_3840.R` or `run_app_3840.sh`)
+4. The app will open automatically in your browser, or go to:
+   - http://localhost:3838 (default Shiny port)
+   - http://localhost:3840 (default for `run_app.sh` / `run_app.bat`)
 
-On first launch, required packages will be installed automatically if missing (e.g. `outliers`, `nnls`, `Iso`, `viridis`, `httpuv`, `changepoint`, `shiny`, `shinyBS`, `DT`, `Rsolnp`, `fields`, `NMFN`, `tools`, `shinycssloaders`, `rgenoud`, `mvtnorm`, `deSolve`, `msm`, `xtable`). Depending on your OS, you may need to install some of them manually using `install.packages(...)` in R.
+The isolated runtime setup installs:
+
+- local `micromamba`
+- environment `R_skana`
+- pinned base `R 4.3.3` (`R 4.2+` supported target)
+- repo-local `renv` library, cache, and sandbox under `.R_skana/`
+- core app and test packages from `conda-forge` where available
+- any remaining SK-Ana packages from R package sources inside the isolated runtime
+
+### Windows without admin rights
+
+For lab or enterprise Windows machines where users do not have administrator privileges:
+
+- `scripts\setup_r_skana.bat` installs everything under the project folder
+- it does not write into `Program Files` or require a system-wide R installation
+- it can use a local pre-approved `micromamba.exe` instead of downloading one
+
+Example with a pre-staged executable:
+
+```bat
+set SK_ANA_MICROMAMBA_EXE=Z:\approved-tools\micromamba.exe
+scripts\setup_r_skana.bat
+run_app.bat
+```
+
+This is the recommended non-Docker path for locked-down Windows environments.
+
+### Use `R_skana` directly
+
+Open an R console inside the isolated runtime:
+
+macOS / Linux:
+```bash
+./R_skana.sh
+```
+
+Windows:
+```bat
+R_skana.bat
+```
+
+Run one-off commands in the same isolated runtime:
+
+macOS / Linux:
+```bash
+./R_skana.sh Rscript tests/testthat.R
+```
+
+Windows:
+```bat
+R_skana.bat Rscript tests\testthat.R
+```
+
+Optional host/port override for app launch:
+
+macOS / Linux:
+```bash
+HOST=127.0.0.1 PORT=3842 ./run_app.sh
+```
+
+Windows:
+```bat
+set HOST=127.0.0.1
+set PORT=3842
+run_app.bat
+```
+
+### Refresh the lockfile (maintainers)
+
+After changing package requirements, refresh the lockfile from inside the isolated runtime so `renv.lock` matches `R_skana`:
+
+macOS / Linux:
+```bash
+./R_skana.sh Rscript scripts/relock_r_skana.R
+```
+
+Windows:
+```bat
+R_skana.bat Rscript scripts\relock_r_skana.R
+```
 
 ## User's manual
 
@@ -139,7 +216,7 @@ where C_k(t) are kinetic profiles (concentrations vs time), S_k(λ) are species 
 
 ## Technical notes
 - Interactive GUI built with R/Shiny; runs locally or in Docker.
-- Compatible with R 4.4.x (tested with R 4.4.1)
+- Compatible with isolated `R_skana` runtime using pinned `R 4.3.3` and repo-local package isolation
 - Removed dependency on `inlmisc`; includes local `GetColors` implementation
 - Includes helper scripts in `scripts/` directory for easy local deployment
 - Recommended Docker deployment (see container section below):
@@ -436,8 +513,3 @@ Rayonnement et Radiochimie" (Oléron, 2017/09)
 * J. Ma, P. Archirel, P. Pernot, U. Schmidhammer, S. L. Caër and M. Mostafavi (2016) _J. Phys. Chem. B_ __120__:773–784. (http://dx.doi.org/10.1021/acs.jpcb.5b11315)
 
 * J. Ma, P. Archirel, U. Schmidhammer, J. Teuler, P. Pernot and M. Mostafavi (2013) _J. Phys. Chem. A_ __117__:14048–14055. (http://dx.doi.org/10.1021/jp410598y)
-
-
-
-
-
