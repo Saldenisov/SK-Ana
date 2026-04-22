@@ -139,9 +139,8 @@ exit /b %errorlevel%
 call :set_git_command
 if errorlevel 1 exit /b 1
 
-for /f %%I in ('"%GIT_CMD%" -C "%~1" status --porcelain 2^>nul ^| find /c /v ""') do set "SK_ANA_DIRTY_COUNT=%%I"
-if not defined SK_ANA_DIRTY_COUNT exit /b 1
-if "%SK_ANA_DIRTY_COUNT%"=="0" exit /b 1
+"%GIT_CMD%" -C "%~1" status --porcelain 2>nul | findstr /r "." >nul
+if errorlevel 1 exit /b 1
 exit /b 0
 
 :update_repo_if_possible
