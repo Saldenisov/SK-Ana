@@ -10,6 +10,7 @@ set "MICROMAMBA_BIN=%MICROMAMBA_DIR%\micromamba.exe"
 set "MAMBA_ROOT_PREFIX=%R_SKANA_DIR%\micromamba"
 set "ENV_FILE=%SCRIPT_DIR%r_skana.environment.yml"
 set "ENV_RSCRIPT=%MAMBA_ROOT_PREFIX%\envs\R_skana\Scripts\Rscript.exe"
+set "ENV_STAMP_FILE=%R_SKANA_DIR%\base-environment.stamp"
 set "VENDOR_DIR=%SCRIPT_DIR%vendor\windows"
 set "VENDOR_MICROMAMBA=%VENDOR_DIR%\micromamba.exe"
 if "%SK_ANA_MICROMAMBA_VERSION%"=="" (
@@ -49,6 +50,12 @@ exit /b %errorlevel%
 :check_existing_env
 if not exist "%ENV_RSCRIPT%" exit /b 1
 
+call :env_definition_changed
+if not errorlevel 1 (
+  echo     Base environment definition changed. Refreshing the R_skana environment.
+  exit /b 1
+)
+
 echo.
 echo ==> Checking existing R_skana environment
 pushd "%REPO_ROOT%"
@@ -58,6 +65,18 @@ popd
 if "%STATUS%"=="0" exit /b 0
 echo     Existing environment check failed. Refreshing the base environment.
 exit /b 1
+
+:env_definition_changed
+if not exist "%ENV_STAMP_FILE%" exit /b 0
+for /f %%I in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 ''%ENV_FILE%'').Hash"') do set "ENV_FILE_HASH=%%I"
+set /p STORED_ENV_HASH=<"%ENV_STAMP_FILE%"
+if /I not "%ENV_FILE_HASH%"=="%STORED_ENV_HASH%" exit /b 0
+exit /b 1
+
+:write_env_stamp
+for /f %%I in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 ''%ENV_FILE%'').Hash"') do set "ENV_FILE_HASH=%%I"
+>"%ENV_STAMP_FILE%" echo %ENV_FILE_HASH%
+exit /b 0
 
 :ensure_micromamba
 if exist "%MICROMAMBA_BIN%" (
@@ -135,13 +154,17 @@ exit /b 0
 if exist "%ENV_RSCRIPT%" (
   echo.
   echo ==> Updating existing R_skana environment
-  "%MICROMAMBA_BIN%" install -y -r "%MAMBA_ROOT_PREFIX%" -n R_skana --override-channels -c conda-forge -f "%ENV_FILE%"
+  "%MICROMAMBA_BIN%" env update -y -r "%MAMBA_ROOT_PREFIX%" -n R_skana --override-channels -c conda-forge -f "%ENV_FILE%" --prune
+  if errorlevel 1 exit /b %errorlevel%
+  call :write_env_stamp
   exit /b %errorlevel%
 )
 
 echo.
 echo ==> Creating R_skana environment
 "%MICROMAMBA_BIN%" create -y -r "%MAMBA_ROOT_PREFIX%" --override-channels -c conda-forge -f "%ENV_FILE%"
+if errorlevel 1 exit /b %errorlevel%
+call :write_env_stamp
 exit /b %errorlevel%
 
 :ensure_project_packages

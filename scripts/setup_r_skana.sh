@@ -11,6 +11,7 @@ MICROMAMBA_BIN="${MICROMAMBA_DIR}/bin/micromamba"
 MAMBA_ROOT_PREFIX="${R_SKANA_DIR}/micromamba"
 ENV_FILE="${SCRIPT_DIR}/r_skana.environment.yml"
 ENV_RSCRIPT="${MAMBA_ROOT_PREFIX}/envs/R_skana/bin/Rscript"
+ENV_STAMP_FILE="${R_SKANA_DIR}/base-environment.stamp"
 
 mkdir -p "${TOOLS_DIR}"
 
@@ -20,6 +21,45 @@ log_step() {
 
 log_info() {
   printf '    %s\n' "$1"
+}
+
+hash_file() {
+  local file="$1"
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${file}" | awk '{print $1}'
+    return 0
+  fi
+
+  if command -v md5sum >/dev/null 2>&1; then
+    md5sum "${file}" | awk '{print $1}'
+    return 0
+  fi
+
+  if command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 "${file}" | awk '{print $NF}'
+    return 0
+  fi
+
+  return 1
+}
+
+env_definition_changed() {
+  local current_hash existing_hash
+
+  if [[ ! -f "${ENV_STAMP_FILE}" ]]; then
+    return 0
+  fi
+
+  current_hash="$(hash_file "${ENV_FILE}")" || return 0
+  existing_hash="$(tr -d '\r\n' < "${ENV_STAMP_FILE}")"
+  [[ "${current_hash}" != "${existing_hash}" ]]
+}
+
+write_env_stamp() {
+  local current_hash
+  current_hash="$(hash_file "${ENV_FILE}")" || return 0
+  printf '%s\n' "${current_hash}" > "${ENV_STAMP_FILE}"
 }
 
 detect_micromamba_url() {
@@ -79,18 +119,25 @@ ensure_micromamba() {
 ensure_base_env() {
   if [[ -x "${ENV_RSCRIPT}" ]]; then
     log_step "Updating existing R_skana environment"
-    "${MICROMAMBA_BIN}" install -y -r "${MAMBA_ROOT_PREFIX}" -n R_skana \
-      --override-channels -c conda-forge -f "${ENV_FILE}"
+    "${MICROMAMBA_BIN}" env update -y -r "${MAMBA_ROOT_PREFIX}" -n R_skana \
+      --override-channels -c conda-forge -f "${ENV_FILE}" --prune
+    write_env_stamp
     return 0
   fi
 
   log_step "Creating R_skana environment"
   "${MICROMAMBA_BIN}" create -y -r "${MAMBA_ROOT_PREFIX}" \
     --override-channels -c conda-forge -f "${ENV_FILE}"
+  write_env_stamp
 }
 
 check_existing_env() {
   if [[ ! -x "${ENV_RSCRIPT}" ]]; then
+    return 1
+  fi
+
+  if env_definition_changed; then
+    log_info "Base environment definition changed. Refreshing the R_skana environment."
     return 1
   fi
 
