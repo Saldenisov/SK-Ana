@@ -112,18 +112,24 @@ echo.
 echo ==> Downloading portable Git for Windows
 echo     This stays in user space and does not require administrator rights.
 
-mkdir "%SCRIPT_DIR%\.bootstrap-tools" 2>nul
+call :ensure_dir "%SCRIPT_DIR%\.bootstrap-tools"
+if errorlevel 1 exit /b %errorlevel%
 if exist "%PORTABLE_GIT_DIR%" rmdir /s /q "%PORTABLE_GIT_DIR%"
-mkdir "%PORTABLE_GIT_DIR%"
+call :ensure_dir "%PORTABLE_GIT_DIR%"
+if errorlevel 1 exit /b %errorlevel%
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$ErrorActionPreference='Stop';" ^
-  "$tmp = Join-Path $env:TEMP ('mingit-' + [guid]::NewGuid().ToString());" ^
-  "New-Item -ItemType Directory -Path $tmp | Out-Null;" ^
-  "$archive = Join-Path $tmp 'MinGit.zip';" ^
-  "Invoke-WebRequest -Uri 'https://github.com/git-for-windows/git/releases/latest/download/MinGit-64-bit.zip' -OutFile $archive;" ^
-  "Expand-Archive -Path $archive -DestinationPath '%PORTABLE_GIT_DIR%' -Force;" ^
-  "Remove-Item -LiteralPath $tmp -Recurse -Force;"
+set "TMP_GIT_DIR=%TEMP%\mingit-%RANDOM%%RANDOM%"
+set "TMP_GIT_ARCHIVE=%TMP_GIT_DIR%\MinGit.zip"
+call :ensure_dir "%TMP_GIT_DIR%"
+if errorlevel 1 exit /b %errorlevel%
+
+call :download_url_to_file "https://github.com/git-for-windows/git/releases/latest/download/MinGit-64-bit.zip" "%TMP_GIT_ARCHIVE%"
+if errorlevel 1 goto :portable_git_failed
+
+call :extract_zip_to_dir "%TMP_GIT_ARCHIVE%" "%PORTABLE_GIT_DIR%"
+if errorlevel 1 goto :portable_git_failed
+
+if exist "%TMP_GIT_DIR%" rmdir /s /q "%TMP_GIT_DIR%"
 if errorlevel 1 (
   echo Failed to download portable Git.
   exit /b 1
@@ -131,6 +137,11 @@ if errorlevel 1 (
 
 call :set_git_command
 exit /b %errorlevel%
+
+:portable_git_failed
+if exist "%TMP_GIT_DIR%" rmdir /s /q "%TMP_GIT_DIR%"
+echo Failed to download portable Git.
+exit /b 1
 
 :repo_is_dirty
 call :set_git_command
@@ -175,21 +186,43 @@ exit /b %errorlevel%
 echo.
 echo ==> Downloading SK-Ana source archive
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$ErrorActionPreference='Stop';" ^
-  "$tmp = Join-Path $env:TEMP ('sk-ana-' + [guid]::NewGuid().ToString());" ^
-  "New-Item -ItemType Directory -Path $tmp | Out-Null;" ^
-  "$archive = Join-Path $tmp 'SK-Ana.zip';" ^
-  "$repo = '%SK_ANA_REPO_URL%'.Replace('https://github.com/', '').Replace('.git', '');" ^
-  "$url = 'https://github.com/' + $repo + '/archive/refs/heads/%SK_ANA_BRANCH%.zip';" ^
-  "Invoke-WebRequest -Uri $url -OutFile $archive;" ^
-  "Expand-Archive -Path $archive -DestinationPath $tmp -Force;" ^
-  "$source = Get-ChildItem -Path $tmp -Directory | Where-Object { $_.Name -like 'SK-Ana-*' } | Select-Object -First 1;" ^
-  "if (-not $source) { throw 'Could not unpack SK-Ana archive.' }" ^
-  "if (Test-Path '%REPO_ROOT%') { Remove-Item -LiteralPath '%REPO_ROOT%' -Recurse -Force }" ^
-  "Move-Item -LiteralPath $source.FullName -Destination '%REPO_ROOT%';" ^
-  "Remove-Item -LiteralPath $tmp -Recurse -Force;"
+set "TMP_REPO_DIR=%TEMP%\sk-ana-%RANDOM%%RANDOM%"
+set "TMP_REPO_ARCHIVE=%TMP_REPO_DIR%\SK-Ana.zip"
+set "TMP_REPO_EXTRACT=%TMP_REPO_DIR%\extract"
+set "REPO_ARCHIVE_URL=%SK_ANA_REPO_URL%"
+set "REPO_ARCHIVE_URL=%REPO_ARCHIVE_URL:https://github.com/=%"
+set "REPO_ARCHIVE_URL=%REPO_ARCHIVE_URL:.git=%"
+set "REPO_ARCHIVE_URL=https://github.com/%REPO_ARCHIVE_URL%/archive/refs/heads/%SK_ANA_BRANCH%.zip"
+
+call :ensure_dir "%TMP_REPO_DIR%"
+if errorlevel 1 exit /b %errorlevel%
+call :ensure_dir "%TMP_REPO_EXTRACT%"
+if errorlevel 1 exit /b %errorlevel%
+
+call :download_url_to_file "%REPO_ARCHIVE_URL%" "%TMP_REPO_ARCHIVE%"
+if errorlevel 1 goto :download_repo_archive_failed
+
+call :extract_zip_to_dir "%TMP_REPO_ARCHIVE%" "%TMP_REPO_EXTRACT%"
+if errorlevel 1 goto :download_repo_archive_failed
+
+for /d %%D in ("%TMP_REPO_EXTRACT%\SK-Ana-*") do (
+  set "REPO_ARCHIVE_SOURCE=%%~fD"
+  goto :download_repo_archive_source_found
+)
+
+echo Could not unpack SK-Ana archive.
+goto :download_repo_archive_failed
+
+:download_repo_archive_source_found
+if exist "%REPO_ROOT%" rmdir /s /q "%REPO_ROOT%"
+move "%REPO_ARCHIVE_SOURCE%" "%REPO_ROOT%" >nul
+if errorlevel 1 goto :download_repo_archive_failed
+if exist "%TMP_REPO_DIR%" rmdir /s /q "%TMP_REPO_DIR%"
 exit /b %errorlevel%
+
+:download_repo_archive_failed
+if exist "%TMP_REPO_DIR%" rmdir /s /q "%TMP_REPO_DIR%"
+exit /b 1
 
 :bootstrap_repo_if_needed
 call :looks_like_repo_root "%REPO_ROOT%"
@@ -234,3 +267,45 @@ if errorlevel 1 exit /b %errorlevel%
 
 call :update_repo_if_possible
 exit /b %errorlevel%
+
+:ensure_dir
+if exist "%~1\" exit /b 0
+mkdir "%~1" >nul 2>nul
+if exist "%~1\" exit /b 0
+echo Failed to create directory: %~1
+exit /b 1
+
+:download_url_to_file
+set "DOWNLOAD_URL=%~1"
+set "DOWNLOAD_TARGET=%~2"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference='Stop';" ^
+  "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls;" ^
+  "$client = New-Object System.Net.WebClient;" ^
+  "$client.DownloadFile('%DOWNLOAD_URL%', '%DOWNLOAD_TARGET%');"
+if not errorlevel 1 exit /b 0
+
+where curl.exe >nul 2>nul
+if errorlevel 1 exit /b 1
+
+curl.exe -L --fail --retry 3 "%DOWNLOAD_URL%" -o "%DOWNLOAD_TARGET%"
+if errorlevel 1 exit /b 1
+exit /b 0
+
+:extract_zip_to_dir
+set "ZIP_SOURCE=%~1"
+set "ZIP_DEST=%~2"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference='Stop';" ^
+  "Add-Type -AssemblyName System.IO.Compression.FileSystem;" ^
+  "[System.IO.Compression.ZipFile]::ExtractToDirectory('%ZIP_SOURCE%', '%ZIP_DEST%');"
+if not errorlevel 1 exit /b 0
+
+where tar.exe >nul 2>nul
+if errorlevel 1 exit /b 1
+
+tar.exe -xf "%ZIP_SOURCE%" -C "%ZIP_DEST%"
+if errorlevel 1 exit /b 1
+exit /b 0
