@@ -8,7 +8,12 @@ set "ORIGINAL_CWD=%CD%"
 if "%SK_ANA_REPO_URL%"=="" set "SK_ANA_REPO_URL=https://github.com/Saldenisov/SK-Ana.git"
 if "%SK_ANA_BRANCH%"=="" set "SK_ANA_BRANCH=master"
 if "%SK_ANA_BOOTSTRAP_DIR%"=="" set "SK_ANA_BOOTSTRAP_DIR=SK-Ana"
-set "PORTABLE_GIT_DIR=%SCRIPT_DIR%\.bootstrap-tools\git"
+if "%LOCALAPPDATA%"=="" (
+  set "BOOTSTRAP_TOOLS_DIR=%SCRIPT_DIR%\.bootstrap-tools"
+) else (
+  set "BOOTSTRAP_TOOLS_DIR=%LOCALAPPDATA%\SK-Ana\bootstrap-tools"
+)
+set "PORTABLE_GIT_DIR=%BOOTSTRAP_TOOLS_DIR%\git"
 set "PORTABLE_GIT_CMD=%PORTABLE_GIT_DIR%\cmd\git.exe"
 set "LAUNCH_MODE=standalone"
 set "PORTABLE_GIT_RELEASE_API=https://api.github.com/repos/git-for-windows/git/releases/latest"
@@ -83,17 +88,14 @@ set "REPO_ROOT=%SCRIPT_DIR%\%SK_ANA_BOOTSTRAP_DIR%"
 exit /b 0
 
 :have_git
-where git >nul 2>nul
+call :find_installed_git >nul 2>nul
 if not errorlevel 1 exit /b 0
 if exist "%PORTABLE_GIT_CMD%" exit /b 0
 exit /b 1
 
 :set_git_command
-where git >nul 2>nul
-if not errorlevel 1 (
-  set "GIT_CMD=git"
-  exit /b 0
-)
+call :find_installed_git
+if not errorlevel 1 exit /b 0
 
 if exist "%PORTABLE_GIT_CMD%" (
   set "GIT_CMD=%PORTABLE_GIT_CMD%"
@@ -102,8 +104,55 @@ if exist "%PORTABLE_GIT_CMD%" (
 
 exit /b 1
 
+:find_installed_git
+where git >nul 2>nul
+if not errorlevel 1 (
+  set "GIT_CMD=git"
+  exit /b 0
+)
+
+for %%G in (
+  "%ProgramFiles%\Git\cmd\git.exe"
+  "%ProgramFiles%\Git\bin\git.exe"
+  "%ProgramFiles(x86)%\Git\cmd\git.exe"
+  "%ProgramFiles(x86)%\Git\bin\git.exe"
+  "%LocalAppData%\Programs\Git\cmd\git.exe"
+  "%LocalAppData%\Programs\Git\bin\git.exe"
+  "%LocalAppData%\Git\cmd\git.exe"
+  "%LocalAppData%\Git\bin\git.exe"
+) do (
+  if exist %%~G (
+    set "GIT_CMD=%%~G"
+    exit /b 0
+  )
+)
+
+exit /b 1
+
+:ensure_winget_git
+call :find_installed_git
+if not errorlevel 1 exit /b 0
+
+where winget >nul 2>nul
+if errorlevel 1 exit /b 1
+
+echo.
+echo ==> Installing Git with winget
+echo     This may require administrator rights depending on machine policy.
+winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+if errorlevel 1 exit /b 1
+
+call :find_installed_git
+exit /b %errorlevel%
+
 :ensure_portable_git
 call :have_git
+if not errorlevel 1 (
+  call :set_git_command
+  exit /b 0
+)
+
+call :ensure_winget_git
 if not errorlevel 1 (
   call :set_git_command
   exit /b 0
@@ -113,7 +162,7 @@ echo.
 echo ==> Downloading portable Git for Windows
 echo     This stays in user space and does not require administrator rights.
 
-call :ensure_dir "%SCRIPT_DIR%\.bootstrap-tools"
+call :ensure_dir "%BOOTSTRAP_TOOLS_DIR%"
 if errorlevel 1 exit /b %errorlevel%
 if exist "%PORTABLE_GIT_DIR%" rmdir /s /q "%PORTABLE_GIT_DIR%"
 call :ensure_dir "%PORTABLE_GIT_DIR%"
