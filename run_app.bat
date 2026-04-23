@@ -305,11 +305,10 @@ for /f "usebackq delims=" %%I in (`powershell -NoProfile -ExecutionPolicy Bypass
   "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls;" ^
   "$client = New-Object System.Net.WebClient;" ^
   "$client.Headers.Add('User-Agent', 'SK-Ana bootstrap');" ^
-  "$json = $client.DownloadString('%PORTABLE_GIT_RELEASE_API%');" ^
-  "$m = [regex]::Match($json, '\"browser_download_url\"\\s*:\\s*\"(?<url>[^\"]*MinGit-[^\"]*-64-bit\\.zip)\"');" ^
-  "if (-not $m.Success) { throw 'Could not resolve MinGit asset URL.' }" ^
-  "$url = $m.Groups['url'].Value.Replace('\/', '/');" ^
-  "[Console]::WriteLine($url);"`) do (
+  "$release = $client.DownloadString('%PORTABLE_GIT_RELEASE_API%') | ConvertFrom-Json;" ^
+  "$asset = $release.assets | Where-Object { $_.name -like 'MinGit-*-64-bit.zip' } | Select-Object -First 1;" ^
+  "if (-not $asset) { throw 'Could not resolve MinGit asset URL.' }" ^
+  "[Console]::WriteLine($asset.browser_download_url);"`) do (
   set "PORTABLE_GIT_URL=%%I"
   goto :resolve_portable_git_url_done
 )
