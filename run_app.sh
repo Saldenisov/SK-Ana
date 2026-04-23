@@ -9,6 +9,8 @@ REPO_BRANCH="${SK_ANA_BRANCH:-master}"
 BOOTSTRAP_DIR_NAME="${SK_ANA_BOOTSTRAP_DIR:-SK-Ana}"
 LAUNCH_MODE="standalone"
 REPO_ROOT=""
+LAUNCH_LOCK_DIR="${SK_ANA_LOCK_DIR:-}"
+LOCK_OWNED="${SK_ANA_LOCK_OWNER:-0}"
 
 log_step() {
   printf '\n==> %s\n' "$1"
@@ -16,6 +18,34 @@ log_step() {
 
 log_info() {
   printf '    %s\n' "$1"
+}
+
+release_launch_lock() {
+  if [[ "${LOCK_OWNED}" == "1" && -n "${LAUNCH_LOCK_DIR}" && -d "${LAUNCH_LOCK_DIR}" ]]; then
+    rmdir "${LAUNCH_LOCK_DIR}" >/dev/null 2>&1 || true
+  fi
+}
+
+acquire_launch_lock() {
+  local lock_root
+
+  lock_root="${REPO_ROOT}/.R_skana"
+  mkdir -p "${lock_root}"
+  LAUNCH_LOCK_DIR="${lock_root}/run_app.lock"
+
+  if mkdir "${LAUNCH_LOCK_DIR}" >/dev/null 2>&1; then
+    LOCK_OWNED="1"
+    trap release_launch_lock EXIT
+    return 0
+  fi
+
+  printf '\n============================================================\n' >&2
+  printf 'SK-ANA IS ALREADY RUNNING IN ANOTHER TERMINAL WINDOW.\n' >&2
+  printf 'CLOSE THE PREVIOUS SK-ANA TERMINAL, THEN RUN THIS AGAIN.\n' >&2
+  printf 'If you are sure no SK-Ana launcher is running, delete:\n' >&2
+  printf '  %s\n' "${LAUNCH_LOCK_DIR}" >&2
+  printf '============================================================\n' >&2
+  return 11
 }
 
 looks_like_repo_root() {
@@ -237,6 +267,15 @@ bootstrap_repo_if_needed() {
 
 main() {
   resolve_repo_root
+
+  if [[ "${SK_ANA_LOCK_HELD:-0}" == "1" ]]; then
+    trap release_launch_lock EXIT
+  else
+    acquire_launch_lock || return $?
+    export SK_ANA_LOCK_HELD=1
+    export SK_ANA_LOCK_DIR="${LAUNCH_LOCK_DIR}"
+    export SK_ANA_LOCK_OWNER="${LOCK_OWNED}"
+  fi
 
   log_step "Preparing SK-Ana launcher"
   log_info "Script location: ${SCRIPT_DIR}"

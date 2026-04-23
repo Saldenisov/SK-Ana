@@ -17,9 +17,19 @@ set "PORTABLE_GIT_DIR=%BOOTSTRAP_TOOLS_DIR%\git"
 set "PORTABLE_GIT_CMD=%PORTABLE_GIT_DIR%\cmd\git.exe"
 set "LAUNCH_MODE=standalone"
 set "PORTABLE_GIT_RELEASE_API=https://api.github.com/repos/git-for-windows/git/releases/latest"
+set "LOCK_OWNED=0"
+set "LAUNCH_LOCK_DIR=%SK_ANA_LOCK_DIR%"
 
 call :resolve_repo_root
 if errorlevel 1 exit /b %errorlevel%
+
+if /I not "%SK_ANA_LOCK_HELD%"=="1" (
+  call :acquire_launch_lock
+  if errorlevel 1 exit /b %errorlevel%
+  set "SK_ANA_LOCK_HELD=1"
+  set "SK_ANA_LOCK_DIR=%LAUNCH_LOCK_DIR%"
+  set "SK_ANA_LOCK_OWNER=%LOCK_OWNED%"
+)
 
 echo.
 echo ==> Preparing SK-Ana launcher
@@ -34,11 +44,11 @@ if /I "%LAUNCH_MODE%"=="standalone" echo     Detected a standalone launcher.
 
 if /I not "%LAUNCH_MODE%"=="git_checkout" (
   call :bootstrap_repo_if_needed
-  if errorlevel 1 exit /b %errorlevel%
+  if errorlevel 1 goto :main_exit
 )
 
 call :update_repo_if_possible
-if errorlevel 1 exit /b %errorlevel%
+if errorlevel 1 goto :main_exit
 
 if /I not "%REPO_ROOT%"=="%SCRIPT_DIR%" (
   if exist "%REPO_ROOT%\run_app.bat" (
@@ -48,7 +58,7 @@ if /I not "%REPO_ROOT%"=="%SCRIPT_DIR%" (
     echo     Handing off directly to %REPO_ROOT%\scripts\run_app_3840.bat
     call "%REPO_ROOT%\scripts\run_app_3840.bat" %*
   )
-  exit /b %errorlevel%
+  goto :main_exit
 )
 
 if not exist "%REPO_ROOT%\.R_skana\micromamba\envs\R_skana\Scripts\Rscript.exe" (
@@ -56,7 +66,7 @@ if not exist "%REPO_ROOT%\.R_skana\micromamba\envs\R_skana\Scripts\Rscript.exe" 
 )
 
 call "%REPO_ROOT%\scripts\run_app_3840.bat" %*
-exit /b %errorlevel%
+goto :main_exit
 
 :looks_like_repo_root
 if exist "%~1\app.R" if exist "%~1\scripts\run_app_3840.bat" exit /b 0
@@ -85,6 +95,32 @@ for %%P in ("%SCRIPT_DIR%" "%ORIGINAL_CWD%" "%SCRIPT_DIR%\%SK_ANA_BOOTSTRAP_DIR%
 
 set "LAUNCH_MODE=standalone"
 set "REPO_ROOT=%SCRIPT_DIR%\%SK_ANA_BOOTSTRAP_DIR%"
+exit /b 0
+
+:acquire_launch_lock
+call :ensure_dir "%REPO_ROOT%\.R_skana"
+if errorlevel 1 exit /b %errorlevel%
+set "LAUNCH_LOCK_DIR=%REPO_ROOT%\.R_skana\run_app.lock"
+mkdir "%LAUNCH_LOCK_DIR%" >nul 2>nul
+if not errorlevel 1 (
+  set "LOCK_OWNED=1"
+  >"%LAUNCH_LOCK_DIR%\owner.txt" echo %DATE% %TIME%
+  exit /b 0
+)
+
+echo.
+echo ============================================================
+echo SK-ANA IS ALREADY RUNNING IN ANOTHER TERMINAL WINDOW.
+echo CLOSE THE PREVIOUS SK-ANA TERMINAL, THEN RUN THIS AGAIN.
+echo If you are sure no SK-Ana launcher is running, delete:
+echo   %LAUNCH_LOCK_DIR%
+echo ============================================================
+exit /b 11
+
+:release_launch_lock
+if /I not "%LOCK_OWNED%"=="1" exit /b 0
+if not defined LAUNCH_LOCK_DIR exit /b 0
+if exist "%LAUNCH_LOCK_DIR%" rmdir /s /q "%LAUNCH_LOCK_DIR%" >nul 2>nul
 exit /b 0
 
 :have_git
@@ -408,3 +444,8 @@ if errorlevel 1 exit /b 1
 tar.exe -xf "%ZIP_SOURCE%" -C "%ZIP_DEST%"
 if errorlevel 1 exit /b 1
 exit /b 0
+
+:main_exit
+set "EXIT_CODE=%errorlevel%"
+call :release_launch_lock
+exit /b %EXIT_CODE%
