@@ -11,6 +11,7 @@ if "%SK_ANA_BOOTSTRAP_DIR%"=="" set "SK_ANA_BOOTSTRAP_DIR=SK-Ana"
 set "PORTABLE_GIT_DIR=%SCRIPT_DIR%\.bootstrap-tools\git"
 set "PORTABLE_GIT_CMD=%PORTABLE_GIT_DIR%\cmd\git.exe"
 set "LAUNCH_MODE=standalone"
+set "PORTABLE_GIT_RELEASE_API=https://api.github.com/repos/git-for-windows/git/releases/latest"
 
 call :resolve_repo_root
 if errorlevel 1 exit /b %errorlevel%
@@ -120,10 +121,14 @@ if errorlevel 1 exit /b %errorlevel%
 
 set "TMP_GIT_DIR=%TEMP%\mingit-%RANDOM%%RANDOM%"
 set "TMP_GIT_ARCHIVE=%TMP_GIT_DIR%\MinGit.zip"
+set "PORTABLE_GIT_URL="
 call :ensure_dir "%TMP_GIT_DIR%"
 if errorlevel 1 exit /b %errorlevel%
 
-call :download_url_to_file "https://github.com/git-for-windows/git/releases/latest/download/MinGit-64-bit.zip" "%TMP_GIT_ARCHIVE%"
+call :resolve_portable_git_url
+if errorlevel 1 goto :portable_git_failed
+
+call :download_url_to_file "%PORTABLE_GIT_URL%" "%TMP_GIT_ARCHIVE%"
 if errorlevel 1 goto :portable_git_failed
 
 call :extract_zip_to_dir "%TMP_GIT_ARCHIVE%" "%PORTABLE_GIT_DIR%"
@@ -283,14 +288,60 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference='Stop';" ^
   "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls;" ^
   "$client = New-Object System.Net.WebClient;" ^
+  "$client.Headers.Add('User-Agent', 'SK-Ana bootstrap');" ^
   "$client.DownloadFile('%DOWNLOAD_URL%', '%DOWNLOAD_TARGET%');"
 if not errorlevel 1 exit /b 0
 
 where curl.exe >nul 2>nul
 if errorlevel 1 exit /b 1
 
-curl.exe -L --fail --retry 3 "%DOWNLOAD_URL%" -o "%DOWNLOAD_TARGET%"
+curl.exe -L --fail --retry 3 -H "User-Agent: SK-Ana bootstrap" "%DOWNLOAD_URL%" -o "%DOWNLOAD_TARGET%"
 if errorlevel 1 exit /b 1
+exit /b 0
+
+:resolve_portable_git_url
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference='Stop';" ^
+  "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls;" ^
+  "$client = New-Object System.Net.WebClient;" ^
+  "$client.Headers.Add('User-Agent', 'SK-Ana bootstrap');" ^
+  "$json = $client.DownloadString('%PORTABLE_GIT_RELEASE_API%');" ^
+  "$m = [regex]::Match($json, '\"browser_download_url\"\\s*:\\s*\"(?<url>[^\"]*MinGit-[^\"]*-64-bit\\.zip)\"');" ^
+  "if (-not $m.Success) { throw 'Could not resolve MinGit asset URL.' }" ^
+  "$url = $m.Groups['url'].Value.Replace('\/', '/');" ^
+  "[Console]::WriteLine($url);"`) do (
+  set "PORTABLE_GIT_URL=%%I"
+  goto :resolve_portable_git_url_done
+)
+
+where curl.exe >nul 2>nul
+if errorlevel 1 exit /b 1
+
+for /f "usebackq tokens=* delims=" %%I in (`curl.exe -fsSL -H "User-Agent: SK-Ana bootstrap" "%PORTABLE_GIT_RELEASE_API%" ^| findstr /R /C:"browser_download_url.*MinGit-.*-64-bit\\.zip"`) do (
+  set "PORTABLE_GIT_JSON_LINE=%%I"
+  call :extract_json_url PORTABLE_GIT_JSON_LINE PORTABLE_GIT_URL
+  if defined PORTABLE_GIT_URL goto :resolve_portable_git_url_done
+)
+
+exit /b 1
+
+:resolve_portable_git_url_done
+if not defined PORTABLE_GIT_URL exit /b 1
+exit /b 0
+
+:extract_json_url
+setlocal EnableDelayedExpansion
+set "JSON_LINE=!%~1!"
+for /f "tokens=2 delims=:" %%A in ("!JSON_LINE!") do (
+  set "JSON_REST=%%A"
+)
+if not defined JSON_REST exit /b 1
+set "JSON_REST=!JSON_LINE:*://=!"
+set "JSON_REST=https://!JSON_REST!"
+for /f "delims=" %%A in ("!JSON_REST!") do set "JSON_REST=%%~A"
+set "JSON_REST=!JSON_REST:,=!"
+set "JSON_REST=!JSON_REST:"=!"
+endlocal & set "%~2=%JSON_REST%"
 exit /b 0
 
 :extract_zip_to_dir
