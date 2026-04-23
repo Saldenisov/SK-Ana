@@ -53,6 +53,16 @@ SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safes
    run_app.bat
    ```
 
+   Windows PowerShell:
+   ```powershell
+   .\run_app.ps1
+   ```
+
+   If PowerShell blocks local scripts on that machine, use:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\run_app.ps1
+   ```
+
    What happens automatically on first run:
    - if this is a normal git checkout, the launcher updates it from `origin/master`
    - if this came from a ZIP without `.git`, the launcher initializes git in that extracted folder and then updates it from `origin/master`
@@ -148,6 +158,13 @@ Windows:
 set SK_ANA_HOST=127.0.0.1
 set PORT=3842
 run_app.bat
+```
+
+Windows PowerShell:
+```powershell
+$env:SK_ANA_HOST = "127.0.0.1"
+$env:PORT = "3842"
+.\run_app.ps1
 ```
 
 ### Refresh the lockfile (maintainers)

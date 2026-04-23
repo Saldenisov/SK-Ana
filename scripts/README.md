@@ -8,6 +8,7 @@ Utility scripts for the isolated `R_skana` runtime and app launch.
 |------|-------------|-------|
 | `setup_r_skana.sh` | Create or update the isolated local `R_skana` runtime on macOS/Linux | `./scripts/setup_r_skana.sh` |
 | `setup_r_skana.bat` | Create or update the isolated local `R_skana` runtime on Windows | `scripts\\setup_r_skana.bat` |
+| `run_app.ps1` | PowerShell launcher for SK-Ana on Windows | `.\run_app.ps1` |
 | `r_skana.sh` | Open `R` or run a command inside the isolated `R_skana` runtime | `./scripts/r_skana.sh` |
 | `r_skana.bat` | Windows wrapper for commands inside `R_skana` | `scripts\\r_skana.bat` |
 | `run_app_3840.sh` | Launch SK-Ana on port 3840 from `R_skana` | `./scripts/run_app_3840.sh` |
@@ -43,6 +44,16 @@ Download the ZIP from GitHub, unpack it, and open a terminal in the extracted `S
 
 ```bat
 run_app.bat
+```
+
+```powershell
+.\run_app.ps1
+```
+
+If PowerShell script execution is restricted:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_app.ps1
 ```
 
 What the launcher does automatically:
@@ -104,6 +115,12 @@ SK_ANA_HOST=127.0.0.1 PORT=3842 ./run_app.sh
 set SK_ANA_HOST=127.0.0.1
 set PORT=3842
 run_app.bat
+```
+
+```powershell
+$env:SK_ANA_HOST = "127.0.0.1"
+$env:PORT = "3842"
+.\run_app.ps1
 ```
 
 ## Dependencies
