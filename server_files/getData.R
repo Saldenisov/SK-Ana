@@ -27,6 +27,15 @@ transformDelay <- safely(function(delay,trans = 0) {
   
   return(del)
 }, return_on_error = NULL)
+resolveExportDatStr <- safely(function(sel, fallback = "wxd") {
+  datStr <- vapply(sel, function(idx) {
+    value <- RawData[[idx]]$datStr
+    if (is.null(value) || !nzchar(value)) fallback else value
+  }, character(1))
+
+  uniqueDatStr <- unique(datStr)
+  if (length(uniqueDatStr) == 1) uniqueDatStr else fallback
+}, return_on_error = "wxd")
 doMeanMatrix  <- safely(function(sel) {
   
   # Assume all matrices are on same grid
@@ -65,7 +74,8 @@ doMeanMatrix  <- safely(function(sel) {
   # delay = 1:length(delay) # Replace by ordinal scale
   
   return(list(mat=matm, wavl=wavl, delay=delay, 
-              delaySave=delay, delayId= rep(1,length(delay))))
+              delaySave=delay, delayId= rep(1,length(delay)),
+              datStr = resolveExportDatStr(sel)))
 }, return_on_error = NULL)
 doTileMatrix  <- safely(function(sel, tileDel=TRUE) {
   nbFiles = length(sel)
@@ -114,7 +124,8 @@ doTileMatrix  <- safely(function(sel, tileDel=TRUE) {
   mat  = mat[,sel]
   
   return(list(mat=mat, wavl=wavl, delay=delay, 
-              delaySave=delaySave, delayId = delayId))
+              delaySave=delaySave, delayId = delayId,
+              datStr = resolveExportDatStr(sel)))
 }, return_on_error = NULL)
 combineMatrix <- safely(function(sel){
   if(is.null(sel)) 
@@ -135,7 +146,8 @@ combineMatrix <- safely(function(sel){
       delay     = del, 
       wavl      = RawData[[sel]]$wavl, 
       delaySave = RawData[[sel]]$delay,
-      delayId   = rep(1,length(RawData[[sel]]$delay))
+      delayId   = rep(1,length(RawData[[sel]]$delay)),
+      datStr    = RawData[[sel]]$datStr
     )
   } else {
     switch( input$procMult,
@@ -248,6 +260,7 @@ finishMatrix  <- reactive({
             matOrig = data$mat,
             wavlOrig = data$wavl,
             delayOrig = data$delay,
+            dataDatStr = data$datStr,
             delayIdOrig = data$delayId,
             delaySaveOrig = data$delaySave
           ))
@@ -258,6 +271,7 @@ finishMatrix  <- reactive({
           mat = data$mat,
           wavl = data$wavl,
           delay = data$delay,
+          dataDatStr = data$datStr,
           delayId = data$delayId,
           delaySave = data$delaySave
         ))

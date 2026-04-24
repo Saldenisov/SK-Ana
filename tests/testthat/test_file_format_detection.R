@@ -290,7 +290,29 @@ test_that("safely wrapper returns proper structure", {
   unlink(file)
 })
 
-# Test 16: Non-existent file
+# Test 16: Ambiguous wavelength-like scales use step size to infer orientation
+test_that("detects dxw when both axes look spectral but the first column has finer spacing", {
+  content <- c(
+    "0.0000\t277.5735\t377.5907\t477.6078\t577.6245",
+    "222.2916\t-0.0204\t-0.0088\t-0.0068\t-0.0051",
+    "272.8481\t-0.0043\t-0.0119\t-0.0096\t-0.0087",
+    "323.4047\t0.0083\t-0.0086\t-0.0151\t-0.0122",
+    "373.9612\t0.0012\t-0.0044\t-0.0102\t-0.0099"
+  )
+  file <- create_test_file(content, tempfile(fileext = ".dat"))
+
+  result <- detectFileFormat(file)
+
+  expect_false(is.null(result))
+  expect_equal(result$sep, "\t")
+  expect_equal(result$dec, ".")
+  expect_false(result$header)
+  expect_equal(result$datStr, "dxw")
+
+  unlink(file)
+})
+
+# Test 17: Non-existent file
 test_that("handles non-existent file", {
   result <- suppressWarnings(detectFileFormat("nonexistent_file_xyz123.txt"))
   

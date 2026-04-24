@@ -30,16 +30,32 @@ inferDataStructureFromCoords <- function(row_coords, col_coords, default = "wxd"
     (small_scale || zero_based_scale || relative_scale) && is.finite(step) && step > 0
   }
 
+  axis_step <- function(x) {
+    step <- median(abs(diff(x)), na.rm = TRUE)
+    if (is.finite(step)) step else NA_real_
+  }
+
   row_is_delay <- looks_like_delay(row_coords)
   row_is_wavelength <- looks_like_wavelength(row_coords)
   col_is_delay <- looks_like_delay(col_coords)
   col_is_wavelength <- looks_like_wavelength(col_coords)
+  row_step <- axis_step(row_coords)
+  col_step <- axis_step(col_coords)
 
   if (row_is_delay && col_is_wavelength) {
     return("dxw")
   }
   if (row_is_wavelength && col_is_delay) {
     return("wxd")
+  }
+  if (row_is_wavelength && col_is_wavelength &&
+      is.finite(row_step) && is.finite(col_step)) {
+    if (row_step > col_step * 1.1) {
+      return("dxw")
+    }
+    if (col_step > row_step * 1.1) {
+      return("wxd")
+    }
   }
 
   default
@@ -52,7 +68,7 @@ detectFileFormat_safe <- purrr::safely(function(dataFile) {
   # Returns a list with header, sep, dec, datStr
   
   # Read first few lines as text
-  lines <- readLines(dataFile, n = 10, warn = FALSE)
+  lines <- readLines(dataFile, n = 120, warn = FALSE)
   lines <- lines[nchar(trimws(lines)) > 0]
   if(length(lines) < 2) return(NULL)
   

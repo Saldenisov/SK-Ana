@@ -104,6 +104,7 @@ function(input, output, session) {
       mat = NULL,
       wavl = NULL,
       delay = NULL,
+      dataDatStr = NULL,
       delaySave = NULL, # True delays used in saved kinetics
       delayId = NA, # Pointer to original matrices
       delayGlitch = NA # List of glitches to mask

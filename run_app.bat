@@ -23,6 +23,15 @@ set "LAUNCH_LOCK_DIR=%SK_ANA_LOCK_DIR%"
 call :resolve_repo_root
 if errorlevel 1 exit /b %errorlevel%
 
+if /I "%~1"=="stop" (
+  call :stop_sk_ana
+  exit /b %errorlevel%
+)
+if /I "%~1"=="--stop" (
+  call :stop_sk_ana
+  exit /b %errorlevel%
+)
+
 if /I not "%SK_ANA_LOCK_HELD%"=="1" (
   call :acquire_launch_lock
   if errorlevel 1 exit /b %errorlevel%
@@ -116,6 +125,55 @@ echo If you are sure no SK-Ana launcher is running, delete:
 echo   %LAUNCH_LOCK_DIR%
 echo ============================================================
 exit /b 11
+
+:stop_sk_ana
+if "%PORT%"=="" (
+  set "STOP_PORT=3840"
+) else (
+  set "STOP_PORT=%PORT%"
+)
+set "LAUNCH_LOCK_DIR=%REPO_ROOT%\.R_skana\run_app.lock"
+set "STOPPED_ANY=0"
+
+echo.
+echo ==> Stopping SK-Ana
+
+for /f "tokens=5" %%P in ('netstat -ano -p tcp ^| findstr /R /C:":%STOP_PORT% .*LISTENING"') do (
+  call :terminate_pid "%%P"
+)
+
+if /I "%STOPPED_ANY%"=="0" (
+  for /f "usebackq delims=" %%P in (`powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$repo = [Regex]::Escape('%REPO_ROOT%');" ^
+    "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'run_app_3840\.R' -and $_.CommandLine -match $repo } | Select-Object -Expand ProcessId"`) do (
+    call :terminate_pid "%%P"
+  )
+)
+
+if exist "%LAUNCH_LOCK_DIR%" (
+  rmdir /s /q "%LAUNCH_LOCK_DIR%" >nul 2>nul
+  if not errorlevel 1 (
+    echo     Removed launch lock %LAUNCH_LOCK_DIR%
+  )
+)
+
+if /I "%STOPPED_ANY%"=="1" (
+  echo     Stopped SK-Ana listener^(s^) on port %STOP_PORT%.
+) else (
+  echo     No running SK-Ana process was found on port %STOP_PORT%.
+)
+exit /b 0
+
+:terminate_pid
+set "STOP_PID=%~1"
+if "%STOP_PID%"=="" exit /b 0
+tasklist /FI "PID eq %STOP_PID%" /FO CSV /NH | findstr /V /I "No tasks are running" >nul
+if errorlevel 1 exit /b 0
+
+echo     Stopping PID %STOP_PID%
+taskkill /PID %STOP_PID% /T /F >nul 2>nul
+if not errorlevel 1 set "STOPPED_ANY=1"
+exit /b 0
 
 :release_launch_lock
 if /I not "%LOCK_OWNED%"=="1" exit /b 0
@@ -252,6 +310,17 @@ if errorlevel 1 (
 
 call :set_git_command
 if errorlevel 1 exit /b 1
+
+if /I not "%SK_ANA_FORCE_SYNC%"=="1" (
+  call :repo_is_dirty "%REPO_ROOT%"
+  if not errorlevel 1 (
+    echo.
+    echo ==> Skipping checkout synchronization
+    echo     Local changes detected; preserving the current checkout.
+    echo     Set SK_ANA_FORCE_SYNC=1 to discard local changes and resync from origin/%SK_ANA_BRANCH%.
+    exit /b 0
+  )
+)
 
 echo.
 echo ==> Synchronizing SK-Ana checkout

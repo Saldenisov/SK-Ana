@@ -11,6 +11,7 @@ LAUNCH_MODE="standalone"
 REPO_ROOT=""
 LAUNCH_LOCK_DIR="${SK_ANA_LOCK_DIR:-}"
 LOCK_OWNED="${SK_ANA_LOCK_OWNER:-0}"
+DEFAULT_PORT="${PORT:-3840}"
 
 log_step() {
   printf '\n==> %s\n' "$1"
@@ -46,6 +47,110 @@ acquire_launch_lock() {
   printf '  %s\n' "${LAUNCH_LOCK_DIR}" >&2
   printf '============================================================\n' >&2
   return 11
+}
+
+is_stop_command() {
+  case "${1:-}" in
+    stop|--stop)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+list_listener_pids() {
+  local port="${1:-${DEFAULT_PORT}}"
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN -t 2>/dev/null | awk '!seen[$0]++'
+  fi
+}
+
+list_sk_ana_process_pids() {
+  if command -v pgrep >/dev/null 2>&1; then
+    pgrep -af 'run_app_3840\.R' 2>/dev/null | awk -v repo_root="${REPO_ROOT}" '
+      index($0, repo_root) > 0 { print $1 }
+    ' | awk '!seen[$0]++'
+  fi
+}
+
+pid_is_running() {
+  local pid="$1"
+  kill -0 "${pid}" >/dev/null 2>&1
+}
+
+terminate_pid() {
+  local pid="$1"
+
+  if [[ -z "${pid}" ]] || ! pid_is_running "${pid}"; then
+    return 0
+  fi
+
+  log_info "Stopping PID ${pid}"
+  kill -TERM "${pid}" >/dev/null 2>&1 || true
+  for _ in 1 2 3 4 5; do
+    if ! pid_is_running "${pid}"; then
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  kill -KILL "${pid}" >/dev/null 2>&1 || true
+}
+
+stop_sk_ana() {
+  local port="${PORT:-${DEFAULT_PORT}}"
+  local lock_dir
+  local stopped_any=0
+  local pid
+  local -a pids=()
+
+  resolve_repo_root
+  lock_dir="${REPO_ROOT}/.R_skana/run_app.lock"
+
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] && pids+=("${pid}")
+  done < <(list_listener_pids "${port}")
+
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    while IFS= read -r pid; do
+      [[ -n "${pid}" ]] && pids+=("${pid}")
+    done < <(list_sk_ana_process_pids)
+  fi
+
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    if [[ -d "${lock_dir}" ]]; then
+      rm -rf "${lock_dir}"
+      log_step "Stopping SK-Ana"
+      log_info "No running SK-Ana process was found. Removed stale lock ${lock_dir}."
+      return 0
+    fi
+
+    log_step "Stopping SK-Ana"
+    log_info "No running SK-Ana process was found on port ${port}."
+    return 0
+  fi
+
+  log_step "Stopping SK-Ana"
+  for pid in "${pids[@]}"; do
+    if pid_is_running "${pid}"; then
+      terminate_pid "${pid}"
+      stopped_any=1
+    fi
+  done
+
+  if [[ -d "${lock_dir}" ]]; then
+    rm -rf "${lock_dir}"
+    log_info "Removed launch lock ${lock_dir}."
+  fi
+
+  if [[ "${stopped_any}" == "1" ]]; then
+    log_info "Stopped SK-Ana listener(s) on port ${port}."
+  else
+    log_info "No running SK-Ana process remained after the stop attempt."
+  fi
 }
 
 looks_like_repo_root() {
@@ -93,6 +198,12 @@ resolve_repo_root() {
 
 have_git() {
   command -v git >/dev/null 2>&1
+}
+
+repo_is_dirty() {
+  local repo_root="$1"
+
+  [[ -n "$(git -C "${repo_root}" status --porcelain --untracked-files=normal 2>/dev/null)" ]]
 }
 
 run_with_optional_sudo() {
@@ -201,6 +312,13 @@ update_repo_if_possible() {
     return 1
   fi
 
+  if [[ "${SK_ANA_FORCE_SYNC:-0}" != "1" ]] && repo_is_dirty "${repo_root}"; then
+    log_step "Skipping checkout synchronization"
+    log_info "Local changes detected; preserving the current checkout."
+    log_info "Set SK_ANA_FORCE_SYNC=1 to discard local changes and resync from origin/${REPO_BRANCH}."
+    return 0
+  fi
+
   sync_repo_to_remote "${repo_root}"
 }
 
@@ -267,6 +385,11 @@ bootstrap_repo_if_needed() {
 
 main() {
   resolve_repo_root
+
+  if is_stop_command "${1:-}"; then
+    stop_sk_ana
+    return 0
+  fi
 
   if [[ "${SK_ANA_LOCK_HELD:-0}" == "1" ]]; then
     trap release_launch_lock EXIT

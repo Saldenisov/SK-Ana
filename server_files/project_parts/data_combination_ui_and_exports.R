@@ -13,6 +13,24 @@ build_project_config <- safely(function(input_values) {
   cfg[!vapply(cfg, is.null, logical(1))]
 }, return_on_error = list())
 
+buildMatrixExportGrid <- safely(function(mat, wavl, delay, datStr = "wxd") {
+  if (is.null(mat) || is.null(wavl) || is.null(delay)) {
+    return(NULL)
+  }
+
+  if (identical(datStr, "dxw")) {
+    return(rbind(
+      c(0, delay),
+      cbind(wavl, t(mat))
+    ))
+  }
+
+  rbind(
+    c(0, wavl),
+    cbind(delay, mat)
+  )
+}, return_on_error = NULL)
+
 build_project_state <- safely(function(input_values, input_state) {
   list(
     version = project_state_format_version,
@@ -333,12 +351,13 @@ observeEvent(
     mat   <- Inputs$mat
     wavl  <- Inputs$wavl
     delay <- Inputs$delaySave
-    header = c("wavl",paste0(delay))
-    # print(str(Inputs$delay))
-    # print(str(Inputs$delaySave))
+    datStr <- Inputs$dataDatStr
+    dat    <- buildMatrixExportGrid(mat, wavl, delay, datStr)
+    if (is.null(dat))
+      return(NULL)
     
     write.table(
-      cbind(wavl, t(mat)),
+      dat,
       file =
         file.path(
           "outputDir",
@@ -349,7 +368,7 @@ observeEvent(
         ),
       sep = ",",
       row.names = FALSE,
-      col.names = header
+      col.names = FALSE
     )
   })
 )

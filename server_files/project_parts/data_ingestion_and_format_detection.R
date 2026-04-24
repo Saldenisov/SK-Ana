@@ -9,6 +9,13 @@ inputStyle = reactiveValues(
 accumulatedFiles = reactiveValues(
   files = NULL  # Will store accumulated file info
 )
+orientationPrompt = reactiveValues(
+  files = NULL,
+  fileName = NULL,
+  detectedDatStr = NULL,
+  selectedDatStr = NULL,
+  confirmedDatStr = NULL
+)
 dataLoaded = reactive({
   Inputs$gotData & Inputs$validData
 })
@@ -42,10 +49,17 @@ inferDataStructureFromCoords <- safely(function(row_coords, col_coords, default 
     (small_scale || zero_based_scale || relative_scale) && is.finite(step) && step > 0
   }
 
+  axis_step <- function(x) {
+    step <- median(abs(diff(x)), na.rm = TRUE)
+    if (is.finite(step)) step else NA_real_
+  }
+
   row_is_delay <- looks_like_delay(row_coords)
   row_is_wavelength <- looks_like_wavelength(row_coords)
   col_is_delay <- looks_like_delay(col_coords)
   col_is_wavelength <- looks_like_wavelength(col_coords)
+  row_step <- axis_step(row_coords)
+  col_step <- axis_step(col_coords)
 
   if (row_is_delay && col_is_wavelength) {
     return("dxw")
@@ -53,16 +67,32 @@ inferDataStructureFromCoords <- safely(function(row_coords, col_coords, default 
   if (row_is_wavelength && col_is_delay) {
     return("wxd")
   }
+  if (row_is_wavelength && col_is_wavelength &&
+      is.finite(row_step) && is.finite(col_step)) {
+    if (row_step > col_step * 1.1) {
+      return("dxw")
+    }
+    if (col_step > row_step * 1.1) {
+      return("wxd")
+    }
+  }
 
   default
 }, return_on_error = "wxd")
+
+describeDataStructure <- safely(function(datStr) {
+  if (identical(datStr, "dxw")) {
+    return("wavelengths on rows and delays on columns")
+  }
+  "wavelengths on columns and delays on rows"
+}, return_on_error = "the selected orientation")
 
 detectFileFormat <- safely(function(dataFile) {
   # Try to detect file format automatically
   # Returns a list with header, sep, dec, datStr
   
   # Read first few lines as text
-  lines <- readLines(dataFile, n = 10, warn = FALSE)
+  lines <- readLines(dataFile, n = 120, warn = FALSE)
   lines <- lines[nchar(trimws(lines)) > 0]
   if(length(lines) < 2) return(NULL)
   
@@ -278,11 +308,19 @@ getOneMatrix  <- safely(function(dataFile) {
     return(NULL) 
   }
 
-  effectiveDatStr <- inferDataStructureFromCoords(
+  inferredDatStr <- inferDataStructureFromCoords(
     row_coords = row_coords,
     col_coords = col_coords,
     default = inputStyle$datStr
   )
+  autoOrient <- identical(input$style, "autoStyle")
+  selectedDatStr <- if (autoOrient && !is.null(orientationPrompt$confirmedDatStr)) {
+    orientationPrompt$confirmedDatStr
+  } else {
+    inputStyle$datStr
+  }
+  effectiveDatStr <- selectedDatStr
+  orientationMismatch <- !identical(inferredDatStr, selectedDatStr)
 
   if (effectiveDatStr == 'dxw') {
     delay <- row_coords
@@ -324,7 +362,10 @@ getOneMatrix  <- safely(function(dataFile) {
   }
   
   return(list(mat=mat, wavl=wavl, delay=delay, 
-              delaySave=delay, delayId= rep(1,length(delay))))
+              delaySave=delay, delayId= rep(1,length(delay)),
+              datStr = effectiveDatStr,
+              inferredDatStr = inferredDatStr,
+              orientationMismatch = orientationMismatch))
   
 }, return_on_error = NULL)
 
@@ -338,6 +379,11 @@ getRawData    <- safely(function(fileNames) {
   initInputs()  # (Re)initialize data tables
   rawData <- vector("list", nrow(fileNames))
   validData <- TRUE
+  orientationWarnings <- character(0)
+  orientationPrompt$files <- NULL
+  orientationPrompt$fileName <- NULL
+  orientationPrompt$detectedDatStr <- NULL
+  orientationPrompt$selectedDatStr <- NULL
   
   # Init progress bar
   progress <- shiny::Progress$new()
@@ -354,6 +400,25 @@ getRawData    <- safely(function(fileNames) {
     O = getOneMatrix(fileNames[i,'datapath'])
     if (!is.null(O)) { 
       O$name = fName
+      if (isTRUE(O$orientationMismatch) && identical(input$style, "autoStyle")) {
+        orientationWarnings <- c(
+          orientationWarnings,
+          paste0(
+            fName,
+            ": file looks like ",
+            describeDataStructure(O$inferredDatStr),
+            ", but was kept as ",
+            describeDataStructure(O$datStr),
+            "."
+          )
+        )
+        if (nrow(fileNames) == 1) {
+          orientationPrompt$files <- fileNames
+          orientationPrompt$fileName <- fName
+          orientationPrompt$detectedDatStr <- O$inferredDatStr
+          orientationPrompt$selectedDatStr <- O$datStr
+        }
+      }
     } else {
       validData <- FALSE
       showModal(modalDialog(
@@ -382,6 +447,42 @@ getRawData    <- safely(function(fileNames) {
     gotData = TRUE,
     validData = TRUE
   ))
+
+  if (length(orientationWarnings) > 0) {
+    if (nrow(fileNames) == 1 && !is.null(orientationPrompt$detectedDatStr)) {
+      showModal(modalDialog(
+        title = ">>>> Data orientation check <<<< ",
+        tags$p(
+          paste0(
+            orientationPrompt$fileName,
+            " does not match the selected orientation."
+          )
+        ),
+        tags$p(
+          paste0(
+            "Selected: ",
+            describeDataStructure(orientationPrompt$selectedDatStr),
+            "."
+          )
+        ),
+        tags$p(
+          paste0(
+            "Detected from the matrix layout: ",
+            describeDataStructure(orientationPrompt$detectedDatStr),
+            "."
+          )
+        ),
+        tags$p("Auto mode keeps the default orientation unless you confirm a rotation."),
+        tags$p("Do you want to transpose the matrix and use the detected orientation?"),
+        easyClose = TRUE,
+        footer = tagList(
+          modalButton("Keep default orientation"),
+          actionButton("rotateOrientation", "Transpose and use detected orientation")
+        ),
+        size = "m"
+      ))
+    }
+  }
 }, return_on_error = NULL)
 
 # Predefined input styles ####
@@ -390,14 +491,15 @@ observeEvent(
   isolate({
     switch( input$style,
             autoStyle = {
-              # Auto-detect format when file is loaded
+              # Auto-detect separator/header, but keep the default wxd
+              # orientation until the user confirms otherwise.
               if(!is.null(input$dataFile)) {
                 detected <- detectFileFormat(input$dataFile$datapath[1])
                 if(!is.null(detected)) {
                   inputStyle$header = detected$header
                   inputStyle$sep    = detected$sep
                   inputStyle$dec    = detected$dec
-                  inputStyle$datStr = detected$datStr
+                  inputStyle$datStr = "wxd"
                 } else {
                   # Fallback to CSV defaults
                   inputStyle$header = FALSE
@@ -471,6 +573,30 @@ observeEvent(
   })
 )
 
+observeEvent(
+  list(input$header, input$sep, input$dec, input$datStr),
+  ignoreInit = TRUE,
+  {
+    if (!identical(input$style, "otherStyle")) {
+      return(NULL)
+    }
+
+    inputStyle$header = input$header
+    inputStyle$sep    = input$sep
+    inputStyle$dec    = input$dec
+    inputStyle$datStr = input$datStr
+  }
+)
+
+observeEvent(input$rotateOrientation, {
+  req(orientationPrompt$files, orientationPrompt$detectedDatStr)
+
+  removeModal()
+  orientationPrompt$confirmedDatStr = orientationPrompt$detectedDatStr
+
+  getRawData(orientationPrompt$files)
+})
+
 # Clear files button ####
 observeEvent(
   input$clearFiles, {
@@ -483,6 +609,12 @@ observeEvent(
 # New project ####
 observeEvent(
   input$dataFile,{
+    orientationPrompt$confirmedDatStr <- NULL
+    orientationPrompt$files <- NULL
+    orientationPrompt$fileName <- NULL
+    orientationPrompt$detectedDatStr <- NULL
+    orientationPrompt$selectedDatStr <- NULL
+
     # Determine which files to process
     filesToProcess <- input$dataFile
     
@@ -514,7 +646,7 @@ observeEvent(
         inputStyle$header = detected$header
         inputStyle$sep    = detected$sep
         inputStyle$dec    = detected$dec
-        inputStyle$datStr = detected$datStr
+        inputStyle$datStr = "wxd"
       }
     }
     

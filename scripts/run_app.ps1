@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [switch] $Stop,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]] $LauncherArgs
 )
@@ -11,6 +12,10 @@ $rootLauncher = Join-Path (Split-Path -Parent $scriptDir) "run_app.ps1"
 
 if (-not (Test-Path -LiteralPath $rootLauncher)) {
     throw "Could not find top-level run_app.ps1: $rootLauncher"
+}
+
+if ($Stop) {
+    $LauncherArgs = @("-Stop") + $LauncherArgs
 }
 
 & $rootLauncher @LauncherArgs
