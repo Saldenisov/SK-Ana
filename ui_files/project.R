@@ -56,8 +56,10 @@ sidebarLayout(
           radioButtons(
             inputId = 'datStr', 
             label   = 'Data structure',
-            choices = list("Wavl on a row"   = 'dxw',
-                           "Wavl on a column"= 'wxd'),
+            choices = list(
+              "First column = wavelength, first row = delay" = 'dxw',
+              "First row = wavelength, first column = delay" = 'wxd'
+            ),
             selected= 'wxd',
             inline = TRUE)
         ),

@@ -537,7 +537,7 @@ observeEvent(
               inputStyle$header = FALSE
               inputStyle$sep    = "\t"
               inputStyle$dec    = "."
-              inputStyle$datStr = "wxd"
+              inputStyle$datStr = "dxw"
             },
             heleneStyle={
               inputStyle$header = FALSE

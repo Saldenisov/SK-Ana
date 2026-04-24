@@ -18,7 +18,7 @@ Project definition and data input.
     |        | Header | Separator | Decimal | Data structure |
     | ------ | ------ | --------- | ------- | -------------- |
     | CSV    | FALSE  | ‘,’       | ‘.’     | wxd            |
-    | ELYSE  | FALSE  | ‘\\t’     | ‘.’     | wxd            |
+    | ELYSE  | FALSE  | ‘\\t’     | ‘.’     | dxw            |
     | Fluo   | FALSE  | ‘;’       | ‘.’     | wxd            |
     | Streak | TRUE   | ‘,’       | ‘.’     | wxd            |
     
@@ -31,9 +31,9 @@ Project definition and data input.
     
       - `Data structure`:
         
-          - `wxd`: wavelength in columns; delays in lines
+          - `wxd`: first row contains wavelengths; first column contains delays
         
-          - `dxw`: delays in columns; wavelengths in lines
+          - `dxw`: first column contains wavelengths; first row contains delays
     
     **Note**: the first line of the matrix must contain the delays or
     wavelengths, depending on the choice of `Data structure`.

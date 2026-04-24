@@ -59,7 +59,16 @@ shiny::testServer(server, {
     path <- make_dxw_file()
     withr::defer(unlink(path), envir = parent.frame())
 
-    session$setInputs(style = "elyseStyle", compFacD = 1, compFacW = 1, transformDelay = 0)
+    session$setInputs(
+      style = "otherStyle",
+      header = FALSE,
+      sep = "\t",
+      dec = ".",
+      datStr = "wxd",
+      compFacD = 1,
+      compFacW = 1,
+      transformDelay = 0
+    )
     parsed <- getOneMatrix(path)
 
     testthat::expect_false(is.null(parsed))
@@ -76,7 +85,16 @@ shiny::testServer(server, {
     path <- make_wxd_file()
     withr::defer(unlink(path), envir = parent.frame())
 
-    session$setInputs(style = "elyseStyle", compFacD = 1, compFacW = 1, transformDelay = 0)
+    session$setInputs(
+      style = "otherStyle",
+      header = FALSE,
+      sep = "\t",
+      dec = ".",
+      datStr = "wxd",
+      compFacD = 1,
+      compFacW = 1,
+      transformDelay = 0
+    )
     parsed <- getOneMatrix(path)
 
     testthat::expect_false(is.null(parsed))
@@ -146,7 +164,16 @@ shiny::testServer(server, {
     path <- make_ambiguous_dxw_file()
     withr::defer(unlink(path), envir = parent.frame())
 
-    session$setInputs(style = "elyseStyle", compFacD = 1, compFacW = 1, transformDelay = 0)
+    session$setInputs(
+      style = "otherStyle",
+      header = FALSE,
+      sep = "\t",
+      dec = ".",
+      datStr = "wxd",
+      compFacD = 1,
+      compFacW = 1,
+      transformDelay = 0
+    )
     parsed <- getOneMatrix(path)
 
     testthat::expect_false(is.null(parsed))
@@ -188,7 +215,16 @@ shiny::testServer(server, {
     path <- make_wxd_file()
     withr::defer(unlink(path), envir = parent.frame())
 
-    session$setInputs(style = "elyseStyle", compFacD = 1, compFacW = 1, transformDelay = 0)
+    session$setInputs(
+      style = "otherStyle",
+      header = FALSE,
+      sep = "\t",
+      dec = ".",
+      datStr = "wxd",
+      compFacD = 1,
+      compFacW = 1,
+      transformDelay = 0
+    )
     parsed <- getOneMatrix(path)
     exported <- buildMatrixExportGrid(parsed$mat, parsed$wavl, parsed$delay, parsed$datStr)
 
