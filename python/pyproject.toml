@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skana-python"
+version = "0.1.0"
+description = "Independent Python analysis and Streamlit interface for SK-Ana"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24,<3",
+  "pandas>=2.0,<3",
+  "scipy>=1.10,<2",
+  "scikit-learn>=1.3,<2",
+  "matplotlib>=3.7,<4",
+  "streamlit>=1.35,<2",
+  "rdata>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "nbformat>=5,<6", "nbclient>=0.10,<1", "ipykernel>=6,<7"]
+
+[tool.setuptools]
+py-modules = ["spectrokinetic_transformers"]
+packages = ["skana"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

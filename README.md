@@ -20,6 +20,18 @@ This repository started as a fork of Pascal Pernot's `ppernot/SK-Ana` and is now
 
 ## Running SK-Ana
 
+### Python/Streamlit version
+
+The repository also contains an independent Python package and Streamlit application under [`python/`](python/README.md). It runs without R and is being developed as a full replacement for the R/Shiny workflows; [current feature differences](python/R_PORT_INVENTORY.md) are documented. From `E:\SK-Ana\python` on Windows PowerShell:
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m streamlit run skana\app.py
+```
+
+Open `http://localhost:8501`. The [Python README](python/README.md) covers Everest, tests, examples and known numerical differences; the [R feature inventory](python/R_PORT_INVENTORY.md) lists transferred and pending functions. R/Shiny remains separately launchable with the commands below. No changes are published automatically by the Python app.
+
 ### Run locally with isolated `R_skana` runtime (recommended)
 
 SK-Ana now uses a repo-local isolated runtime named `R_skana`. This is the safest setup on a new machine because it:
