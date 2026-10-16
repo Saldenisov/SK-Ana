@@ -22,15 +22,13 @@ This repository started as a fork of Pascal Pernot's `ppernot/SK-Ana` and is now
 
 ### Python/Streamlit version
 
-The repository also contains an independent Python package and Streamlit application under [`python/`](python/README.md). It runs without R and is being developed as a full replacement for the R/Shiny workflows; [current feature differences](python/R_PORT_INVENTORY.md) are documented. From `E:\SK-Ana\python` on Windows PowerShell:
+The `SKAna-Python` branch contains an independent Python package and Streamlit application under [`python/`](python/README.md); `master` is the R/Shiny branch. Python runs without R and is being developed as a full replacement for the R/Shiny workflows; [current feature differences](python/R_PORT_INVENTORY.md) are documented. Clone this branch with `git clone -b SKAna-Python https://github.com/Saldenisov/SK-Ana.git`, or switch to it in an existing checkout. From the repository root:
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m streamlit run skana\app.py
+powershell -ExecutionPolicy Bypass -File .\python\scripts\install-windows.ps1
 ```
 
-Open `http://localhost:8501`. The [Python README](python/README.md) covers Everest, tests, examples and known numerical differences; the [R feature inventory](python/R_PORT_INVENTORY.md) lists transferred and pending functions. R/Shiny remains separately launchable with the commands below. No changes are published automatically by the Python app.
+On macOS run `bash python/scripts/install-macos.sh`; on Linux or Everest run `bash python/scripts/install-linux.sh`. These commands install an isolated Miniconda environment when necessary and start the Python app at `http://127.0.0.1:8501/`. The [Python README](python/README.md) covers setup options, tests, examples and known numerical differences; the [R feature inventory](python/R_PORT_INVENTORY.md) lists transferred and pending functions. R/Shiny remains separately launchable with the commands below. No changes are published automatically by the Python app.
 
 ### Run locally with isolated `R_skana` runtime (recommended)
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skana import (MatrixData, baseline_correct, combine, compress, export_matrix,
+from skana import (MatrixData, baseline_correct, combine, compress, postprocess_compress, export_matrix,
                    read_matrix, select, suggest_baseline_intervals,
                    suggest_signal_mask)
 
@@ -27,6 +27,14 @@ def test_compression_and_selection():
     np.testing.assert_allclose(data.wavelength, [500., 700.])
     selected = select(sample(), delay_range=(1., 2.), wavelength_range=(500., 700.))
     assert selected.matrix.shape == (2, 3)
+
+
+def test_postprocess_compression_retains_physical_time():
+    reduced = postprocess_compress(sample(), 2, 3)
+    np.testing.assert_allclose(reduced.matrix, [[3., 5.], [9., 11.]])
+    np.testing.assert_allclose(reduced.delay, [1., 2.])
+    np.testing.assert_allclose(reduced.time, [0.5, 2.])
+    np.testing.assert_allclose(reduced.wavelength, [500., 700.])
 
 
 def test_automatic_signal_masks_keep_active_region():

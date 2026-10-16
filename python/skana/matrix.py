@@ -161,6 +161,17 @@ def compress(data: MatrixData, delay_factor: int = 1, wavelength_factor: int = 1
     return MatrixData(m, d, w, data.name, data.orientation, ids, t)
 
 
+def postprocess_compress(data: MatrixData, delay_factor: int = 1,
+                         wavelength_factor: int = 1) -> MatrixData:
+    """R's second compression stage: averaged physical times, indexed display delays."""
+    if delay_factor == 1 and wavelength_factor == 1:
+        return data
+    reduced = compress(data, delay_factor, wavelength_factor)
+    return MatrixData(reduced.matrix, np.arange(1, reduced.delay.size + 1),
+                      reduced.wavelength, reduced.name, reduced.orientation,
+                      reduced.delay_id, reduced.time)
+
+
 def transform_delay(delay: np.ndarray, mode: str) -> np.ndarray:
     delay = np.asarray(delay, dtype=float)
     if mode == "None":

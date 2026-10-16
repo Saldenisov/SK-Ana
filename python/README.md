@@ -2,39 +2,55 @@
 
 Independent Python package and Streamlit interface alongside the original R/Shiny application. The transferred `spectrokinetic_transformers.py` remains in place as the numerical source for MCR-ALS and sklearn transformers. `skana/` adds matrix input, SVD, kinetic ODE modeling, MAP fitting, ambiguity search, exports, and reports. The application never starts or calls R. It uses the pure Python `rdata` package to import numerical matrices from R `.Rda` projects; an R runtime is needed only for optional cross-language tests. All demonstrations and tests use synthetic data.
 
-## Install and run
+This repository keeps the R/Shiny release on `master` and the independently runnable Python/Streamlit release on `SKAna-Python`. To obtain this version, clone with `git clone -b SKAna-Python https://github.com/Saldenisov/SK-Ana.git`, or run `git switch SKAna-Python` in an existing checkout. The Python branch also retains the original R sources; its launcher remains separate.
 
-Python 3.10 or newer is required. Run commands from `E:\SK-Ana\python` on Windows PowerShell:
+## Install and run with Conda
+
+From the repository root, one command installs Miniconda in the user's home area if Conda is absent, creates an isolated Python 3.12 environment, installs SK-Ana Python and its dependencies, checks the package installation, and starts Streamlit. An existing Conda installation is reused. The installers use pinned platform-specific Miniconda files and verify their SHA-256 hashes against the [official Miniconda archive](https://repo.anaconda.com/miniconda/). No administrator privileges or R runtime are needed for the Python app.
+
+Windows PowerShell (x86-64):
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m streamlit run skana\app.py
+powershell -ExecutionPolicy Bypass -File .\python\scripts\install-windows.ps1
 ```
 
-Open `http://localhost:8501`. Select **Use synthetic A → B demo data** on the Project tab to explore the analyses without uploading data. For the core and application without test/notebook tools, use `pip install -e .` or `pip install -r requirements.txt`. `pyproject.toml` specifies NumPy, pandas, SciPy, scikit-learn, Matplotlib, Streamlit, and `rdata`; the `dev` extra adds pytest, nbformat, nbclient, and ipykernel.
-
-On a Linux Everest session with Python 3.10+ already available, from the repository root:
+macOS (Apple silicon or Intel):
 
 ```bash
-cd python
-python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[dev]'
-.venv/bin/python -m streamlit run skana/app.py --server.address 127.0.0.1 --server.port 8501
+bash python/scripts/install-macos.sh
 ```
 
-For remote use, forward port 8501 through SSH according to Everest's access policy. These commands do not assume a particular scheduler, Python module name, or network exposure. R remains independent: launch it from the repository root using `run_app.bat` on Windows or `./run_app.sh` on Linux; its default app port is 3840. Neither launcher needs the other language installed.
+Linux (x86-64 or aarch64; Everest uses the Linux command):
+
+```bash
+bash python/scripts/install-linux.sh
+```
+
+Open `http://127.0.0.1:8501/` and select **Use synthetic A → B demo data** on Project. First setup requires network access to the Miniconda archive, conda-forge and PyPI. On a remote Everest login or compute node, run the Linux command there and forward port 8501 through SSH according to that system's access policy. The scripts bind Streamlit to loopback only.
+
+Add `-SetupOnly -Dev` on Windows or `--setup-only --dev` on macOS/Linux to install test/notebook dependencies without starting the app. `-DryRun` / `--dry-run` prints platform, installer URL/hash, environment path and package target without installation. `-Port 8502` / `--port 8502` changes the local port. Windows accepts `-CondaExe` and `-EnvironmentPrefix`; Unix accepts `SKANA_CONDA_EXE`, `SKANA_MINICONDA_ROOT` and `SKANA_ENV_PREFIX` environment variables. The default isolated environment is `%LOCALAPPDATA%\SKAna\envs\skana-python` on Windows or `~/.skana/envs/skana-python` on macOS/Linux. Intel macOS uses the last supported Miniconda Intel installer (25.7.0-2); Apple silicon and supported Windows/Linux architectures use 26.5.3-2. See [Anaconda's current system requirements](https://www.anaconda.com/docs/getting-started/miniconda/system-requirements).
+
+After setup, run tests in the environment:
+
+```powershell
+& "$env:LOCALAPPDATA\SKAna\envs\skana-python\python.exe" -m pytest python\tests -q
+```
+
+```bash
+"$HOME/.skana/envs/skana-python/bin/python" -m pytest python/tests -q
+```
+
+The `dev` extra adds pytest, nbformat, nbclient and ipykernel. `pyproject.toml` specifies the runtime dependencies. R/Shiny remains independently launchable from the repository root using `run_app.bat` on Windows or `./run_app.sh` on Linux/macOS; its default port is 3840. Neither app calls the other's runtime.
 
 ## Inputs and workflow
 
-Upload `.csv`, `.tsv`, `.txt`, or `.dat` corner-cell matrices. First row contains wavelength and first column delay (`wxd`); choose `dxw` when the first row contains delay and first column wavelength. The matrix always becomes delay × wavelength internally. Presets: Auto, ELYSE/TSV, CSV, Fluo, Streak, or custom separator/decimal. Auto detects delimiters but defaults to `wxd`; confirm orientation in the UI. Optional text header, nonfinite signal values replaced with zero, sorted axes, block compression, and delay transformation follow the R data path where stated in [inventory](R_PORT_INVENTORY.md). Axes must be finite. Multiple inputs can be averaged, delay-tiled, or wavelength-tiled when the corresponding coordinate grids agree exactly.
+Upload `.csv`, `.tsv`, `.txt`, or `.dat` corner-cell matrices. First row contains wavelength and first column delay (`wxd`); choose `dxw` when the first row contains delay and first column wavelength. The matrix always becomes delay × wavelength internally. Presets: Auto, ELYSE/TSV, CSV, Fluo, Streak, or custom separator/decimal. Auto detects delimiters but defaults to `wxd`; confirm orientation in the UI. Optional text header, nonfinite signal values replaced with zero, sorted axes, load-time and post-process block compression, and delay transformation follow the R data path where stated in [inventory](R_PORT_INVENTORY.md). Axes must be finite. Multiple inputs can be averaged, delay-tiled, or wavelength-tiled when the corresponding coordinate grids agree exactly. Post-process delay compression displays row indices while retaining averaged physical time for kinetic fitting, as in the R workflow.
 
 Data selection offers delay/wavelength ranges, baseline intervals, exclusion masks, automatic signal masks, an SVD-vector glitch selector, and delay/wavelength transects. Automatic masks use an RMS threshold and differ from R's variance changepoint algorithm; inspect retained row/column counts before fitting. Download a selected matrix in the same corner-cell CSV layout. Save/reopen a Python project as a pickle-free `.npz` and selection settings as `.json`. Import an R `.Rda` project to migrate its matrix and axes. A separate R `Selections.Rda` file transfers saved ranges and masks when original matrix dimensions match. Other R widget settings and fitted results are not imported.
 
 SVD shows singular values, rank-by-rank lack of fit and residual standard deviation, vectors, model, residuals, and statistics CSV. MCR-ALS shows component profiles, model, residual heatmap and distribution, residual singular values, contributions, and a ZIP of kinetics, spectra, model, residual, broadening (when enabled), and metrics. Controls expose rank, initialization (SVD/PCA/NMF/sequential/restart), optional SVD filtering, nonnegativity, closure, normalization, unimodality, smoothing, fixed spectra, component presence, correction spectra, and Gaussian broadening. The two/three-component ambiguity explorer searches rotated nonfixed factors and exports a selected solution or all accepted solutions as NPZ. The three-component search uses a bounded six-parameter grid. Fixed spectra upload must be CSV with `wavelength,S_1,...` column headers and a wavelength range covering selected data. Savitzky–Golay smoothing changes displayed kinetics only. Export can bundle the original project matrix, selection settings, selected matrix, SVD statistics and available fits in one workspace ZIP.
 
-The **Kinetics** tab parses R-style reactions (`A + B -> C ; k / F`), initial concentrations (`c0_A_1 = value / F`), and extinction coefficients (`eps_A = value / F`). A factor `F > 1` makes a parameter variable with a truncated standard-normal prior in contracted coordinates `z = log(value/nominal)/log(F)`, bounded to `[-3,3]`. Each experiment is integrated from physical time zero with SciPy LSODA (`rtol=1e-6`, `atol=1e-8`). Spectra are solved by least squares or NNLS, optionally using fixed shapes; amplitudes follow the R extinction normalization. Unweighted MAP minimizes `N/2·log(SSE) + Σz²/2`; weighted MAP uses `SSE/(2σ²) + Σz²/2`. SciPy differential evolution and L-BFGS-B replace R's `rgenoud` and `Rsolnp`; this changes search and convergence behavior. Results include concentrations, spectra, model, residual, fitted parameters, approximate local covariance, plots, and ZIP export. The HTML report is generated entirely in Python and embeds plots for offline viewing.
+The **Kinet** tab parses R-style reactions (`A + B -> C ; k / F`), initial concentrations (`c0_A_1 = value / F`), and extinction coefficients (`eps_A = value / F`). A factor `F > 1` makes a parameter variable with a truncated standard-normal prior in contracted coordinates `z = log(value/nominal)/log(F)`, bounded to `[-3,3]`. Each experiment is integrated from physical time zero with SciPy LSODA (`rtol=1e-6`, `atol=1e-8`). Spectra are solved by least squares or NNLS, optionally using fixed shapes; amplitudes follow the R extinction normalization. Unweighted MAP minimizes `N/2·log(SSE) + Σz²/2`; weighted MAP uses `SSE/(2σ²) + Σz²/2`. SciPy differential evolution and L-BFGS-B replace R's `rgenoud` and `Rsolnp`; this changes search and convergence behavior. Results include concentrations, spectra, model, residual, fitted parameters, approximate local covariance, plots, and ZIP export. The HTML report is generated entirely in Python and embeds plots for offline viewing.
 
 Example scheme:
 
@@ -65,11 +81,18 @@ The executable synthetic example is [skana_synthetic_demo.ipynb](notebooks/skana
 
 ## Verification and known differences
 
-From `E:\SK-Ana\python`:
+From `E:\SK-Ana\python` after setup with `-Dev`:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests -q
-.\.venv\Scripts\python.exe -c 'import nbformat; from nbclient import NotebookClient; p="notebooks/skana_synthetic_demo.ipynb"; n=nbformat.read(p, as_version=4); NotebookClient(n, timeout=120, kernel_name="python3").execute(cwd="."); print("Notebook OK")'
+& "$env:LOCALAPPDATA\SKAna\envs\skana-python\python.exe" -m pytest tests -q
+& "$env:LOCALAPPDATA\SKAna\envs\skana-python\python.exe" -c 'import os,sys,nbformat; from pathlib import Path; from nbclient import NotebookClient; os.environ["PATH"]=str(Path(sys.executable).parent)+os.pathsep+os.environ["PATH"]; p="notebooks/skana_synthetic_demo.ipynb"; n=nbformat.read(p, as_version=4); NotebookClient(n, timeout=180, kernel_name="python3").execute(cwd="."); print("Notebook OK")'
+```
+
+macOS/Linux equivalent:
+
+```bash
+"$HOME/.skana/envs/skana-python/bin/python" -m pytest tests -q
+"$HOME/.skana/envs/skana-python/bin/python" -c 'import os,sys,nbformat; from pathlib import Path; from nbclient import NotebookClient; os.environ["PATH"]=str(Path(sys.executable).parent)+os.pathsep+os.environ["PATH"]; p="notebooks/skana_synthetic_demo.ipynb"; n=nbformat.read(p, as_version=4); NotebookClient(n, timeout=180, kernel_name="python3").execute(cwd="."); print("Notebook OK")'
 ```
 
 The notebook may also be run interactively. The parity tests invoke `Rscript` from the repository's `.R_skana` runtime when present, otherwise a system `Rscript`; they skip explicitly when neither exists. They use generated, nonsecret matrices and the actual R `getC`, `getS`, `myals`, kinetic ODE/model, and Bayesian objective functions. A synthetic `.Rda` fixture tests Python import. No patient files are read.
